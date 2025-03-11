@@ -1,0 +1,3 @@
+export const DELETED_IN_CHANGE_SET_SYMBOL = Symbol(
+    "DELETED_IN_CHANGE_SET_SYMBOL",
+)

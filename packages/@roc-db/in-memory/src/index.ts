@@ -1,0 +1,1 @@
+export { createInMemoryAdapter } from "./createInMemoryAdapter"
