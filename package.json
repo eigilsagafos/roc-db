@@ -1,0 +1,44 @@
+{
+    "name": "roc-db-monorepo",
+    "private": true,
+    "version": "0.2.0-pre.7",
+    "author": {
+        "name": "Eigil Sagafos"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/eigilsagafos/roc-db.git"
+    },
+    "scripts": {
+        "build": "bun run build:js && bun run build:types",
+        "build:js": "bun --filter '*' build",
+        "build:types": "bun --filter '*' build:types",
+        "bump": "bun scripts/bump.tsx",
+        "publish": "bun scripts/publish.tsx",
+        "test": "bun --filter '*' test"
+    },
+    "workspaces": [
+        "packages/*",
+        "packages/@roc-db/*"
+    ],
+    "devDependencies": {
+        "@eslint/js": "9.22.0",
+        "@types/bun": "1.2.5",
+        "@types/react": "19.0.10",
+        "@types/libnpmpublish": "9.0.1",
+        "bun": "1.2.5",
+        "eslint": "9.22.0",
+        "eslint-config-prettier": "10.1.1",
+        "ink": "5.2.0",
+        "ink-select-input": "6.0.0",
+        "ink-spinner": "5.0.0",
+        "libnpmpublish": "11.0.0",
+        "prettier": "3.5.3",
+        "react": "18.2.0",
+        "semver": "7.7.1",
+        "typescript": "5.8.2",
+        "typescript-eslint": "8.26.1",
+        "valdres": "0.2.0-alpha.74",
+        "valdres-react": "0.2.0-alpha.74"
+    }
+}

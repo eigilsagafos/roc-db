@@ -1,0 +1,40 @@
+{
+    "name": "@roc-db/valdres",
+    "version": "0.2.0-pre.7",
+    "type": "module",
+    "exports": {
+        ".": "./src/index.ts"
+    },
+    "files": [
+        "dist"
+    ],
+    "sideEffects": false,
+    "scripts": {
+        "build": "NODE_ENV=production bun run scripts/build.ts",
+        "build:types": "rm -rf dist/types && bun run tsc --noCheck",
+        "test": "bun test"
+    },
+    "dependencies": {},
+    "devDependencies": {
+        "@faker-js/faker": "9.3.0",
+        "@roc-db/test-utils": "0.2.0-pre.7",
+        "@types/bun": "1.2.5",
+        "bun": "1.2.5",
+        "roc-db": "0.2.0-pre.7",
+        "expect-type": "1.1.0",
+        "prettier": "3.4.1",
+        "valdres": "0.2.0-alpha.74"
+    },
+    "peerDependencies": {
+        "roc-db": "0.2.0-pre.7",
+        "valdres": "0.2.0-alpha.74",
+        "zod": "3.24.2"
+    },
+    "keywords": [],
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/eigilsagafos/roc-db.git"
+    },
+    "author": "Eigil Sagafos",
+    "license": "MIT"
+}

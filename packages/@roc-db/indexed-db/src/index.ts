@@ -1,0 +1,1 @@
+export { createIndexedDBAdapter } from "./createIndexedDBAdapter"
