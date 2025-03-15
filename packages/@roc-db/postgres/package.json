@@ -1,6 +1,6 @@
 {
     "name": "@roc-db/postgres",
-    "version": "0.2.0-pre.7",
+    "version": "0.2.0-pre.10",
     "type": "module",
     "exports": {
         ".": "./src/index.ts"
@@ -19,12 +19,12 @@
         "postgres": "3.4.5"
     },
     "devDependencies": {
-        "roc-db": "0.2.0-pre.7",
+        "roc-db": "0.2.0-pre.10",
         "zod": "3.24.2"
     },
     "peerDependencies": {
-        "roc-db": "0.2.0-pre.7",
-        "zod": "3.24.2"
+        "roc-db": "0.2.0-pre.10",
+        "zod": "^3.0.0"
     },
     "keywords": [],
     "author": "Eigil Sagafos",
