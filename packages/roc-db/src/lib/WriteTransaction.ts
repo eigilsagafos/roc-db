@@ -1,4 +1,4 @@
-import { EntityN } from "../createAdapter"
+import type { EntityN } from "../createAdapter"
 import type { AdapterOptions } from "../types/AdapterOptions"
 import type { RocRequest } from "../types/RocRequest"
 import { createRef } from "../utils/createRef"
@@ -11,8 +11,8 @@ const findDependentsSync = (txn, ref) => {
     const children = refsFromRelations(res.children)
     let dependents = []
     for (const childRef of children) {
-        dependents.push(childRef)
         dependents.push(...findDependentsSync(txn, childRef))
+        dependents.push(childRef)
     }
     return dependents
 }
@@ -21,8 +21,8 @@ const findDependentsAsync = async (txn, ref) => {
     const children = refsFromRelations(res.children)
     let dependents = []
     for (const childRef of children) {
-        dependents.push(childRef)
         dependents.push(...(await findDependentsAsync(txn, childRef)))
+        dependents.push(childRef)
     }
     return dependents
 }

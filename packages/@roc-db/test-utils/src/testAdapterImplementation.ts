@@ -184,8 +184,8 @@ export const testAdapterImplementation = <EngineOptions extends {}>(
                 expect(count).toBe(4)
                 expect(mutation.log).toStrictEqual([
                     [blockParagraph1.ref, "delete", draftRef],
-                    [blockRow.ref, "delete", draftRef],
                     [blockParagraph2.ref, "delete", draftRef],
+                    [blockRow.ref, "delete", draftRef],
                     [postRef, "delete", draftRef],
                 ])
 
