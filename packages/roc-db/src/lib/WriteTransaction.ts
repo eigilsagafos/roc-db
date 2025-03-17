@@ -76,7 +76,7 @@ export class WriteTransaction<
             const nextRef = this.optimisticCreateRefs.shift()
             if (!nextRef) throw new Error("No next ref")
             const nextRefEntity = entityFromRef(nextRef)
-            if (entity !== nextRefEntity) throw new Error("Wrong entity")
+            if (entity !== nextRefEntity) throw new Error("Wrong entity. Expected " + entity + " but got " + nextRefEntity) 
             return nextRef
         }
 
