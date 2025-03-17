@@ -9,7 +9,7 @@ export const readEntity = async (txn: PostgresTransaction, ref: Ref) => {
         if (doc) return doc
     }
     if (txn.engineOpts.uncommitted[ref]) {
-        const [action, doc] = txn.db.uncommitted[ref]
+        const [action, doc] = txn.engineOpts.uncommitted[ref]
         if (action === "delete") return undefined
         return doc
     }

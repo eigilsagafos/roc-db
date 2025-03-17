@@ -187,7 +187,7 @@ const steps = [
             // return {
             //     exitCode: 0,
             // }
-            return $.cwd(`${dir.join(`/`)}/dist-tarball`)`npm publish ${file}`
+            return $.cwd(`${dir.join(`/`)}/dist-tarball`)`npm publish ${file}`.quiet()
         },
         // onSuccess: (output, key) => {
         //     console.log(output)
