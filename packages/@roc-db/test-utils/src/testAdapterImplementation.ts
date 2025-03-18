@@ -215,6 +215,12 @@ export const testAdapterImplementation = <EngineOptions extends {}>(
                 expect(res.length).toBeGreaterThan(0)
                 expect(res.every(m => m.changeSetRef === draftRef)).toBeTrue()
             })
+
+            // test("applyDraft (applyChangeSet function)", async () => {
+            //     const res = await changeSetAdapter.applyDraft({
+            //         ref: draftRef,
+            //     })
+            // })
         })
     }
 }

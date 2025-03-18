@@ -4,7 +4,9 @@ import type { RocRequest } from "../types/RocRequest"
 import { createRef } from "../utils/createRef"
 import { entityFromRef } from "../utils/entityFromRef"
 import { refsFromRelations } from "../utils/refsFromRelations"
+import { parseAndValidatePayload } from "./executeWriteRequestSync"
 import { ReadTransaction } from "./ReadTransaction"
+import { runAsyncFunctionChain } from "./runAsyncFunctionChain"
 
 const findDependentsSync = (txn, ref) => {
     const res = txn.readEntity(ref)
@@ -25,6 +27,45 @@ const findDependentsAsync = async (txn, ref) => {
         dependents.push(childRef)
     }
     return dependents
+}
+
+const applyChangeSetSync = (txn, ref) => {
+    throw new Error("TODO")
+    const res = txn.adapterOpts.functions.getChangeSetMutations(txn, ref)
+    console.log("res sync ", res)
+    if (res.length) {
+        console.log("res", res)
+        throw new Error("TODO: applyChangeSetSync")
+    }
+}
+const applyChangeSetAsync = async (txn, ref) => {
+    const res = await txn.adapterOpts.functions.getChangeSetMutations(txn, ref)
+    if (res.length) {
+        for (const mutation of res) {
+            const operation = txn.adapterOpts.operations.find(
+                o => o.operationName === mutation.name,
+            )
+            const request = operation(
+                mutation.payload,
+                null,
+                // txn.request.changeSetRef,
+                mutation,
+            )
+
+            txn.adapterOpts
+
+            const payload = parseAndValidatePayload(request)
+            const tmpTxn = new WriteTransaction(
+                request,
+                txn.engineOpts,
+                txn.adapterOpts,
+                payload,
+                mutation,
+                mutation.log,
+            )
+            const res = await runAsyncFunctionChain(request.callback(tmpTxn))
+        }
+    }
 }
 
 export class WriteTransaction<
@@ -71,12 +112,27 @@ export class WriteTransaction<
         throw new Error("Asdf")
     }
 
+    applyChangeSet = ref => {
+        if (this.adapterOpts.async) {
+            return applyChangeSetAsync(this, ref)
+        } else {
+            return applyChangeSetSync(this, ref)
+        }
+    }
+
     createRef = (entity: string) => {
         if (this.optimisticRefs.length) {
             const nextRef = this.optimisticCreateRefs.shift()
             if (!nextRef) throw new Error("No next ref")
             const nextRefEntity = entityFromRef(nextRef)
-            if (entity !== nextRefEntity) throw new Error("Wrong entity. Expected " + entity + " but got " + nextRefEntity) 
+            if (entity !== nextRefEntity) {
+                throw new Error(
+                    "Wrong entity. Expected " +
+                        entity +
+                        " but got " +
+                        nextRefEntity,
+                )
+            }
             return nextRef
         }
 
@@ -96,16 +152,20 @@ export class WriteTransaction<
         if (this.log.has(ref)) {
             if (this.log.get(ref)[1] === "delete")
                 throw new Error("Entity already deleted")
+            // If not delete and it exists it is a create, in that case we don't change it
+        } else {
+            this.log.set(ref, [ref, "update", this.request.changeSetRef])
         }
-        this.log.set(ref, [ref, "update", this.request.changeSetRef])
         return this.adapterOpts.functions.updateEntity(this, ref, args)
     }
     patchEntity = (ref, args) => {
         if (this.log.has(ref)) {
             if (this.log.get(ref)[1] === "delete")
                 throw new Error("Entity already deleted")
+            // If not delete and it exists it is a create, in that case we don't change it
+        } else {
+            this.log.set(ref, [ref, "update", this.request.changeSetRef])
         }
-        this.log.set(ref, [ref, "update", this.request.changeSetRef])
         return this.adapterOpts.functions.patchEntity(this, ref, args)
     }
     findDependents = ref => {
@@ -175,16 +235,3 @@ export class WriteTransaction<
         }
     }
 }
-
-//     createEntity: (txn, ref, data) => {
-//         if (!txn.reapply) {
-//             if (
-//                 txn.mutationLog.find(([mutatedRef]) => mutatedRef === ref)
-//             ) {
-//                 console.error("entity already created", txn.mutation)
-//                 throw new Error("Entity already created")
-//             }
-//             txn.mutationLog.push([ref, "create", txn.mutation.changeSetRef])
-//         }
-//         return functions.createEntity(txn, ref, data)
-//     },

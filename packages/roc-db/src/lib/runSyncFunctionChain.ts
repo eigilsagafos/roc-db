@@ -1,7 +1,7 @@
+import { QueryBaseClass } from "../utils/QueryBaseClass"
 import { QueryChainClass } from "../utils/QueryChainClass"
 import { QueryClass } from "../utils/QueryClass"
-
-const isFunction = (value: any) => typeof value === "function"
+import { QueryObjectClass } from "../utils/QueryObjectClass"
 
 export const runSyncFunctionChain = (query, args = []) => {
     if (query instanceof QueryChainClass) {
@@ -9,8 +9,9 @@ export const runSyncFunctionChain = (query, args = []) => {
         let lastRes: any = undefined
         for (const q of query.queries) {
             let res = runSyncFunctionChain(q, results)
-            if (res instanceof QueryChainClass) {
-                throw new Error("TODO: do we ever get here?")
+
+            if (res instanceof QueryBaseClass) {
+                // throw new Error("TODO: do we ever get here?")
                 lastRes = runSyncFunctionChain(res)
             }
             lastRes = res
@@ -19,6 +20,18 @@ export const runSyncFunctionChain = (query, args = []) => {
 
         return lastRes
     } else if (query instanceof QueryClass) {
-        return query.fn(...args)
+        const res = query.fn(...args)
+        if (res instanceof QueryBaseClass) {
+            return runSyncFunctionChain(res)
+        } else {
+            return res
+        }
+    } else if (query instanceof QueryObjectClass) {
+        return Object.fromEntries(
+            Object.entries(query.map).map(([key, q]) => [
+                key,
+                runSyncFunctionChain(q),
+            ]),
+        )
     }
 }

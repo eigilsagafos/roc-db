@@ -1,3 +1,4 @@
+import { applyDraft } from "./applyDraft"
 import { createBlockImage } from "./createBlockImage"
 import { createBlockParagrah } from "./createBlockParagraph"
 import { createBlockRow } from "./createBlockRow"
@@ -13,6 +14,7 @@ import { updatePost } from "./updatePost"
 import { updatePostTitle } from "./updatePostTitle"
 
 export const operations = [
+    applyDraft,
     createBlockImage,
     createBlockTitle,
     createBlockParagrah,

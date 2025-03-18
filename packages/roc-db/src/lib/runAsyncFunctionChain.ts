@@ -1,5 +1,7 @@
+import { QueryBaseClass } from "../utils/QueryBaseClass"
 import { QueryChainClass } from "../utils/QueryChainClass"
 import { QueryClass } from "../utils/QueryClass"
+import { QueryObjectClass } from "../utils/QueryObjectClass"
 
 const isPromiseLike = (value: any): value is PromiseLike<any> =>
     value && typeof value.then === "function"
@@ -14,7 +16,7 @@ export const runAsyncFunctionChain = async (query, args = []) => {
             if (isPromiseLike(res)) {
                 res = await res
             }
-            if (res instanceof QueryChainClass) {
+            if (res instanceof QueryBaseClass) {
                 lastRes = await runAsyncFunctionChain(res)
                 // throw new Error("TOPDO")
             }
@@ -34,7 +36,26 @@ export const runAsyncFunctionChain = async (query, args = []) => {
 
         return lastRes
     } else if (query instanceof QueryClass) {
-        return query.fn(...args)
+        const res = await query.fn(...args)
+        if (res instanceof QueryBaseClass) {
+            return runAsyncFunctionChain(res)
+        } else if (Array.isArray(res) && res.length) {
+            if (res.some(isPromiseLike)) {
+                return await Promise.all(res)
+            } else {
+                return res
+            }
+        } else {
+            return res
+        }
+    } else if (query instanceof QueryObjectClass) {
+        const entries = await Promise.all(
+            Object.entries(query.map).map(async ([key, q]) => {
+                const result = await runAsyncFunctionChain(q)
+                return [key, result]
+            }),
+        )
+        return Object.fromEntries(entries)
     } else {
         throw new Error("Unsupported query type")
     }

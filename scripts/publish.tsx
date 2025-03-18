@@ -13,9 +13,6 @@ const findRootDepth = async (level = 0) => {
     if (await file.exists()) {
         const json = await file.json()
         if (json.private && json.workspaces?.length) {
-            // console.log(file)
-            // console.log(levels)
-            // file.
             return levels
         }
     }
@@ -187,7 +184,9 @@ const steps = [
             // return {
             //     exitCode: 0,
             // }
-            return $.cwd(`${dir.join(`/`)}/dist-tarball`)`npm publish ${file}`.quiet()
+            return $.cwd(
+                `${dir.join(`/`)}/dist-tarball`,
+            )`npm publish ${file}`.quiet()
         },
         // onSuccess: (output, key) => {
         //     console.log(output)

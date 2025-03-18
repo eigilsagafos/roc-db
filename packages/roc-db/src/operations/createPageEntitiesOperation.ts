@@ -10,9 +10,9 @@ export const createPageEntitiesOperation = entities =>
                 size: z.number().default(30),
                 skip: z.number().default(0),
                 include: z
-                    .union([z.array(z.enum(["foo", "bar"])), z.literal("*")])
+                    .union([z.array(z.string()), z.literal("*")])
                     .default("*"),
-                exclude: z.array(z.enum(["foo", "bar"])).default([]),
+                exclude: z.array(z.string()).default([]),
             })
             .strict(),
         z.object({}),
