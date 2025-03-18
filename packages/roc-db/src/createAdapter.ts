@@ -88,6 +88,12 @@ export const createAdapter = <
         get _entites() {
             return adapterOptions.entities
         },
+        clone: (overrides: Partial<EngineOptions> = {}) => {
+            return createAdapter(adapterOptions, {
+                ...engineOptions,
+                ...overrides,
+            })
+        },
         createRef: entity => {
             // return adapterOptions.snowflake.createRef(entity)
             return createRef(
@@ -106,7 +112,6 @@ export const createAdapter = <
             const operation = operationsMap[mutation.name]
             return operation(mutation.payload, mutation.changeSetRef, mutation)
         },
-
         ...operationsMap,
     }
 }

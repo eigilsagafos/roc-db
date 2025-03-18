@@ -1,5 +1,5 @@
 export * from "./schemas"
-export * from "./operations"
 
+export { operations } from "./operations"
 export { testAdapterImplementation } from "./testAdapterImplementation"
 export { inMemoryAdapter } from "./inMemoryAdapter"
