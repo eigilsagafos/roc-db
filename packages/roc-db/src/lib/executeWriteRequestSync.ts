@@ -5,6 +5,7 @@ import type { RocRequest } from "../types/RocRequest"
 import { createMutationSync } from "./createMutationSync"
 import { initChangeSetSync } from "./initChangeSetSync"
 import { defaultBegin } from "./defaultBegin"
+import { shouldInitChangeSet } from "./shouldInitChangeSet"
 
 type TupleToArgs<T extends any[]> = Extract<
     [[], ...{ [I in keyof T]: [arg: T[I]] }],
@@ -59,11 +60,7 @@ export const executeWriteRequestSync = <
             mutation,
             optimisticRefs,
         )
-        if (request.changeSetRef) {
-            if (adapterOpts.changeSetRef) {
-                // console.log("TODO - skip load?")
-            }
-
+        if (shouldInitChangeSet(txn)) {
             initChangeSetSync(txn)
         }
         const res = runSyncFunctionChain(request.callback(txn))

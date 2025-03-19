@@ -4,6 +4,7 @@ import { initChangeSetAsync } from "./initChangeSetAsync"
 import { ReadTransaction } from "./ReadTransaction"
 import { runAsyncFunctionChain } from "./runAsyncFunctionChain"
 import { defaultBegin } from "./defaultBegin"
+import { shouldInitChangeSet } from "./shouldInitChangeSet"
 
 const parseAndValidatePayload = operation => {
     return operation.schema.parse(operation.payload)
@@ -34,7 +35,7 @@ export const executeReadRequestAsync = async <
             adapterOpts,
             payload,
         )
-        if (request.changeSetRef) {
+        if (shouldInitChangeSet(txn)) {
             await initChangeSetAsync(txn)
         }
         const functions = request.callback(txn)

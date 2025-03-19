@@ -33,6 +33,7 @@ type AdapterOptions<
     snowflake: Snowflake
     async?: boolean
     changeSetRef?: Ref
+    initChangeSetOnce?: boolean
 }
 export const createAdapter = <
     const Operations extends readonly Operation[],

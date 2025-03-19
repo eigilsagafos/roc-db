@@ -6,6 +6,7 @@ import { defaultBegin } from "./defaultBegin"
 import { parseAndValidatePayload } from "./executeWriteRequestSync"
 import { initChangeSetAsync } from "./initChangeSetAsync"
 import { runAsyncFunctionChain } from "./runAsyncFunctionChain"
+import { shouldInitChangeSet } from "./shouldInitChangeSet"
 import { WriteTransaction } from "./WriteTransaction"
 
 export const executeWriteRequestAsync = async <
@@ -39,7 +40,7 @@ export const executeWriteRequestAsync = async <
             Entities,
             AdapterOpts
         >(request, engineOpts, adapterOpts, payload, mutation, optimisticRefs)
-        if (request.changeSetRef) {
+        if (shouldInitChangeSet(txn)) {
             await initChangeSetAsync(txn)
         }
         const functions = request.callback(txn)

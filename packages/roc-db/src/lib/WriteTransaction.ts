@@ -7,6 +7,7 @@ import { refsFromRelations } from "../utils/refsFromRelations"
 import { parseAndValidatePayload } from "./executeWriteRequestSync"
 import { ReadTransaction } from "./ReadTransaction"
 import { runAsyncFunctionChain } from "./runAsyncFunctionChain"
+import { runSyncFunctionChain } from "./runSyncFunctionChain"
 
 const findDependentsSync = (txn, ref) => {
     const res = txn.readEntity(ref)
@@ -30,12 +31,29 @@ const findDependentsAsync = async (txn, ref) => {
 }
 
 const applyChangeSetSync = (txn, ref) => {
-    throw new Error("TODO")
     const res = txn.adapterOpts.functions.getChangeSetMutations(txn, ref)
-    console.log("res sync ", res)
     if (res.length) {
-        console.log("res", res)
-        throw new Error("TODO: applyChangeSetSync")
+        for (const mutation of res) {
+            const operation = txn.adapterOpts.operations.find(
+                o => o.operationName === mutation.name,
+            )
+            const request = operation(
+                mutation.payload,
+                null,
+                // txn.request.changeSetRef,
+                mutation,
+            )
+            const payload = parseAndValidatePayload(request)
+            const tmpTxn = new WriteTransaction(
+                request,
+                txn.engineOpts,
+                txn.adapterOpts,
+                payload,
+                mutation,
+                mutation.log,
+            )
+            const res = runSyncFunctionChain(request.callback(tmpTxn))
+        }
     }
 }
 const applyChangeSetAsync = async (txn, ref) => {
@@ -51,8 +69,6 @@ const applyChangeSetAsync = async (txn, ref) => {
                 // txn.request.changeSetRef,
                 mutation,
             )
-
-            txn.adapterOpts
 
             const payload = parseAndValidatePayload(request)
             const tmpTxn = new WriteTransaction(

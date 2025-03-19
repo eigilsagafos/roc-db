@@ -12,18 +12,21 @@ import {
     // store as createStore,
     type Store,
     type AtomFamily,
+    type TransactionInterface,
 } from "valdres"
 
 export const createValdresAdapter = ({
     operations,
     entities,
     store, // = createStore(),
+    txn,
     entityAtom, // = atomFamily<string, Entity | null>(null),
     mutationAtom, // = atomFamily<string, Mutation | null>(null),
 }: {
     operations: readonly Operation[]
     entities: readonly Entity[]
     store?: Store
+    txn?: TransactionInterface
     entityAtom?: AtomFamily<string, Entity | null>
     mutationAtom?: AtomFamily<string, Mutation | null>
 }) => {
@@ -34,8 +37,10 @@ export const createValdresAdapter = ({
             entities,
             functions,
             snowflake: new Snowflake(1, 1),
+            initChangeSetOnce: true,
         },
         {
+            txn,
             store,
             entityAtom,
             mutationAtom,

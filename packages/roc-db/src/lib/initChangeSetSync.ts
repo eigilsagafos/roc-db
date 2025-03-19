@@ -1,12 +1,9 @@
-import { Transaction } from "../types/Transaction"
+import type { Transaction } from "../types/Transaction"
 import { parseAndValidatePayload } from "./executeWriteRequestSync"
 import { runSyncFunctionChain } from "./runSyncFunctionChain"
 import { WriteTransaction } from "./WriteTransaction"
 
 export const initChangeSetSync = (txn: Transaction<any, any, any, any>) => {
-    if (txn.adapterOpts.changeSetRef) {
-        // throw new Error("Change set already initialized")
-    }
     const res = txn.adapterOpts.functions.getChangeSetMutations(
         txn,
         txn.request.changeSetRef,
@@ -35,5 +32,8 @@ export const initChangeSetSync = (txn: Transaction<any, any, any, any>) => {
             )
             runSyncFunctionChain(request.callback(tmpTxn))
         }
+    }
+    if (txn.adapterOpts.changeSetRef && txn.adapterOpts.initChangeSetOnce) {
+        txn.adapterOpts.changeSetInitialized = true
     }
 }

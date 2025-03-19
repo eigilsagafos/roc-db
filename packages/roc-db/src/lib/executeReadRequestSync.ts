@@ -1,9 +1,10 @@
-import { AdapterOptions } from "../types/AdapterOptions"
+import type { AdapterOptions } from "../types/AdapterOptions"
 import type { ReadRequest } from "../types/ReadRequest"
 import { defaultBegin } from "./defaultBegin"
 import { initChangeSetSync } from "./initChangeSetSync"
 import { ReadTransaction } from "./ReadTransaction"
 import { runSyncFunctionChain } from "./runSyncFunctionChain"
+import { shouldInitChangeSet } from "./shouldInitChangeSet"
 
 const parseAndValidatePayload = request => {
     return request.schema.parse(request.payload)
@@ -33,7 +34,7 @@ export const executeReadRequestSync = <
             Entities,
             AdapterOpts
         >(request, engineOpts, adapterOpts, payload)
-        if (request.changeSetRef) {
+        if (shouldInitChangeSet(txn)) {
             initChangeSetSync(txn)
         }
         const res = runSyncFunctionChain(request.callback(txn))

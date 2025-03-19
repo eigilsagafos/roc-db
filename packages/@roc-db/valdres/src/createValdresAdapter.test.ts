@@ -10,7 +10,7 @@ import { createValdresAdapter } from "./createValdresAdapter"
 import type { ValdresEngine } from "./types/ValdresEngine"
 
 describe(
-    "createIndexedDBAdapter",
+    "createValdresAdapter",
     testAdapterImplementation<ValdresEngine>(
         createValdresAdapter,
         {
