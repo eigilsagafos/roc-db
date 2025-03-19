@@ -14,7 +14,7 @@ export const findDebounceMutation = async (
     const res = await sqlTxn`
         SELECT * FROM mutations
         WHERE 
-            name = ${mutationName} AND
+            operation_name = ${mutationName} AND
             timestamp > ${thresholdTime} AND
             log_refs = ARRAY[${request.payload.ref}]
         LIMIT 2

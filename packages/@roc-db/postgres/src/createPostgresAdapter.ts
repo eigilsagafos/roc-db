@@ -12,6 +12,7 @@ export const createPostgresAdapter = ({
     entities,
     client,
     getClient,
+    session,
     mutationsTableName = "mutations",
     entitiesTableName = "entities",
 }: {
@@ -28,6 +29,7 @@ export const createPostgresAdapter = ({
             operations,
             entities,
             functions,
+            session,
             snowflake: new Snowflake(1, 1),
             async: true,
         },

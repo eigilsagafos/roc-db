@@ -35,7 +35,7 @@ export const saveMutation = async (
             INSERT INTO ${sqlTxn(mutationsTableName)} (
                 id,
                 timestamp,
-                name,
+                operation_name,
                 payload,
                 log,
                 log_refs,

@@ -52,11 +52,21 @@ export const testAdapterImplementation = <EngineOptions extends {}>(
 ) => {
     return async () => {
         const adapter1 = adapterConstructor(
-            { operations, entities, ...engineArgsAdapter1 },
+            {
+                operations,
+                entities,
+                session: { identityRef: "User/42" },
+                ...engineArgsAdapter1,
+            },
             // engineArgsAdapter1,
         )
         const adapter2 = adapterConstructor(
-            { operations, entities, ...engineArgsAdapter2 },
+            {
+                operations,
+                entities,
+                session: { identityRef: "User/42" },
+                ...engineArgsAdapter2,
+            },
             // engineArgsAdapter2,
         )
 

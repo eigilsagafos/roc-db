@@ -20,6 +20,7 @@ export const createValdresAdapter = ({
     entities,
     store, // = createStore(),
     txn,
+    session,
     entityAtom, // = atomFamily<string, Entity | null>(null),
     mutationAtom, // = atomFamily<string, Mutation | null>(null),
 }: {
@@ -36,6 +37,7 @@ export const createValdresAdapter = ({
             operations,
             entities,
             functions,
+            session,
             snowflake: new Snowflake(1, 1),
             initChangeSetOnce: true,
         },

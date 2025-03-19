@@ -14,6 +14,7 @@ describe("writeOperation", () => {
                 title: "Fo",
             },
         )
+        expect(updateMutation1.identityRef).toBe("User/42")
         const [post1Update2, updateMutation2] = inMemoryAdapter.updatePostTitle(
             {
                 ref: post1.ref,

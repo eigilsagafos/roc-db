@@ -5,4 +5,7 @@ import { entities } from "./schemas"
 export const inMemoryAdapter = createInMemoryAdapter({
     operations: operations,
     entities: entities,
+    session: {
+        identityRef: "User/42",
+    },
 })

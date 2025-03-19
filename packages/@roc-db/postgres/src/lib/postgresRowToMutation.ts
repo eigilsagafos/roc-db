@@ -3,7 +3,7 @@ export const postgresRowToMutation = (row: DBRow) => {
     const {
         id,
         timestamp,
-        name,
+        operation_name,
         payload,
         log,
         change_set_id,
@@ -17,7 +17,7 @@ export const postgresRowToMutation = (row: DBRow) => {
     return {
         ref: `Mutation/${id}`,
         timestamp: timestamp.toISOString(),
-        name,
+        name: operation_name,
         payload,
         log,
         changeSetRef: changeSetRef || null,

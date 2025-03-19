@@ -34,6 +34,7 @@ test("clone with txn", () => {
         entityAtom: entityFamily,
         mutationAtom: atomFamily(null),
         operations,
+        session: { identityRef: "User/42" },
         entities,
     })
     const [post1] = adapter.createPost({ title: "Foo" })
