@@ -78,7 +78,7 @@ export const testAdapterImplementation = <EngineOptions extends {}>(
         describe("Post CRUD", async () => {
             let postRef: string
             let post: z.infer<typeof PostSchema>
-            let createPostMutation
+            let createPostMutation: z.infer<typeof CreatePostMutationSchema>
             beforeAll(async () => {
                 const createPostRes = await adapter1.createPost({
                     title: "Title 1",
