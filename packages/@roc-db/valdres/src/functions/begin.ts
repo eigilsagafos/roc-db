@@ -9,16 +9,22 @@ export const begin = (request, engineOpts: ValdresEngine, callback) => {
             ...engineOpts,
             txn: txn,
             rootTxn: txn,
+            scopedStoreAlreadyAttachedBeforeBegin: true,
         })
     }
+
     engineOpts.store.txn(rootTxn => {
         if (request.changeSetRef) {
-            engineOpts.store.scope(request.changeSetRef)
+            const scopedStoreAlreadyAttachedBeforeBegin =
+                !!engineOpts.store.data.scopes[request.changeSetRef]
+            const scopedStore = engineOpts.store.scope(request.changeSetRef)
             rootTxn.scope(request.changeSetRef, scopedTxn => {
                 updatedOpts = {
                     ...engineOpts,
                     txn: scopedTxn,
                     rootTxn,
+                    scopedStoreAlreadyAttachedBeforeBegin,
+                    scopedStore,
                 }
             })
         } else {

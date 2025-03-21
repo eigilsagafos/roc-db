@@ -1,3 +1,4 @@
+export { batchReadEntities } from "./batchReadEntities"
 export { begin } from "./begin"
 export { createEntity } from "./createEntity"
 export { deleteEntity } from "./deleteEntity"

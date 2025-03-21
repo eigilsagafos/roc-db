@@ -218,7 +218,7 @@ export const testAdapterImplementation = <EngineOptions extends {}>(
                 expect(res.length).toBeGreaterThan(0)
                 expect(res.every(m => m.changeSetRef === draftRef)).toBeTrue()
             })
-            test("pageMutations2", async () => {
+            test("pageMutations run again", async () => {
                 const res = await changeSetAdapter.pageMutations({
                     changeSetRef: draftRef,
                 })
@@ -226,11 +226,14 @@ export const testAdapterImplementation = <EngineOptions extends {}>(
                 expect(res.every(m => m.changeSetRef === draftRef)).toBeTrue()
             })
 
-            // test("applyDraft (applyChangeSet function)", async () => {
-            //     const res = await changeSetAdapter.applyDraft({
-            //         ref: draftRef,
-            //     })
-            // })
+            describe("create and apply draft", () => {
+                test("applyDraft", async () => {
+                    const { draftRef } = await prepareChangeSetTest(adapter1)
+                    const [version, mutation] = await adapter1.applyDraft({
+                        ref: draftRef,
+                    })
+                })
+            })
         })
     }
 }

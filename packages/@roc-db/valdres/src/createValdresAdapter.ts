@@ -39,7 +39,7 @@ export const createValdresAdapter = ({
             functions,
             session,
             snowflake: new Snowflake(1, 1),
-            initChangeSetOnce: true,
+            // initChangeSetOnce: true,
         },
         {
             txn,

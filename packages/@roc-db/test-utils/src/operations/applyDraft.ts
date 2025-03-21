@@ -1,13 +1,30 @@
-import { Query, writeOperation } from "roc-db"
-import { DraftSchema } from "../schemas/DraftSchema"
+import { Query, QueryChain, writeOperation } from "roc-db"
 import { ApplyDraftMutationSchema } from "../schemas/ApplyDraftMutationSchema"
 
 export const applyDraft = writeOperation(
     ApplyDraftMutationSchema,
     undefined,
     txn => {
-        // const ref = txn.createRef("Draft")
         const { ref } = txn.payload
-        return Query(() => txn.applyChangeSet(ref))
+        const versionRef = txn.createRef("PostVersion")
+        return QueryChain(
+            Query(() => txn.applyChangeSet(ref)),
+            Query(() =>
+                txn.patchEntity(ref, {
+                    data: { appliedAt: txn.mutation.timestamp },
+                }),
+            ),
+            Query(draft => txn.childRefsOf(draft.parents.post, true)),
+            Query((childRefs, draft) =>
+                txn.batchReadEntities([draft.parents.post, ...childRefs]),
+            ),
+            Query(childEntities =>
+                txn.createEntity(versionRef, {
+                    data: {
+                        snapshot: childEntities,
+                    },
+                }),
+            ),
+        )
     },
 )

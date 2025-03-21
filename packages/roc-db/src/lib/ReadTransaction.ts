@@ -2,6 +2,7 @@ import type { EntityN } from "../createAdapter"
 import { NotFoundError } from "../errors/NotFoundError"
 import type { AdapterOptions } from "../types/AdapterOptions"
 import type { RocRequest } from "../types/RocRequest"
+import { refsFromRelations } from "../utils/refsFromRelations"
 
 export class ReadTransaction<
     Request extends RocRequest,
@@ -43,5 +44,44 @@ export class ReadTransaction<
     }
     pageEntities = args => {
         return this.adapterOpts.functions.pageEntities(this, args)
+    }
+    childRefsOf = (ref, recursive = false) => {
+        return childRefsOf(this, ref, recursive)
+    }
+}
+
+const childRefsOfSync = (txn, refs, recursive) => {
+    const docs = txn.batchReadEntities(refs)
+    const childRefs = docs.flatMap(doc => refsFromRelations(doc.children))
+    if (recursive) {
+        return childRefs.flatMap(ref => [
+            ...childRefsOfSync(txn, [ref], recursive),
+            ref,
+        ])
+    } else {
+        return childRefs
+    }
+}
+const childRefsOfAsync = async (txn, refs, recursive) => {
+    const docs = await txn.batchReadEntities(refs)
+    const childRefs = docs.flatMap(doc => refsFromRelations(doc.children))
+
+    if (recursive) {
+        const nestedRefs = await Promise.all(
+            childRefs.map(async ref => [
+                ...(await childRefsOfAsync(txn, [ref], recursive)),
+                ref,
+            ]),
+        )
+        return nestedRefs.flat()
+    } else {
+        return childRefs
+    }
+}
+const childRefsOf = (txn, ref, recursive) => {
+    if (txn.adapterOpts.async) {
+        return childRefsOfAsync(txn, [ref], recursive)
+    } else {
+        return childRefsOfSync(txn, [ref], recursive)
     }
 }
