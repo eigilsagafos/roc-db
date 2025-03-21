@@ -2,7 +2,12 @@ import { beforeAll, describe, expect, test } from "bun:test"
 import { BadRequestError, NotFoundError } from "roc-db"
 import type { z } from "zod"
 import { operations } from "./operations"
-import { BlockParagraphSchema, entities, PostSchema } from "./schemas"
+import {
+    BlockParagraphSchema,
+    CreatePostMutationSchema,
+    entities,
+    PostSchema,
+} from "./schemas"
 import type { Post } from "./schemas/PostSchema"
 import type { BlockParagraph } from "./schemas/BlockParagraphSchema"
 import type { BlockRow } from "./schemas/BlockRowSchema"
@@ -89,6 +94,9 @@ export const testAdapterImplementation = <EngineOptions extends {}>(
                 expect(post).toMatchZodSchema(PostSchema)
                 expect(post.data.title).toBe("Title 1")
                 expect(post.data.tags).toStrictEqual(["Foo", "Bar"])
+                expect(createPostMutation).toMatchZodSchema(
+                    CreatePostMutationSchema,
+                )
             })
 
             test("read (readEntity function)", async () => {

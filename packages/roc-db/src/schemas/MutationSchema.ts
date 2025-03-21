@@ -13,5 +13,7 @@ export const MutationSchema = z
         payload: z.any(),
         log: MutationLogSchema,
         debounceCount: z.number(),
+        identityRef: z.string(),
+        sessionRef: z.string().optional(),
     })
     .strict()
