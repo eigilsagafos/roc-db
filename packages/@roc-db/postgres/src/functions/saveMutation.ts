@@ -1,12 +1,22 @@
 import { idFromRef, parseRef } from "roc-db"
 import type { PostgresMutationTransaction } from "../types/PostgresMutationTransaction"
+import { postgresRowToMutation } from "../lib/postgresRowToMutation"
 
 export const saveMutation = async (
     txn: PostgresMutationTransaction,
     finalizedMutation,
 ) => {
-    const { ref, timestamp, name, payload, changeSetRef, debounceCount, log } =
-        finalizedMutation
+    const {
+        ref,
+        timestamp,
+        name,
+        payload,
+        changeSetRef,
+        debounceCount,
+        log,
+        identityRef,
+        sessionRef,
+    } = finalizedMutation
     const id = idFromRef(ref)
     const [changeSetId, changeSetKind] = changeSetRef
         ? parseRef(changeSetRef)
@@ -26,10 +36,12 @@ export const saveMutation = async (
                 ${payload}
             )
             WHERE id = ${id}
+            RETURNING *;
         `.catch(err => {
             console.error("Error updating mutation")
             throw err
         })
+        return postgresRowToMutation(row)
     } else {
         const [row] = await sqlTxn`
             INSERT INTO ${sqlTxn(mutationsTableName)} (
@@ -41,7 +53,9 @@ export const saveMutation = async (
                 log_refs,
                 change_set_id,
                 change_set_kind,
-                debounce_count
+                debounce_count,
+                identity_ref,
+                session_ref
             ) VALUES (
                 ${id},
                 ${new Date(timestamp)},
@@ -51,13 +65,16 @@ export const saveMutation = async (
                 ${log.map(logItem => logItem[0])},
                 ${changeSetId},
                 ${changeSetKind},
-                ${debounceCount}
+                ${debounceCount},
+                ${identityRef},
+                ${sessionRef || null}
             ) RETURNING *;
         `.catch(err => {
             console.error("Error creating mutation", txn.mutation)
 
             throw err
         })
+        return postgresRowToMutation(row)
     }
-    return finalizedMutation
+    // return finalizedMutation
 }

@@ -36,8 +36,15 @@ export class ReadTransaction<
     }
     readEntity = (ref, throwIfNotFound = false) => {
         const res = this.adapterOpts.functions.readEntity(this, ref)
-        if (!res && throwIfNotFound) throw new NotFoundError(ref)
-        return res
+        if (this.adapterOpts.async) {
+            return res.then(res => {
+                if (!res && throwIfNotFound) throw new NotFoundError(ref)
+                return res
+            })
+        } else {
+            if (!res && throwIfNotFound) throw new NotFoundError(ref)
+            return res
+        }
     }
     pageMutations = args => {
         return this.adapterOpts.functions.pageMutations(this, args)

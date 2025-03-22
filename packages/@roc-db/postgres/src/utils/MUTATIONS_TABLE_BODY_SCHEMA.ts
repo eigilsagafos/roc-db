@@ -6,7 +6,7 @@ export const MUTATIONS_TABLE_BODY_SCHEMA = `
     change_set_id     text,
     change_set_kind   text,
     identity_ref      text,
-    sessiom_ref       text,
+    session_ref       text,
     payload           jsonb,
     log               jsonb,
     log_refs          text[],

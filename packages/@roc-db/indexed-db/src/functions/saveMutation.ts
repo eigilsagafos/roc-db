@@ -1,4 +1,4 @@
-export const saveMutation = (txn, finalizedMutation) => {
+export const saveMutation = async (txn, finalizedMutation) => {
     const objectStore = txn.engineOpts.txn.objectStore("mutations")
     let request
     if (finalizedMutation.debounceCount > 0) {

@@ -8,6 +8,6 @@ export const readPost: any = readOperation(
     PostSchema,
     txn => {
         const ref = txn.payload
-        return Query(() => txn.readEntity(ref))
+        return Query(() => txn.readEntity(ref, true))
     },
 )

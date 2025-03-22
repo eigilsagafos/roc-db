@@ -25,6 +25,6 @@ export const postgresRowToMutation = (row: DBRow) => {
         changeSetRef: changeSetRef || null,
         debounceCount: debounce_count,
         identityRef: identity_ref,
-        sessionRef: session_ref,
+        sessionRef: session_ref ?? undefined,
     }
 }

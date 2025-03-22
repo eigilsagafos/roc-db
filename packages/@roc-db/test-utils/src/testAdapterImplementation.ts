@@ -7,6 +7,7 @@ import {
     CreatePostMutationSchema,
     entities,
     PostSchema,
+    UpdatePostTitleMutationSchema,
 } from "./schemas"
 import type { Post } from "./schemas/PostSchema"
 import type { BlockParagraph } from "./schemas/BlockParagraphSchema"
@@ -106,6 +107,12 @@ export const testAdapterImplementation = <EngineOptions extends {}>(
                 expect(readPostRes).toMatchZodSchema(PostSchema)
             })
 
+            test("read not found (readEntity function)", async () => {
+                expect(() => adapter1.readPost("Post/999")).toThrow(
+                    NotFoundError,
+                )
+            })
+
             test("update (updateEntity function)", async () => {
                 const [post] = await adapter1.updatePost({
                     ref: postRef,
@@ -118,23 +125,24 @@ export const testAdapterImplementation = <EngineOptions extends {}>(
             })
 
             test("updateTitle (patchEntity function + debounce)", async () => {
-                const updatePostTitleRes1 = await adapter1.updatePostTitle({
+                const [update1, mutation1] = await adapter1.updatePostTitle({
                     ref: postRef,
                     title: "Title 3",
                 })
-                expect(updatePostTitleRes1[0]).toMatchZodSchema(PostSchema)
-                const updatePostTitleRes2 = await adapter1.updatePostTitle({
+                expect(update1).toMatchZodSchema(PostSchema)
+                expect(mutation1).toMatchZodSchema(
+                    UpdatePostTitleMutationSchema,
+                )
+                const [update2, mutation2] = await adapter1.updatePostTitle({
                     ref: postRef,
                     title: "Title 4",
                 })
-                expect(updatePostTitleRes2[0]).toMatchZodSchema(PostSchema)
-                expect(updatePostTitleRes2[1].ref).toBe(
-                    updatePostTitleRes1[1].ref,
+                expect(update2).toMatchZodSchema(PostSchema)
+                expect(mutation2).toMatchZodSchema(
+                    UpdatePostTitleMutationSchema,
                 )
-                expect(
-                    updatePostTitleRes2[1].timestamp >=
-                        updatePostTitleRes1[1].timestamp,
-                ).toBeTrue()
+                expect(mutation1.ref).toBe(mutation2.ref)
+                expect(mutation2.timestamp >= mutation1.timestamp).toBeTrue()
             })
 
             test("delete (deleteEntity function)", async () => {
