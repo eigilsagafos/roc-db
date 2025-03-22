@@ -1,5 +1,5 @@
-import { AdapterOptions } from "../types/AdapterOptions"
-import { RocRequest } from "../types/RocRequest"
+import type { AdapterOptions } from "../types/AdapterOptions"
+import type { RocRequest } from "../types/RocRequest"
 import { executeAsync } from "./executeAsync"
 import { executeSync } from "./executeSync"
 

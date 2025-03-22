@@ -145,6 +145,15 @@ export const testAdapterImplementation = <EngineOptions extends {}>(
                 expect(mutation2.timestamp >= mutation1.timestamp).toBeTrue()
             })
 
+            test("updatePostDescription without changeSetAdapter fails with BadRequestError", async () => {
+                expect(() =>
+                    adapter1.updatePostDescription({
+                        ref: postRef,
+                        description: "Description 1",
+                    }),
+                ).toThrow(BadRequestError)
+            })
+
             test("delete (deleteEntity function)", async () => {
                 const [count, mutation] = await adapter1.deletePost(postRef)
                 expect(count).toBe(1)

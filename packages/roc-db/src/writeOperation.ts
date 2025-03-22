@@ -44,6 +44,7 @@ export const writeOperation = <M extends MutationSchema, O extends ZodSchema>(
                 settings,
                 changeSetRef,
                 optimisticMutation,
+                operationName: mutationSchema.shape.name.value,
             } as const
         },
         {

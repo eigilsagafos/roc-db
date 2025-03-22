@@ -2,7 +2,7 @@ import type { z, ZodSchema, ZodType } from "zod"
 import type { ReadOperation } from "./types/ReadOperation"
 import type { ReadTransaction } from "./lib/ReadTransaction"
 import type { ReadRequest } from "./types/ReadRequest"
-import { Ref } from "./types/Ref"
+import type { Ref } from "./types/Ref"
 
 export const readOperation = <
     const OperationName extends string,
@@ -28,6 +28,7 @@ export const readOperation = <
                 payload,
                 callback: queryFn,
                 changeSetRef,
+                operationName,
             } as const
         },
         {

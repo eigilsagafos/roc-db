@@ -1,5 +1,5 @@
 import type { Transaction } from "../types/Transaction"
-import { parseAndValidatePayload } from "./executeWriteRequestSync"
+import { parseRequestPayload } from "./parseRequestPayload"
 import { runSyncFunctionChain } from "./runSyncFunctionChain"
 import { WriteTransaction } from "./WriteTransaction"
 
@@ -21,7 +21,7 @@ export const initChangeSetSync = (txn: Transaction<any, any, any, any>) => {
                 mutation.payload,
                 txn.request.changeSetRef,
             )
-            const payload = parseAndValidatePayload(request)
+            const payload = parseRequestPayload(request)
             const tmpTxn = new WriteTransaction(
                 request,
                 txn.engineOpts,

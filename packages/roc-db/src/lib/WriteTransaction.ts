@@ -4,7 +4,7 @@ import type { RocRequest } from "../types/RocRequest"
 import { createRef } from "../utils/createRef"
 import { entityFromRef } from "../utils/entityFromRef"
 import { refsFromRelations } from "../utils/refsFromRelations"
-import { parseAndValidatePayload } from "./executeWriteRequestSync"
+import { parseRequestPayload } from "./parseRequestPayload"
 import { ReadTransaction } from "./ReadTransaction"
 import { runAsyncFunctionChain } from "./runAsyncFunctionChain"
 import { runSyncFunctionChain } from "./runSyncFunctionChain"
@@ -43,7 +43,7 @@ const applyChangeSetSync = (txn, ref) => {
                 // txn.request.changeSetRef,
                 mutation,
             )
-            const payload = parseAndValidatePayload(request)
+            const payload = parseRequestPayload(request)
             const tmpTxn = new WriteTransaction(
                 request,
                 txn.engineOpts,
@@ -70,7 +70,7 @@ const applyChangeSetAsync = async (txn, ref) => {
                 mutation,
             )
 
-            const payload = parseAndValidatePayload(request)
+            const payload = parseRequestPayload(request)
             const tmpTxn = new WriteTransaction(
                 request,
                 txn.engineOpts,

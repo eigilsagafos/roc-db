@@ -11,6 +11,7 @@ import { readEntity } from "./readEntity"
 import { readPost } from "./readPost"
 import { updateBlockParagraph } from "./updateBlockParagraph"
 import { updatePost } from "./updatePost"
+import { updatePostDescription } from "./updatePostDescription"
 import { updatePostTitle } from "./updatePostTitle"
 
 export const operations = [
@@ -27,5 +28,6 @@ export const operations = [
     readPost,
     updateBlockParagraph,
     updatePost,
+    updatePostDescription,
     updatePostTitle,
 ] as const

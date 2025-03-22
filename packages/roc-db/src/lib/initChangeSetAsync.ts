@@ -1,4 +1,4 @@
-import { parseAndValidatePayload } from "./executeWriteRequestSync"
+import { parseRequestPayload } from "./parseRequestPayload"
 import { runAsyncFunctionChain } from "./runAsyncFunctionChain"
 import { WriteTransaction } from "./WriteTransaction"
 
@@ -20,7 +20,7 @@ export const initChangeSetAsync = async txn => {
                 mutation.payload,
                 txn.request.changeSetRef,
             )
-            const payload = parseAndValidatePayload(request)
+            const payload = parseRequestPayload(request)
             const tmpTxn = new WriteTransaction(
                 request,
                 txn.engineOpts,

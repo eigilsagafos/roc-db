@@ -3,10 +3,10 @@ import type { AdapterOptions } from "../types/AdapterOptions"
 import type { RocRequest } from "../types/RocRequest"
 import { createMutationAsync } from "./createMutationAsync"
 import { defaultBegin } from "./defaultBegin"
-import { parseAndValidatePayload } from "./executeWriteRequestSync"
 import { initChangeSetAsync } from "./initChangeSetAsync"
 import { runAsyncFunctionChain } from "./runAsyncFunctionChain"
 import { shouldInitChangeSet } from "./shouldInitChangeSet"
+import { validateWriteRequestAndParsePayload } from "./validateWriteRequestAndParsePayload"
 import { WriteTransaction } from "./WriteTransaction"
 
 export const executeWriteRequestAsync = async <
@@ -24,7 +24,7 @@ export const executeWriteRequestAsync = async <
     engineOpts: EngineOpts,
     adapterOpts: AdapterOpts,
 ) => {
-    const payload = parseAndValidatePayload(request)
+    const payload = validateWriteRequestAndParsePayload(request)
     const begin = adapterOpts.functions.begin || defaultBegin
 
     return begin(request, engineOpts, async (engineOpts: EngineOpts) => {
