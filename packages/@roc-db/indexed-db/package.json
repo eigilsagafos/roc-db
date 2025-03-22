@@ -1,6 +1,6 @@
 {
     "name": "@roc-db/indexed-db",
-    "version": "0.2.0-pre.24",
+    "version": "0.2.0-pre.25",
     "type": "module",
     "exports": {
         ".": "./src/index.ts"
@@ -16,13 +16,13 @@
     },
     "dependencies": {},
     "devDependencies": {
-        "@roc-db/test-utils": "0.2.0-pre.24",
+        "@roc-db/test-utils": "0.2.0-pre.25",
         "fake-indexeddb": "6.0.0",
-        "roc-db": "0.2.0-pre.24",
+        "roc-db": "0.2.0-pre.25",
         "zod": "3.24.2"
     },
     "peerDependencies": {
-        "roc-db": "0.2.0-pre.24",
+        "roc-db": "0.2.0-pre.25",
         "zod": "^3.0.0"
     },
     "keywords": [],
