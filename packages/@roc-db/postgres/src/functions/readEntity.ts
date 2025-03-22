@@ -18,5 +18,6 @@ export const readEntity = async (txn: PostgresTransaction, ref: Ref) => {
     const [row] = await sqlTxn`
         SELECT * FROM ${sqlTxn(entitiesTableName)} WHERE id = ${id};
     `
+    if (!row) return undefined
     return postgresRowToEntity(row)
 }

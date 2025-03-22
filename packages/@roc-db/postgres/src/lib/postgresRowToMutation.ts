@@ -9,6 +9,8 @@ export const postgresRowToMutation = (row: DBRow) => {
         change_set_id,
         change_set_kind,
         debounce_count,
+        identity_ref,
+        session_ref,
     } = row
     let changeSetRef
     if (change_set_id) {
@@ -22,5 +24,7 @@ export const postgresRowToMutation = (row: DBRow) => {
         log,
         changeSetRef: changeSetRef || null,
         debounceCount: debounce_count,
+        identityRef: identity_ref,
+        sessionRef: session_ref,
     }
 }
