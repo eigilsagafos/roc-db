@@ -13,6 +13,7 @@ import {
     type Store,
     type AtomFamily,
     type TransactionInterface,
+    type Atom,
 } from "valdres"
 
 export const createValdresAdapter = ({
@@ -23,6 +24,7 @@ export const createValdresAdapter = ({
     session,
     entityAtom, // = atomFamily<string, Entity | null>(null),
     mutationAtom, // = atomFamily<string, Mutation | null>(null),
+    mutationListAtom,
 }: {
     operations: readonly Operation[]
     entities: readonly Entity[]
@@ -30,6 +32,7 @@ export const createValdresAdapter = ({
     txn?: TransactionInterface
     entityAtom?: AtomFamily<string, Entity | null>
     mutationAtom?: AtomFamily<string, Mutation | null>
+    mutationListAtom?: Atom<string[]>
 }) => {
     return createAdapter(
         {
@@ -46,6 +49,7 @@ export const createValdresAdapter = ({
             store,
             entityAtom,
             mutationAtom,
+            mutationListAtom,
             // entityRefListAtom = atomFamily<string, string[]>([]),
             // mutationActions,
         },
