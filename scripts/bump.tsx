@@ -74,3 +74,4 @@ const Bump = () => {
 }
 
 render(<Bump />)
+console.log("hello")

@@ -2,7 +2,7 @@
     "name": "roc-db-monorepo",
     "type": "module",
     "private": true,
-    "version": "0.2.0-pre.27",
+    "version": "0.2.0-pre.28",
     "author": {
         "name": "Eigil Sagafos"
     },
@@ -14,7 +14,7 @@
         "build": "bun run build:js && bun run build:types",
         "build:js": "bun --filter '*' build",
         "build:types": "bun --filter '*' build:types",
-        "bump": "bun scripts/bump.tsx",
+        "bump": "bun ./scripts/bump.tsx",
         "publish": "bun scripts/publish.tsx",
         "test": "bun --filter '*' test"
     },
