@@ -26,6 +26,7 @@ export const executeWriteRequestSync = <
     const payload = validateWriteRequestAndParsePayload(request)
     const begin = adapterOpts.functions.begin || defaultBegin
 
+    console.log("engineOpts", engineOpts)
     return begin(request, engineOpts, engineOpts => {
         const [mutation, optimisticRefs] = createMutationSync(
             request,
@@ -44,7 +45,9 @@ export const executeWriteRequestSync = <
         if (shouldInitChangeSet(txn)) {
             initChangeSetSync(txn)
         }
-        const res = runSyncFunctionChain(request.callback(txn))
+        const res = runSyncFunctionChain(
+            request.callback(txn, adapterOpts.session),
+        )
         const finalizedMutation = txn.finalizedMutation()
         const savedMutation = adapterOpts.functions.saveMutation(
             txn,

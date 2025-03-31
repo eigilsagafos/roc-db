@@ -16,7 +16,7 @@ import {
     type Atom,
 } from "valdres"
 
-export const createValdresAdapter = ({
+export const createValdresAdapter = <Session>({
     operations,
     entities,
     store, // = createStore(),
@@ -33,6 +33,7 @@ export const createValdresAdapter = ({
     entityAtom?: AtomFamily<string, Entity | null>
     mutationAtom?: AtomFamily<string, Mutation | null>
     mutationListAtom?: Atom<string[]>
+    session: Session
 }) => {
     return createAdapter(
         {

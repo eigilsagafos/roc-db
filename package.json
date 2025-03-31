@@ -39,7 +39,7 @@
         "semver": "7.7.1",
         "typescript": "5.8.2",
         "typescript-eslint": "8.26.1",
-        "valdres": "0.2.0-alpha.74",
-        "valdres-react": "0.2.0-alpha.74"
+        "valdres": "0.2.0-alpha.75",
+        "valdres-react": "0.2.0-alpha.75"
     }
 }

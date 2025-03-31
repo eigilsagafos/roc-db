@@ -8,6 +8,6 @@ export type WriteRequest<Payload = any> = {
         debounce?: number
     }
     changeSetRef: Ref | null
-    callback: (s: string) => {}
+    callback: (s: string, session: any) => {}
     optimisticMutation?: Mutation
 }

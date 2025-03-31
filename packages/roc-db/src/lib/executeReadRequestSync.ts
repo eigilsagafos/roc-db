@@ -37,7 +37,9 @@ export const executeReadRequestSync = <
         if (shouldInitChangeSet(txn)) {
             initChangeSetSync(txn)
         }
-        const res = runSyncFunctionChain(request.callback(txn))
+        const res = runSyncFunctionChain(
+            request.callback(txn, adapterOpts.session),
+        )
         if (adapterOpts.functions.end) {
             adapterOpts.functions.end(txn)
         }

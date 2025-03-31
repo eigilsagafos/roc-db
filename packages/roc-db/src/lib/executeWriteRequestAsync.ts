@@ -43,7 +43,7 @@ export const executeWriteRequestAsync = async <
         if (shouldInitChangeSet(txn)) {
             await initChangeSetAsync(txn)
         }
-        const functions = request.callback(txn)
+        const functions = request.callback(txn, adapterOpts.session)
         const res = await runAsyncFunctionChain(functions)
         const finalizedMutation = await txn.finalizedMutation()
         const savedMutation = await adapterOpts.functions.saveMutation(

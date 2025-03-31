@@ -38,7 +38,7 @@ export const executeReadRequestAsync = async <
         if (shouldInitChangeSet(txn)) {
             await initChangeSetAsync(txn)
         }
-        const functions = request.callback(txn)
+        const functions = request.callback(txn, adapterOpts.session)
 
         const res = runAsyncFunctionChain(functions)
         if (adapterOpts.functions.end) {
