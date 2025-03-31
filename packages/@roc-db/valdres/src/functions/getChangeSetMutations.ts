@@ -3,10 +3,10 @@ export const getChangeSetMutations = (txn, changeSetRef) => {
     if (!changeSetRef) throw new Error("changeSetRef is required")
     const res = []
     const { mutationAtom } = txn.engineOpts
-    const refs = txn.engineOpts.txn.get(mutationAtom)
+    const atoms = txn.engineOpts.txn.get(mutationAtom)
 
-    for (const ref of refs) {
-        const mutation = txn.engineOpts.txn.get(mutationAtom(ref))
+    for (const atom of atoms) {
+        const mutation = txn.engineOpts.txn.get(atom)
         if (mutation?.changeSetRef === changeSetRef) {
             res.push(mutation)
         }

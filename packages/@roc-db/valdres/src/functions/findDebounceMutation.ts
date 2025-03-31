@@ -12,9 +12,9 @@ export const findDebounceMutation = (
     // const threshold = now - debounceTime * 1000
     const thresholdTime = new Date(now - debounceTime * 1000).toISOString()
     const { mutationAtom } = engine
-    const refs = engine.txn.get(mutationAtom)
-    const resRef = refs.find(ref => {
-        const mutation = engine.txn.get(mutationAtom(ref))
+    const atoms = engine.txn.get(mutationAtom)
+    const atom = atoms.find(atom => {
+        const mutation = engine.txn.get(atom)
         if (
             mutation &&
             mutation.name === mutationName &&
@@ -24,7 +24,7 @@ export const findDebounceMutation = (
             return true
         }
     })
-    if (resRef) {
-        return engine.txn.get(mutationAtom(resRef))
+    if (atom) {
+        return engine.txn.get(atom)
     }
 }

@@ -1,11 +1,10 @@
 export const pageMutations = (txn, args) => {
     const { size, skip, changeSetRef } = args
     const { mutationAtom } = txn.engineOpts
-    const refs = txn.engineOpts.txn.get(mutationAtom)
-
+    const atoms = txn.engineOpts.txn.get(mutationAtom)
     let res = []
-    for (const ref of refs) {
-        const mutation = txn.engineOpts.txn.get(mutationAtom(ref))
+    for (const atom of atoms) {
+        const mutation = txn.engineOpts.txn.get(atom)
         if (!mutation) continue
         if (changeSetRef && mutation?.changeSetRef !== changeSetRef) continue
         res.push(mutation)
