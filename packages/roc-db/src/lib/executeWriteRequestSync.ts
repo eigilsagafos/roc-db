@@ -26,7 +26,6 @@ export const executeWriteRequestSync = <
     const payload = validateWriteRequestAndParsePayload(request)
     const begin = adapterOpts.functions.begin || defaultBegin
 
-    console.log("engineOpts", engineOpts)
     return begin(request, engineOpts, engineOpts => {
         const [mutation, optimisticRefs] = createMutationSync(
             request,
