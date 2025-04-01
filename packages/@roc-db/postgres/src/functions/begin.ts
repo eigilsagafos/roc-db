@@ -13,6 +13,9 @@ export const begin = async (
 ) => {
     const rootClient = findClient(engineOpts)
     return rootClient.begin(async tx => {
+        if (engineOpts.onTransactionStart) {
+            await engineOpts.onTransactionStart(tx)
+        }
         return callback({
             ...engineOpts,
             sqlClient: rootClient,

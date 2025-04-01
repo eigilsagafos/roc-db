@@ -6,6 +6,7 @@ import {
     type Operation,
 } from "roc-db"
 import * as functions from "./functions"
+import type { PostgresEngineOpts } from "./types/PostgresEngineOpts"
 
 export const createPostgresAdapter = ({
     operations,
@@ -15,14 +16,13 @@ export const createPostgresAdapter = ({
     session,
     mutationsTableName = "mutations",
     entitiesTableName = "entities",
+    onTransactionStart,
+    onTransactionEnd,
 }: {
     operations: readonly Operation[]
     entities: readonly Entity[]
-    client: any
     getClient?: any
-    mutationsTableName?: string
-    entitiesTableName?: string
-}) => {
+} & PostgresEngineOpts) => {
     return createAdapter(
         {
             name: "postgres",
@@ -38,6 +38,8 @@ export const createPostgresAdapter = ({
             getClient,
             mutationsTableName,
             entitiesTableName,
+            onTransactionStart,
+            onTransactionEnd,
         },
     ) as Adapter
 }

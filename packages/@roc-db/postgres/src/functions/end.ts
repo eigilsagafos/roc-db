@@ -21,5 +21,7 @@ export const end = async txn => {
             }),
         ])
     }
-    await Promise.all([sqlTxn`RESET ROLE;`, sqlTxn`RESET SEARCH_PATH;`])
+    if (txn.engineOpts.onTransactionStart) {
+        await txn.engineOpts.onTransactionStart(sqlTxn)
+    }
 }
