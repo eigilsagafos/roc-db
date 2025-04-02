@@ -120,12 +120,14 @@ export class WriteTransaction<
         if (this.mutationFinalized)
             throw new Error("Mutation already finalized")
         this.mutationFinalized = true
-        return {
+        const doc = {
             ...this.mutation,
             log: Array.from(this.log.values()),
         }
-        // entries.map(([ref, [op, changeSetRef]]) => ref)
-        throw new Error("Asdf")
+        if ("sessionRef" in doc && !doc.sessionRef) {
+            delete doc.sessionRef
+        }
+        return doc
     }
 
     applyChangeSet = ref => {
