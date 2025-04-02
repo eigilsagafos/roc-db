@@ -9,10 +9,10 @@ export const findDebounceMutation = async (
     const debounceTime = request.settings.debounce
     const mutationName = request.schema.shape.name.value
     const thresholdTime = new Date(now - debounceTime * 1000).toISOString()
-    const { sqlTxn } = engineOpts
+    const { sqlTxn, mutationsTableName } = engineOpts
 
     const res = await sqlTxn`
-        SELECT * FROM mutations
+        SELECT * FROM ${sqlTxn(mutationsTableName)}
         WHERE 
             operation_name = ${mutationName} AND
             timestamp > ${thresholdTime} AND
