@@ -10,7 +10,6 @@ export const microTimestampToIsoString = (microTimestamp: number) => {
     // Format to ISO 8601 with microseconds
     const isoString =
         date.toISOString().slice(0, 20) + `${String(micros).padStart(6, "0")}Z`
-    // console.log(new Date(isoString).getMilliseconds())
     return isoString
 }
 

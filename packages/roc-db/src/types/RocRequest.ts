@@ -1,4 +1,4 @@
-import { ReadRequest } from "./ReadRequest"
-import { WriteRequest } from "./WriteRequest"
+import type { ReadRequest } from "./ReadRequest"
+import type { WriteRequest } from "./WriteRequest"
 
 export type RocRequest = ReadRequest | WriteRequest

@@ -11,7 +11,7 @@ export const applyDraft = writeOperation(
             Query(() => txn.applyChangeSet(ref)),
             Query(() =>
                 txn.patchEntity(ref, {
-                    data: { appliedAt: txn.mutation.timestamp },
+                    data: { appliedAt: txn.timestamp },
                 }),
             ),
             Query(draft => txn.childRefsOf(draft.parents.post, true)),

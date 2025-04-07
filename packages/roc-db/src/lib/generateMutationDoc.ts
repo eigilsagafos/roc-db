@@ -1,4 +1,4 @@
-import { createRef } from "../utils/createRef"
+import { generateRef } from "../utils/generateRef"
 
 const generateRefAndTimestamp = (adapter, debounce, now) => {
     // const now = new Date().toISOString()
@@ -10,7 +10,7 @@ const generateRefAndTimestamp = (adapter, debounce, now) => {
             return [adapter.debounceRef, res[0]]
         }
     }
-    return [createRef("Mutation", adapter.snowflake, now), now]
+    return [generateRef("Mutation", adapter.snowflake, now), now]
 }
 
 export const generateMutationDoc = (request, adapter, payload, now) => {

@@ -1,13 +1,11 @@
 import type { ValdresTransaction } from "../types/ValdresTransaction"
 
-export const end = (txn: ValdresTransaction) => {
-    // txn.engineOpts.rootTxn.commit()
-    // WARNING: We treat the valdres adapter as a optimistic adapter, so we don't save the mutations on the root store
-    txn.engineOpts.txn.commit()
+export const end = (engineOpts: ValdresTransaction) => {
+    engineOpts.rootTxn.commit()
     if (
-        txn.engineOpts.scopedStore &&
-        txn.engineOpts.scopedStoreAlreadyAttachedBeforeBegin
+        engineOpts.scopedStore &&
+        engineOpts.scopedStoreAlreadyAttachedBeforeBegin
     ) {
-        txn.engineOpts.scopedStore.detach()
+        engineOpts.scopedStore.detach()
     }
 }

@@ -17,7 +17,6 @@ export const createPageEntitiesOperation = entities =>
             .strict(),
         z.object({}),
         txn => {
-            // console.log("txn.pageMutations()", txn.)
             // throw new Error("Not implemented")
             const { size, skip, include, exclude } = txn.payload
             return Query(() =>

@@ -1,6 +1,6 @@
 import type { Snowflake } from "./Snowflake"
 
-export const createRef = (
+export const generateRef = (
     entity: string,
     snowflake: Snowflake,
     timestamp: string,

@@ -1,62 +1,72 @@
 import type { EntityN } from "../createAdapter"
 import type { AdapterOptions } from "../types/AdapterOptions"
-import type { RocRequest } from "../types/RocRequest"
+import type { WriteRequest } from "../types/WriteRequest"
 import { createMutationAsync } from "./createMutationAsync"
-import { defaultBegin } from "./defaultBegin"
-import { initChangeSetAsync } from "./initChangeSetAsync"
+import { defaultBeginRequest } from "./defaultBeginRequest"
+import { defaultBeginTransaction } from "./defaultBeginTransaction"
+import { initializeChangeSet } from "./initializeChangeSet"
 import { runAsyncFunctionChain } from "./runAsyncFunctionChain"
-import { shouldInitChangeSet } from "./shouldInitChangeSet"
 import { validateWriteRequestAndParsePayload } from "./validateWriteRequestAndParsePayload"
 import { WriteTransaction } from "./WriteTransaction"
 
+export const executeWriteRequestAsyncInternal = async (
+    request: WriteRequest,
+    engineOpts: any,
+    adapterOpts: AdapterOptions,
+    payload: any,
+) => {
+    const [mutation, optimisticRefs] = await createMutationAsync(
+        request,
+        engineOpts,
+        adapterOpts,
+        payload,
+    )
+    const txn = new WriteTransaction(
+        request,
+        engineOpts,
+        adapterOpts,
+        payload,
+        mutation,
+        optimisticRefs,
+    )
+    await initializeChangeSet(txn)
+    const functions = request.callback(txn, adapterOpts.session)
+    const res = await runAsyncFunctionChain(functions)
+    const savedMutation = await txn.commit()
+
+    return [res, savedMutation]
+}
+
 export const executeWriteRequestAsync = async <
-    Request extends RocRequest,
+    Request extends WriteRequest,
     EngineOpts extends {},
     Entities extends readonly EntityN[],
-    AdapterOpts extends AdapterOptions<
-        Request,
-        EngineOpts,
-        Entities,
-        AdapterOpts
-    >,
+    AdapterOpts extends AdapterOptions,
 >(
     request: Request,
     engineOpts: EngineOpts,
     adapterOpts: AdapterOpts,
 ) => {
     const payload = validateWriteRequestAndParsePayload(request)
-    const begin = adapterOpts.functions.begin || defaultBegin
-
-    return begin(request, engineOpts, async (engineOpts: EngineOpts) => {
-        const [mutation, optimisticRefs] = await createMutationAsync(
+    const begin = adapterOpts.functions.begin || defaultBeginTransaction
+    return begin(engineOpts, async (engineOptsTxn: EngineOpts) => {
+        const beginRequest =
+            adapterOpts.functions.beginRequest || defaultBeginRequest
+        const result = await beginRequest(
             request,
-            engineOpts,
-            adapterOpts,
-            payload,
-        )
-        const txn = new WriteTransaction<
-            Request,
-            EngineOpts,
-            Entities,
-            AdapterOpts
-        >(request, engineOpts, adapterOpts, payload, mutation, optimisticRefs)
-        if (shouldInitChangeSet(txn)) {
-            await initChangeSetAsync(txn)
-        }
-        const functions = request.callback(txn, adapterOpts.session)
-        const res = await runAsyncFunctionChain(functions)
-        const finalizedMutation = await txn.finalizedMutation()
-        const savedMutation = await adapterOpts.functions.saveMutation(
-            txn,
-            finalizedMutation,
+            engineOptsTxn,
+            async engineOptsReq => {
+                return executeWriteRequestAsyncInternal(
+                    request,
+                    engineOptsReq,
+                    adapterOpts,
+                    payload,
+                )
+            },
         )
         if (adapterOpts.functions.end) {
-            await adapterOpts.functions.end(txn)
+            await adapterOpts.functions.end(engineOptsTxn)
         }
-        return [res, savedMutation]
+        return result
     })
-
-    // if (adapterOpts.functions.begin) {
-    //     engineOpts = await adapterOpts.functions.begin(request, engineOpts)
-    // }
 }

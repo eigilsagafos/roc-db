@@ -7,5 +7,7 @@ export type Mutation = {
     name: z.ZodLiteral<string>
     timestamp: string
     debounceCount: number
+    payload: any
     changeSetRef?: Ref
+    log: any
 }

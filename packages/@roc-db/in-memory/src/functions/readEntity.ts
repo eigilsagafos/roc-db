@@ -1,10 +1,4 @@
-import { DELETED_IN_CHANGE_SET_SYMBOL } from "roc-db"
+import type { Ref, Transaction } from "roc-db"
 
-export const readEntity = (txn, ref) => {
-    if (txn.request.changeSetRef) {
-        const doc = txn.engineOpts.changeSet.entities.get(ref)
-        if (doc === DELETED_IN_CHANGE_SET_SYMBOL) return undefined
-        if (doc) return doc
-    }
-    return txn.engineOpts.entities.get(ref)
-}
+export const readEntity = (txn: Transaction, ref: Ref) =>
+    txn.engineOpts.entities.get(ref)

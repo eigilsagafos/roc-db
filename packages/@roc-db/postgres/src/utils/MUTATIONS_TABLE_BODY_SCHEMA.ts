@@ -10,5 +10,6 @@ export const MUTATIONS_TABLE_BODY_SCHEMA = `
     payload           jsonb,
     log               jsonb,
     log_refs          text[],
-    debounce_count    integer
+    debounce_count    integer,
+    applied_at        timestamp(6) with time zone
 `

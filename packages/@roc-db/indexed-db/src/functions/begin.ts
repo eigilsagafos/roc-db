@@ -1,6 +1,4 @@
-import { entities } from "@roc-db/test-utils"
-
-export const begin = async (request, engineOpts, callback) => {
+export const begin = async (engineOpts, callback) => {
     return new Promise((resolve, reject) => {
         let db
         const idbRequest = indexedDB.open(engineOpts.dbName, 1)
@@ -29,14 +27,9 @@ export const begin = async (request, engineOpts, callback) => {
                     db,
                     txn: db.transaction(
                         ["entities", "mutations"],
-                        request.type === "write" ? "readwrite" : "readonly",
+                        "readwrite",
+                        // request.type === "write" ? "readwrite" : "readonly",
                     ),
-                    changeSet: request.changeSetRef
-                        ? {
-                              entities: new Map([]),
-                              mutations: new Map([]),
-                          }
-                        : null,
                 }),
             )
         }

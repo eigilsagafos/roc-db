@@ -9,6 +9,6 @@ export const UpdatePostMutationSchema = mutationSchemaGenerator(
         ref: PostRefSchema,
         title: z.string().optional(),
         tags: z.array(z.string()).optional().default([]),
-        authorRef: UserRefSchema.optional().optional(),
+        authorRef: UserRefSchema.optional(),
     }),
 )

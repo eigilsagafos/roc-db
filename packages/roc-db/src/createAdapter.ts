@@ -1,12 +1,15 @@
 import { z } from "zod"
 import { execute } from "./lib/execute"
+import { loadOptimisticMutations } from "./lib/loadOptimisticMutations"
 import { createPageEntitiesOperation } from "./operations/createPageEntitiesOperation"
 import { pageMutations } from "./operations/pageMutations"
+import { redo } from "./operations/redo"
+import { undo } from "./operations/undo"
 import type { AdapterFunctions } from "./types/AdapterFunctions"
+import type { Mutation } from "./types/Mutation"
 import type { Operation } from "./types/Operation"
 import type { Ref } from "./types/Ref"
 import type { RocRequest } from "./types/RocRequest"
-import { createRef } from "./utils/createRef"
 import { Snowflake } from "./utils/Snowflake"
 
 export type EntityN = z.ZodObject<{
@@ -33,7 +36,6 @@ type AdapterOptions<
     snowflake: Snowflake
     async?: boolean
     changeSetRef?: Ref
-    initChangeSetOnce?: boolean
 }
 export const createAdapter = <
     const Operations extends readonly Operation[],
@@ -46,12 +48,17 @@ export const createAdapter = <
     type FunctionMap = {
         [Item in (typeof adapterOptions.operations)[number] as Item["operationName"]]: Item
     }
+    adapterOptions.undoStack = []
+    adapterOptions.redoStack = []
+
+    const operations = [...adapterOptions.operations, undo, redo]
+    adapterOptions.operations = operations
 
     const operationsMap: FunctionMap = Object.fromEntries(
         [
             pageMutations,
             createPageEntitiesOperation(adapterOptions.entities),
-            ...adapterOptions.operations,
+            ...operations,
         ].map(
             operation =>
                 [
@@ -75,6 +82,9 @@ export const createAdapter = <
         get _engineOpts() {
             return engineOptions
         },
+        get _adapterOpts() {
+            return adapterOptions
+        },
         get _entityKinds(): Entities[number]["shape"]["entity"]["value"] {
             return adapterOptions.entities.map(
                 schema => schema.shape.entity.value,
@@ -95,14 +105,14 @@ export const createAdapter = <
                 ...overrides,
             })
         },
-        createRef: entity => {
-            // return adapterOptions.snowflake.createRef(entity)
-            return createRef(
-                entity,
-                adapterOptions.snowflake,
-                new Date().toISOString(),
-            )
-        },
+        // createRef: entity => {
+        //     // return adapterOptions.snowflake.createRef(entity)
+        //     return createRef(
+        //         entity,
+        //         adapterOptions.snowflake,
+        //         new Date().toISOString(),
+        //     )
+        // },
         changeSet: changeSetRef => {
             return createAdapter(
                 { ...adapterOptions, changeSetRef },
@@ -113,6 +123,13 @@ export const createAdapter = <
             const operation = operationsMap[mutation.name]
             return operation(mutation.payload, mutation.changeSetRef, mutation)
         },
+        loadOptimisticMutations: (mutations: Mutation[]) =>
+            loadOptimisticMutations(
+                adapterOptions,
+                engineOptions,
+                mutations,
+                operations,
+            ),
         ...operationsMap,
     }
 }

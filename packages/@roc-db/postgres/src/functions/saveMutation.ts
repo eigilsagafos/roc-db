@@ -16,24 +16,28 @@ export const saveMutation = async (
         log,
         identityRef,
         sessionRef,
+        appliedAt,
     } = finalizedMutation
+
     const id = idFromRef(ref)
     const [changeSetId, changeSetKind] = changeSetRef
         ? parseRef(changeSetRef)
         : [null, null]
     const { sqlTxn, mutationsTableName } = txn.engineOpts
 
-    if (txn.mutation.debounceCount > 0) {
+    if (txn.mutation.debounceCount > 0 || appliedAt) {
         const [row] = await sqlTxn`
             UPDATE ${sqlTxn(mutationsTableName)}
             SET (
                 timestamp,
                 debounce_count,
-                payload
+                payload,
+                applied_at
             ) = (
                 ${new Date(timestamp)},
                 ${txn.mutation.debounceCount},
-                ${payload}
+                ${payload},
+                ${appliedAt ? appliedAt : null}
             )
             WHERE id = ${id}
             RETURNING *;
@@ -70,11 +74,10 @@ export const saveMutation = async (
                 ${sessionRef || null}
             ) RETURNING *;
         `.catch(err => {
-            console.error("Error creating mutation", txn.mutation)
-
+            console.error("Error creating mutation", finalizedMutation)
+            console.log(finalizedMutation)
             throw err
         })
         return postgresRowToMutation(row)
     }
-    // return finalizedMutation
 }

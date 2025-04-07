@@ -56,8 +56,9 @@ export const runAsyncFunctionChain = async (query, args = []) => {
             }),
         )
         return Object.fromEntries(entries)
-    } else {
-        console.error("Unsupported query type", query)
-        throw new Error("Unsupported query type")
     }
+    // else {
+    //     console.error("Unsupported query type", query)
+    //     throw new Error("Unsupported query type")
+    // }
 }

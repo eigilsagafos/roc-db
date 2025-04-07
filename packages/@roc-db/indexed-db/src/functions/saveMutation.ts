@@ -1,7 +1,7 @@
 export const saveMutation = async (txn, finalizedMutation) => {
     const objectStore = txn.engineOpts.txn.objectStore("mutations")
     let request
-    if (finalizedMutation.debounceCount > 0) {
+    if (finalizedMutation.debounceCount > 0 || finalizedMutation.appliedAt) {
         request = objectStore.put(finalizedMutation)
     } else {
         request = objectStore.add(finalizedMutation)

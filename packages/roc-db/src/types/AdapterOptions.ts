@@ -1,17 +1,8 @@
-import { EntityN } from "../createAdapter"
-import { AdapterFunctions } from "./AdapterFunctions"
-import { RocRequest } from "./RocRequest"
+import type { AdapterFunctions } from "./AdapterFunctions"
+import type { WriteOperation } from "./WriteOperation"
 
-export type AdapterOptions<
-    Request extends RocRequest,
-    EngineOpts extends {},
-    Entities extends readonly EntityN[],
-    AdapterOpts extends AdapterOptions<
-        Request,
-        EngineOpts,
-        Entities,
-        AdapterOpts
-    >,
-> = {
-    functions: AdapterFunctions<Request, EngineOpts, Entities, AdapterOpts>
+export type AdapterOptions<EngineOpts extends any = any> = {
+    functions: AdapterFunctions<EngineOpts>
+    async: boolean
+    operations: WriteOperation[]
 }

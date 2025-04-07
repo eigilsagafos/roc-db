@@ -13,7 +13,7 @@ export const getChangeSetMutations = async (
         WHERE 
             change_set_id = ${id} AND 
             change_set_kind = ${entity}
-        ORDER BY timestamp ASC;
+        ORDER BY id ASC;
     `
     return res.values().toArray().map(postgresRowToMutation)
 }

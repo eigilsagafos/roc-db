@@ -3,7 +3,6 @@ import { describe } from "bun:test"
 import { createInMemoryAdapter } from "./createInMemoryAdapter"
 import type { InMemoryEngine } from "./types/InMemoryEngine"
 
-describe(
-    "createInMemorydapter",
-    testAdapterImplementation<InMemoryEngine>(createInMemoryAdapter),
-)
+describe("createInMemorydapter", () => {
+    testAdapterImplementation<InMemoryEngine>(createInMemoryAdapter, () => ({}))
+})

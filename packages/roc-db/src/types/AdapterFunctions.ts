@@ -1,6 +1,4 @@
-import { EntityN } from "../createAdapter"
 import type { WriteTransaction } from "../lib/WriteTransaction"
-import type { AdapterOptions } from "./AdapterOptions"
 import type { Mutation } from "./Mutation"
 import type { Ref } from "./Ref"
 import type { RocRequest } from "./RocRequest"
@@ -11,108 +9,48 @@ export type BeginFunction<EngineOptions> = (
     engineOpts: EngineOptions,
 ) => EngineOptions
 
-export type EndFunction<
-    Request extends RocRequest,
-    EngineOpts extends {},
-    Entities extends readonly EntityN[],
-    AdapterOpts extends AdapterOptions<
-        Request,
-        EngineOpts,
-        Entities,
-        AdapterOpts
-    >,
-> = (txn: Transaction<Request, EngineOpts, Entities, AdapterOpts>) => EngineOpts
-
-export type CreateEntityFunction<
-    Request extends RocRequest,
-    EngineOpts extends {},
-    Entities extends readonly EntityN[],
-    AdapterOpts extends AdapterOptions<
-        Request,
-        EngineOpts,
-        Entities,
-        AdapterOpts
-    >,
-> = (
-    txn: WriteTransaction<Request, EngineOpts, Entities, AdapterOpts>,
+export type ReadEntityFunctiun<EngineOpts extends any = any> = (
+    txn: Transaction<EngineOpts>,
     ref: Ref,
-    args: any,
 ) => any
-export type UpdateEntityFunction<
-    Request extends RocRequest,
-    EngineOpts extends {},
-    Entities extends readonly EntityN[],
-    AdapterOpts extends AdapterOptions<
-        Request,
-        EngineOpts,
-        Entities,
-        AdapterOpts
-    >,
-> = (
-    txn: WriteTransaction<Request, EngineOpts, Entities, AdapterOpts>,
+
+export type EndFunction<EngineOpts extends any = any> = (
+    txn: Transaction<EngineOpts>,
+) => EngineOpts
+
+export type CreateEntityFunction<EngineOpts extends any = any> = (
+    txn: WriteTransaction<EngineOpts>,
     ref: Ref,
     args: any,
 ) => any
 
-export type SaveMutationFunction<
-    Request extends RocRequest,
-    EngineOpts extends {},
-    Entities extends readonly EntityN[],
-    AdapterOpts extends AdapterOptions<
-        Request,
-        EngineOpts,
-        Entities,
-        AdapterOpts
-    >,
-> = (
-    txn: WriteTransaction<Request, EngineOpts, Entities, AdapterOpts>,
+export type GetChangeSetMutationsFunction<EngineOpts extends any = any> = (
+    txn: Transaction<EngineOpts>,
+    changeSetRef: Ref,
+) => Mutation[]
+
+export type UpdateEntityFunction<EngineOpts extends any = any> = (
+    txn: WriteTransaction<EngineOpts>,
+    ref: Ref,
+    args: any,
+) => any
+
+export type SaveMutationFunction<EngineOpts extends any = any> = (
+    txn: WriteTransaction<EngineOpts>,
 ) => Mutation
 
-export type PatchEntityFunction<
-    Request extends RocRequest,
-    EngineOpts extends {},
-    Entities extends readonly EntityN[],
-    AdapterOpts extends AdapterOptions<
-        Request,
-        EngineOpts,
-        Entities,
-        AdapterOpts
-    >,
-> = (
-    txn: WriteTransaction<Request, EngineOpts, Entities, AdapterOpts>,
+export type PatchEntityFunction<EngineOpts extends any = any> = (
+    txn: WriteTransaction<EngineOpts>,
     ref: Ref,
 ) => any
 
-export type AdapterFunctions<
-    Request extends RocRequest,
-    EngineOpts extends {},
-    Entities extends readonly EntityN[],
-    AdapterOpts extends AdapterOptions<
-        Request,
-        EngineOpts,
-        Entities,
-        AdapterOpts
-    >,
-> = {
+export type AdapterFunctions<EngineOpts extends any = any> = {
     begin?: BeginFunction<EngineOpts>
-    end?: EndFunction<Request, EngineOpts, Entities, AdapterOpts>
-    createEntity: CreateEntityFunction<
-        Request,
-        EngineOpts,
-        Entities,
-        AdapterOpts
-    >
-    patchEntity: PatchEntityFunction<Request, EngineOpts, Entities, AdapterOpts>
-    saveMutation: SaveMutationFunction<
-        Request,
-        EngineOpts,
-        Entities,
-        AdapterOpts
-    >
-    updateEntity: UpdateEntityFunction<
-        Request,
-        EngineOpts,
-        Entities,
-        AdapterOpts
-    >
+    end?: EndFunction<EngineOpts>
+    createEntity: CreateEntityFunction<EngineOpts>
+    getChangeSetMutations: GetChangeSetMutationsFunction<EngineOpts>
+    patchEntity: PatchEntityFunction<EngineOpts>
+    readEntity: ReadEntityFunctiun<EngineOpts>
+    saveMutation: SaveMutationFunction<EngineOpts>
+    updateEntity: UpdateEntityFunction<EngineOpts>
 }

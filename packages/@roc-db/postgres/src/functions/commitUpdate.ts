@@ -1,14 +1,17 @@
-import { entityToRow } from "./entityToRow"
+import type { Entity } from "roc-db"
+import { entityToRow } from "../lib/entityToRow"
+import type { PostgresMutationTransaction } from "../types/PostgresMutationTransaction"
 
-export const commitCreate = (txn, table, entity: any) => {
+export const commitUpdate = async (
+    txn: PostgresMutationTransaction,
+    entity: Entity,
+) => {
+    const { sqlTxn, entitiesTableName } = txn.engineOpts
     const row = entityToRow(entity)
-    return txn`
-        INSERT INTO ${txn(table)} (
-            id,
-            kind,
-            created_at,
+    return sqlTxn`
+        UPDATE ${sqlTxn(entitiesTableName)}
+        SET (
             updated_at,
-            created_mutation_id,
             updated_mutation_id,
             data,
             indexed_data,
@@ -21,12 +24,8 @@ export const commitCreate = (txn, table, entity: any) => {
             ancestors,
             ancestor_ids,
             ancestor_refs
-        ) VALUES (
-            ${row.id},
-            ${row.kind},
-            ${row.created_at},
+        ) = (
             ${row.updated_at},
-            ${row.created_mutation_id},
             ${row.updated_mutation_id},
             ${row.data},
             ${row.indexed_data},
@@ -39,9 +38,12 @@ export const commitCreate = (txn, table, entity: any) => {
             ${row.ancestors},
             ${row.ancestor_ids},
             ${row.ancestor_refs}
-        ) RETURNING *;
-    `.catch(e => {
-        console.error("Error creating entity")
-        throw e
+        )
+        WHERE
+            id = ${row.id}
+        RETURNING *;
+    `.catch(err => {
+        console.error("Error updating entity", row)
+        throw err
     })
 }
