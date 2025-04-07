@@ -1,3 +1,4 @@
+import { BadRequestError } from "../errors/BadRequestError"
 import type { Mutation } from "../types/Mutation"
 import type { Ref } from "../types/Ref"
 import type { Transaction } from "../types/Transaction"
@@ -32,6 +33,9 @@ const prepareInitTransaction = (txn: Transaction, mutation: Mutation) => {
 }
 
 const initializeChangeSetAsync = async (txn: Transaction) => {
+    const changeSetEntity = await txn.readEntity(txn.changeSetRef, false)
+    if (!changeSetEntity)
+        throw new BadRequestError("The provided changeSetRef does not exist")
     const mutations = await txn.adapterOpts.functions.getChangeSetMutations(
         txn,
         txn.changeSetRef as Ref,
@@ -45,6 +49,9 @@ const initializeChangeSetAsync = async (txn: Transaction) => {
     txn.changeSetInitialized = true
 }
 const initializeChangeSetSync = (txn: Transaction) => {
+    const changeSetEntity = txn.readEntity(txn.changeSetRef, false)
+    if (!changeSetEntity)
+        throw new BadRequestError("The provided changeSetRef does not exist")
     const mutations = txn.adapterOpts.functions.getChangeSetMutations(
         txn,
         txn.changeSetRef as Ref,

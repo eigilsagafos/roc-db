@@ -298,6 +298,13 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
             expect(res.every(m => m.changeSetRef === draftRef)).toBeTrue()
         })
 
+        test("invalid changeSetRef throws error", async () => {
+            const changeSetAdapter = adapter1.changeSet("Draft/123")
+            expect(() =>
+                changeSetAdapter.createPost({ title: "Title 1" }),
+            ).toThrow(BadRequestError)
+        })
+
         test("applyDraft", async () => {
             const { draftRef } = await prepareChangeSetTest(adapter1)
             const [version, mutation] = await adapter1.applyDraft({
