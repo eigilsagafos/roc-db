@@ -11,6 +11,7 @@ import type { Operation } from "./types/Operation"
 import type { Ref } from "./types/Ref"
 import type { RocRequest } from "./types/RocRequest"
 import { Snowflake } from "./utils/Snowflake"
+import { generateRef } from "./utils/generateRef"
 
 export type EntityN = z.ZodObject<{
     entity: z.ZodLiteral<string>
@@ -105,14 +106,12 @@ export const createAdapter = <
                 ...overrides,
             })
         },
-        // createRef: entity => {
-        //     // return adapterOptions.snowflake.createRef(entity)
-        //     return createRef(
-        //         entity,
-        //         adapterOptions.snowflake,
-        //         new Date().toISOString(),
-        //     )
-        // },
+        generateRef: (entity: string) =>
+            generateRef(
+                entity,
+                adapterOptions.snowflake,
+                new Date().toISOString(),
+            ),
         changeSet: changeSetRef => {
             return createAdapter(
                 { ...adapterOptions, changeSetRef },
