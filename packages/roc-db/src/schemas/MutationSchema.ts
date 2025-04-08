@@ -15,5 +15,10 @@ export const MutationSchema = z
         debounceCount: z.number(),
         identityRef: z.string(),
         sessionRef: z.string().optional(),
+        persistedAt: z
+            .string()
+            .datetime({ precision: 3 })
+            .nullable()
+            .optional(),
     })
     .strict()
