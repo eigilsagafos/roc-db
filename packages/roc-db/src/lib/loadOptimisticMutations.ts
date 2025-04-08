@@ -8,8 +8,8 @@ import { executeWriteRequestSyncInternal } from "./executeWriteRequestSync"
 import { findOperation } from "./findOperation"
 
 const shouldSkipMutationImport = (mutation: Mutation, existing: Mutation) => {
-    if (mutation.debounceCount < existing.debounceCount) return true
-    if (mutation.timestamp < existing.timestamp) return true
+    if (mutation.debounceCount > existing.debounceCount) return false
+    if (existing.timestamp >= mutation.timestamp) return true
     return false
     // if (mutation.appliedAt && !existing.appliedAt) return
     // return true

@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, test } from "bun:test"
-import { BadRequestError, NotFoundError } from "roc-db"
+import { BadRequestError, NotFoundError, Snowflake } from "roc-db"
 import type { z } from "zod"
 import { operations } from "./operations"
 import {
@@ -12,6 +12,8 @@ import {
 import type { Post } from "./schemas/PostSchema"
 import type { BlockParagraph } from "./schemas/BlockParagraphSchema"
 import type { BlockRow } from "./schemas/BlockRowSchema"
+
+const snowflake = new Snowflake(10, 10)
 
 const prepareChangeSetTest = async (adapter, adapter2) => {
     const [post, createPostMutation] = await adapter.createPost({
@@ -78,6 +80,7 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
             operations,
             entities,
             session: { identityRef: "User/42" },
+            snowflake,
             ...(await generateArgs()),
         })
     }
@@ -376,5 +379,4 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
                 await adapterB.loadOptimisticMutations(allMutationsAdapter1)
         })
     })
-    // }
 }
