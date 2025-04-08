@@ -17,6 +17,7 @@ export const saveMutation = async (
         identityRef,
         sessionRef,
         appliedAt,
+        persistedAt = null,
     } = finalizedMutation
 
     const id = idFromRef(ref)
@@ -32,12 +33,14 @@ export const saveMutation = async (
                 timestamp,
                 debounce_count,
                 payload,
-                applied_at
+                applied_at,
+                persisted_at
             ) = (
                 ${new Date(timestamp)},
                 ${txn.mutation.debounceCount},
                 ${payload},
-                ${appliedAt ? appliedAt : null}
+                ${appliedAt ? appliedAt : null},
+                ${persistedAt ? persistedAt : null}
             )
             WHERE id = ${id}
             RETURNING *;
@@ -60,7 +63,8 @@ export const saveMutation = async (
                 change_set_kind,
                 debounce_count,
                 identity_ref,
-                session_ref
+                session_ref,
+                persisted_at
             ) VALUES (
                 ${id},
                 ${new Date(timestamp)},
@@ -73,6 +77,7 @@ export const saveMutation = async (
                 ${changeSetKind},
                 ${debounceCount},
                 ${identityRef},
+                ${persistedAt || null},
                 ${sessionRef || null}
             ) RETURNING *;
         `.catch(err => {

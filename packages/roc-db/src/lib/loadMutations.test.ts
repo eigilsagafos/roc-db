@@ -18,6 +18,7 @@ const prepare = () => {
         entities,
         session: { identityRef: "User/42" },
         snowflake,
+        optimistic: true,
     })
 
     const [post, createPostMutation] = adapter1.createPost({
@@ -26,17 +27,14 @@ const prepare = () => {
     return [adapter1, adapter2, post, createPostMutation]
 }
 
-describe("loadOptimisticMutations", () => {
-    test("order does not matter and is sorted by loadOptimisticMutations", async () => {
+describe("loadMutations", () => {
+    test("order does not matter and is sorted by loadMutations", async () => {
         const [adapter1, adapter2, post, createPostMutation] = prepare()
         const [, updateTitleMutation] = adapter1.updatePostTitle({
             ref: post.ref,
             title: "F",
         })
-        await adapter2.loadOptimisticMutations([
-            updateTitleMutation,
-            createPostMutation,
-        ])
+        await adapter2.loadMutations([updateTitleMutation, createPostMutation])
 
         const postRead = await adapter2.readPost(post.ref)
         expect(postRead.data.title).toBe("F")
@@ -49,23 +47,23 @@ describe("loadOptimisticMutations", () => {
             title: "F",
         })
         expect(() =>
-            adapter2.loadOptimisticMutations([updateTitleMutation]),
+            adapter2.loadMutations([updateTitleMutation]),
         ).toThrowError()
     })
 
     test("debounce handled correctly", async () => {
         const [adapter1, adapter2, post, createPostMutation] = prepare()
-        await adapter2.loadOptimisticMutations([createPostMutation])
+        await adapter2.loadMutations([createPostMutation])
         const [, updateTitleMutation1] = adapter1.updatePostTitle({
             ref: post.ref,
             title: "F",
         })
-        await adapter2.loadOptimisticMutations([updateTitleMutation1])
+        await adapter2.loadMutations([updateTitleMutation1])
         const [, updateTitleMutation2] = adapter1.updatePostTitle({
             ref: post.ref,
             title: "Fo",
         })
-        await adapter2.loadOptimisticMutations([updateTitleMutation2])
+        await adapter2.loadMutations([updateTitleMutation2])
 
         const postRead = await adapter2.readPost(post.ref)
         expect(postRead.data.title).toBe("Fo")
@@ -82,8 +80,8 @@ describe("loadOptimisticMutations", () => {
             title: "Second",
         })
         updateTitleMutation2.timestamp = updateTitleMutation1.timestamp
-        await adapter2.loadOptimisticMutations([createPostMutation])
-        await adapter2.loadOptimisticMutations([
+        await adapter2.loadMutations([createPostMutation])
+        await adapter2.loadMutations([
             updateTitleMutation2,
             updateTitleMutation1,
         ])

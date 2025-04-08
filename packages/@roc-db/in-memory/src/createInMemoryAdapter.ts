@@ -15,6 +15,7 @@ export const createInMemoryAdapter = <
     entities,
     snowflake = new Snowflake(1, 1),
     session,
+    optimistic = true,
 }: {
     operations: Operations
     entities: Entities
@@ -28,6 +29,7 @@ export const createInMemoryAdapter = <
             functions,
             snowflake,
             session,
+            optimistic,
         },
         {
             entities: new Map(),

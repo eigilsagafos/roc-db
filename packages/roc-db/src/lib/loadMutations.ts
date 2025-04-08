@@ -15,7 +15,7 @@ const shouldSkipMutationImport = (mutation: Mutation, existing: Mutation) => {
     // return true
 }
 
-const loadOptimisticMutationsSync = (
+const loadMutationsSync = (
     adapterOptions: AdapterOptions,
     engineOptsTxn: any,
     groups: Record<string, Mutation[]>,
@@ -63,7 +63,7 @@ const loadOptimisticMutationsSync = (
     return results
 }
 
-const loadOptimisticMutationsAsync = async (
+const loadMutationsAsync = async (
     adapterOptions: AdapterOptions,
     engineOptsTxn: any,
     groups: Record<string, Mutation[]>,
@@ -115,7 +115,7 @@ const loadOptimisticMutationsAsync = async (
     return results
 }
 
-export const loadOptimisticMutations = (
+export const loadMutations = (
     adapterOptions: AdapterOptions,
     engineOptions: any,
     mutations: Mutation[],
@@ -138,7 +138,7 @@ export const loadOptimisticMutations = (
 
     if (adapterOptions.async) {
         return beginTransaction(engineOptions, engineOptsTxn =>
-            loadOptimisticMutationsAsync(
+            loadMutationsAsync(
                 adapterOptions,
                 engineOptsTxn,
                 groups,
@@ -147,7 +147,7 @@ export const loadOptimisticMutations = (
         )
     } else {
         return beginTransaction(engineOptions, engineOptsTxn =>
-            loadOptimisticMutationsSync(
+            loadMutationsSync(
                 adapterOptions,
                 engineOptsTxn,
                 groups,

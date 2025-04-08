@@ -1,6 +1,7 @@
 import { z } from "zod"
 import { execute } from "./lib/execute"
-import { loadOptimisticMutations } from "./lib/loadOptimisticMutations"
+import { loadMutations } from "./lib/loadMutations"
+import { persistOptimisticMutations } from "./lib/persistOptimisticMutations"
 import { createPageEntitiesOperation } from "./operations/createPageEntitiesOperation"
 import { pageMutations } from "./operations/pageMutations"
 import { redo } from "./operations/redo"
@@ -37,6 +38,7 @@ type AdapterOptions<
     snowflake: Snowflake
     async?: boolean
     changeSetRef?: Ref
+    optimistic?: boolean
 }
 export const createAdapter = <
     const Operations extends readonly Operation[],
@@ -64,11 +66,11 @@ export const createAdapter = <
             operation =>
                 [
                     operation.operationName,
-                    (payload, changeSetRef, optimisticMutation = undefined) => {
+                    payload => {
                         const request = operation(
                             payload,
-                            changeSetRef || adapterOptions.changeSetRef || null,
-                            optimisticMutation,
+                            adapterOptions.changeSetRef || null,
+                            // optimisticMutation,
                         )
                         return execute(request, engineOptions, adapterOptions)
                     },
@@ -76,7 +78,7 @@ export const createAdapter = <
         ),
     )
 
-    return {
+    const adapter = {
         get _name() {
             return adapterOptions.name
         },
@@ -118,17 +120,20 @@ export const createAdapter = <
                 engineOptions,
             )
         },
-        syncOptimisticMutation: mutation => {
-            const operation = operationsMap[mutation.operation.name]
-            return operation(mutation.payload, mutation.changeSetRef, mutation)
-        },
-        loadOptimisticMutations: (mutations: Mutation[]) =>
-            loadOptimisticMutations(
+        ...operationsMap,
+    }
+    if (adapterOptions.optimistic) {
+        adapter.loadMutations = (mutations: Mutation[]) =>
+            loadMutations(adapterOptions, engineOptions, mutations, operations)
+    } else {
+        adapter.persistOptimisticMutations = (mutations: Mutation[]) =>
+            persistOptimisticMutations(
                 adapterOptions,
                 engineOptions,
                 mutations,
                 operations,
-            ),
-        ...operationsMap,
+            )
     }
+
+    return adapter
 }

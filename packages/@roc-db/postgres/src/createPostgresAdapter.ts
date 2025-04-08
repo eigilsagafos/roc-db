@@ -16,6 +16,7 @@ export const createPostgresAdapter = ({
     session,
     mutationsTableName = "mutations",
     entitiesTableName = "entities",
+    optimistic = false,
     onTransactionStart,
     onTransactionEnd,
 }: {
@@ -29,6 +30,7 @@ export const createPostgresAdapter = ({
             operations,
             entities,
             functions,
+            optimistic,
             session,
             snowflake: new Snowflake(1, 1),
             async: true,

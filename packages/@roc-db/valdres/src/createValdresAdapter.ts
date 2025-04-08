@@ -25,6 +25,7 @@ export const createValdresAdapter = <Session>({
     entityAtom, // = atomFamily<string, Entity | null>(null),
     mutationAtom, // = atomFamily<string, Mutation | null>(null),
     mutationListAtom,
+    optimistic = true,
 }: {
     operations: readonly Operation[]
     entities: readonly Entity[]
@@ -34,6 +35,7 @@ export const createValdresAdapter = <Session>({
     mutationAtom?: AtomFamily<string, Mutation | null>
     mutationListAtom?: Atom<string[]>
     session: Session
+    optimistic: boolean
 }) => {
     return createAdapter(
         {
@@ -41,6 +43,7 @@ export const createValdresAdapter = <Session>({
             operations,
             entities,
             functions,
+            optimistic,
             session,
             snowflake: new Snowflake(1, 1),
             // initChangeSetOnce: true,

@@ -75,12 +75,13 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
     adapterConstructor,
     generateArgs: () => EngineOptions,
 ) => {
-    let createAdapter = async () => {
+    let createAdapter = async ({ optimistic = false } = {}) => {
         return adapterConstructor({
             operations,
             entities,
             session: { identityRef: "User/42" },
             snowflake,
+            optimistic,
             ...(await generateArgs()),
         })
     }
@@ -175,13 +176,10 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
         })
 
         test("sync mutation", async () => {
-            const res =
-                await adapter2.syncOptimisticMutation(createPostMutation)
-            expect(res[0]).toStrictEqual(post)
-            expect(res[1]).toStrictEqual(createPostMutation)
-            expect(() =>
-                adapter2.syncOptimisticMutation(createPostMutation),
-            ).toThrowError(BadRequestError)
+            const [{ persistedAt, ...mutation }] =
+                await adapter2.persistOptimisticMutations([createPostMutation])
+            // expect(res[0]).toStrictEqual(post)
+            expect(mutation).toStrictEqual(createPostMutation)
         })
 
         test("create, patch and delete the same item within the same transaction", async () => {
@@ -357,8 +355,8 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
         })
 
         test("init adapter2", async () => {
-            const adapterA = await createAdapter()
-            const adapterB = await createAdapter()
+            const adapterA = await createAdapter({ optimistic: true })
+            const adapterB = await createAdapter({ optimistic: true })
 
             const { draftRef } = await prepareChangeSetTest(adapterA, adapterB)
             const mutations = await adapterA.pageMutations({
@@ -368,15 +366,33 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
             const allMutationsAdapter2 = await adapterB.pageMutations({})
             expect(allMutationsAdapter1).not.toBeEmpty()
             expect(allMutationsAdapter2).toBeEmpty()
-            const res =
-                await adapterB.loadOptimisticMutations(allMutationsAdapter1)
+            const res = await adapterB.loadMutations(allMutationsAdapter1)
             // console.log(res)
             const allMutationsAdapter2after = await adapterB.pageMutations({})
             expect(allMutationsAdapter2after.length).toBe(
                 allMutationsAdapter1.length,
             )
-            const res2 =
-                await adapterB.loadOptimisticMutations(allMutationsAdapter1)
+            const res2 = await adapterB.loadMutations(allMutationsAdapter1)
+        })
+
+        test("persistOptimisticMutations", async () => {
+            const persistedAdapter = await createAdapter({ optimistic: false })
+            const optimisticAdapter = await createAdapter({ optimistic: true })
+            expect(persistedAdapter.persistOptimisticMutations).toBeDefined()
+            expect(optimisticAdapter.loadMutations).toBeDefined()
+
+            const [, createPostMutation] = await optimisticAdapter.createPost({
+                title: "Foo",
+                tags: [],
+            })
+            const [persistCratePostMutation] =
+                await persistedAdapter.persistOptimisticMutations([
+                    createPostMutation,
+                ])
+            expect(
+                persistCratePostMutation.persistedAt >=
+                    createPostMutation.timestamp,
+            ).toBeTrue()
         })
     })
 }
