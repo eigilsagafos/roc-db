@@ -1,9 +1,16 @@
-import { commitCreate } from "./commitCreate"
+import type { Entity, Mutation, Ref, WriteTransaction } from "roc-db"
 import { commitDelete } from "./commitDelete"
-import { commitUpdate } from "./commitUpdate"
 import { saveMutation } from "./saveMutation"
 
-export const commit = (txn, mutation, { created, updated, deleted }) => {
+export const commit = (
+    txn: WriteTransaction,
+    mutation: Mutation,
+    {
+        created,
+        updated,
+        deleted,
+    }: { created: Entity[]; updated: Entity[]; deleted: Ref[] },
+) => {
     const { mutationAtom, mutationListAtom } = txn.engineOpts
     const atom = mutationAtom(txn.mutation.ref)
     const currentMutation = txn.engineOpts.rootTxn.get(atom)
@@ -22,11 +29,19 @@ export const commit = (txn, mutation, { created, updated, deleted }) => {
         saveMutation(txn, mutation)
     }
 
+    const { entityAtom, entityRefListAtom, txn: valdresTxn } = txn.engineOpts
     for (const doc of created) {
-        commitCreate(txn, doc)
+        valdresTxn.set(entityAtom(doc.ref), doc)
+    }
+    if (created.length && entityRefListAtom) {
+        const entity = created[0].entity
+        valdresTxn.set(entityRefListAtom(entity), (curr: string[]) => [
+            ...curr,
+            created.map(doc => doc.ref),
+        ])
     }
     for (const doc of updated) {
-        commitUpdate(txn, doc)
+        valdresTxn.set(entityAtom(doc.ref), doc)
     }
     for (const ref of deleted) {
         commitDelete(txn, ref)

@@ -72,14 +72,23 @@ test("data is stored in the scoped store", () => {
     })
     const changeSetAdapter = adapter.changeSet(draft.ref)
 
-    const [{ block }] = changeSetAdapter.createBlockParagraph({
+    const [{ block, updatedParent }] = changeSetAdapter.createBlockParagraph({
         parentRef: post.ref,
     })
+    const readRes = changeSetAdapter.readEntity(post.ref)
+    expect(readRes).toStrictEqual(updatedParent)
+    // console.log(changeSetAdapter._engineOpts)
+    // const postFromStore = changeSetAdapter._engineOpts.store.get(
+    //     entityFamily(post.ref),
+    // )
+    // console.log("readRes", readRes)
+    // console.log("postFromStore", postFromStore)
+    // expect(readPostDirect).toStrictEqual(updatedParent)
+    // console.log(rest)
+    // const draftStore = rootStore.scope(draft.ref)
 
-    const draftStore = rootStore.scope(draft.ref)
-
-    const res = draftStore.get(entityFamily(block.ref))
-    expect(res?.ref).toBe(block.ref)
+    // const res = draftStore.get(entityFamily(block.ref))
+    // expect(res?.ref).toBe(block.ref)
     // const rootStore = store()
     // const entityFamily = atomFamily(null)
     // const adapter = createValdresAdapter({

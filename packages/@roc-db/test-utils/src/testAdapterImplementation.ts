@@ -381,10 +381,11 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
             expect(persistedAdapter.persistOptimisticMutations).toBeDefined()
             expect(optimisticAdapter.loadMutations).toBeDefined()
 
-            const [, createPostMutation] = await optimisticAdapter.createPost({
-                title: "Foo",
-                tags: [],
-            })
+            const [post, createPostMutation] =
+                await optimisticAdapter.createPost({
+                    title: "Foo",
+                    tags: [],
+                })
             const [persistCratePostMutation] =
                 await persistedAdapter.persistOptimisticMutations([
                     createPostMutation,
@@ -397,6 +398,29 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
                 persistCratePostMutation.ref,
             )
             expect(readMutation).toStrictEqual(persistCratePostMutation)
+
+            const [draft, createDraftMutation] =
+                await optimisticAdapter.createDraft({
+                    postRef: post.ref,
+                })
+            const [{ persistedAt, ...persistedCreateDraftMutation }] =
+                await persistedAdapter.persistOptimisticMutations([
+                    createDraftMutation,
+                ])
+            expect(persistedCreateDraftMutation).toStrictEqual(
+                createDraftMutation,
+            )
+            const changeSetAdapter = optimisticAdapter.changeSet(draft.ref)
+            const [res] = await changeSetAdapter.createBlockParagraph({
+                parentRef: post.ref,
+            })
+
+            // console.log(res)
+
+            // // const [...res] = await changeSetAdatper.createBlockParagraph({
+            // //     parentRef: post.ref,
+            // // })
+            // console.log(res)
         })
     })
 }

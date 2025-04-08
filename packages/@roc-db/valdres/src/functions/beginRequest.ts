@@ -1,6 +1,11 @@
+import type { WriteRequest } from "roc-db"
 import type { ValdresEngine } from "../types/ValdresEngine"
 
-export const beginRequest = (request, engineOpts: ValdresEngine, callback) => {
+export const beginRequest = (
+    request: WriteRequest,
+    engineOpts: ValdresEngine,
+    callback,
+) => {
     if (request.changeSetRef) {
         const scopedStoreAlreadyAttachedBeforeBegin =
             !!engineOpts.store.data.scopes[request.changeSetRef]

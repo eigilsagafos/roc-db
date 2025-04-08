@@ -114,10 +114,13 @@ export const createAdapter = <
                 adapterOptions.snowflake,
                 new Date().toISOString(),
             ),
-        changeSet: changeSetRef => {
+        changeSet: (changeSetRef: Ref) => {
+            const { onChangeSetInit } = adapterOptions.functions
             return createAdapter(
                 { ...adapterOptions, changeSetRef },
-                engineOptions,
+                onChangeSetInit
+                    ? onChangeSetInit(engineOptions, changeSetRef)
+                    : engineOptions,
             )
         },
         ...operationsMap,
