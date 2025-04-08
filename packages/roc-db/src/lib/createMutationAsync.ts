@@ -1,6 +1,7 @@
 import { BadRequestError } from "../errors/BadRequestError"
 import type { WriteRequest } from "../types/WriteRequest"
 import { generateMutationDoc } from "./generateMutationDoc"
+import { mutationNameFromSchema } from "./mutationNameFromSchema"
 
 export const createMutationAsync = async (
     request: WriteRequest,
@@ -27,6 +28,7 @@ export const createMutationAsync = async (
             request,
             engine,
             now,
+            mutationNameFromSchema(request.schema),
         )
         if (res) {
             return [

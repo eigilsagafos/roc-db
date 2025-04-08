@@ -4,7 +4,11 @@ import { Ref } from "./Ref"
 
 export type Mutation = {
     ref: MutationRef
-    name: z.ZodLiteral<string>
+    // name: z.ZodLiteral<string>
+    operation: {
+        name: string
+        version: number
+    }
     timestamp: string
     debounceCount: number
     payload: any

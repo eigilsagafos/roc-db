@@ -9,7 +9,7 @@ export const saveMutation = async (
     const {
         ref,
         timestamp,
-        name,
+        operation,
         payload,
         changeSetRef,
         debounceCount,
@@ -52,6 +52,7 @@ export const saveMutation = async (
                 id,
                 timestamp,
                 operation_name,
+                operation_version,
                 payload,
                 log,
                 log_refs,
@@ -63,7 +64,8 @@ export const saveMutation = async (
             ) VALUES (
                 ${id},
                 ${new Date(timestamp)},
-                ${name},
+                ${operation.name},
+                ${operation.version ?? 1},
                 ${payload},
                 ${log},
                 ${log.map(logItem => logItem[0])},

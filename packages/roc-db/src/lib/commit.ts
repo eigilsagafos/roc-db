@@ -4,8 +4,8 @@ export const commit = (txn: WriteTransaction, isChangeSetApply = false) => {
     const finalizedMutation = txn.finalizedMutation(isChangeSetApply)
     if (
         !(
-            finalizedMutation.name === "undo" ||
-            finalizedMutation.name === "redo"
+            finalizedMutation.operation.name === "undo" ||
+            finalizedMutation.operation.name === "redo"
         )
     ) {
         txn.adapterOpts.undoStack.push(finalizedMutation)

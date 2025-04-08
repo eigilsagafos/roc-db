@@ -5,9 +5,10 @@ export const findDebounceMutation = async (
     request: WriteRequest,
     engineOpts,
     now,
+    mutationName: string,
 ) => {
     const debounceTime = request.settings.debounce
-    const mutationName = request.schema.shape.name.value
+
     const thresholdTime = new Date(now - debounceTime * 1000).toISOString()
     const { sqlTxn, mutationsTableName } = engineOpts
 

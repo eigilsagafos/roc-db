@@ -5,6 +5,7 @@ import type { Ref } from "./types/Ref"
 import type { WriteOperation } from "./types/WriteOperation"
 import type { WriteOperationSettings } from "./types/WriteOperationSettings"
 import type { WriteRequest } from "./types/WriteRequest"
+import { mutationNameFromSchema } from "./lib/mutationNameFromSchema"
 
 type MutationSchema = z.ZodObject<{
     name: z.ZodLiteral<string>
@@ -30,6 +31,7 @@ export const writeOperation = <M extends MutationSchema, O extends ZodSchema>(
     z.infer<M>["payload"],
     z.infer<O>
 > => {
+    const operationName = mutationNameFromSchema(mutationSchema)
     return Object.assign(
         (
             payload: z.infer<M>["payload"],
@@ -44,11 +46,11 @@ export const writeOperation = <M extends MutationSchema, O extends ZodSchema>(
                 settings,
                 changeSetRef,
                 optimisticMutation,
-                operationName: mutationSchema.shape.name.value,
+                operationName,
             } as const
         },
         {
-            operationName: mutationSchema.shape.name.value,
+            operationName,
             outputSchema: outputSchema,
         },
     )

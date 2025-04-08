@@ -119,7 +119,7 @@ export const createAdapter = <
             )
         },
         syncOptimisticMutation: mutation => {
-            const operation = operationsMap[mutation.name]
+            const operation = operationsMap[mutation.operation.name]
             return operation(mutation.payload, mutation.changeSetRef, mutation)
         },
         loadOptimisticMutations: (mutations: Mutation[]) =>

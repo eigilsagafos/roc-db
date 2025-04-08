@@ -5,8 +5,8 @@ export const findDebounceMutation = async (
     request: WriteRequest,
     engine: IndexedDBEngine,
     now: number,
+    mutationName: string,
 ) => {
-    const mutationName = request.schema.shape.name.value
     const objectStore = engine.txn.objectStore("mutations")
     const index = objectStore.index("timestamp")
     const timestamp = new Date(
@@ -22,7 +22,7 @@ export const findDebounceMutation = async (
             if (cursor) {
                 const doc = cursor.value
                 if (
-                    doc.name === mutationName &&
+                    doc.operation.name === mutationName &&
                     doc.payload.ref === request.payload.ref &&
                     doc.changeSetRef === request.changeSetRef
                 ) {

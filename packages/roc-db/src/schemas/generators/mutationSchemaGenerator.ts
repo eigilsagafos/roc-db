@@ -13,7 +13,10 @@ export const mutationSchemaGenerator = <
     draftOnly: boolean = false,
 ) =>
     MutationSchema.extend({
-        name: z.literal(name),
+        operation: z.object({
+            name: z.literal(name),
+            version: z.number().default(1),
+        }),
         changeSetRef: draftOnly ? RefSchema : RefSchema.nullable(),
         payload: payloadSchema,
         log: refsSchema,

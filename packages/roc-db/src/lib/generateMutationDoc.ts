@@ -1,4 +1,5 @@
 import { generateRef } from "../utils/generateRef"
+import { mutationNameFromSchema } from "./mutationNameFromSchema"
 
 const generateRefAndTimestamp = (adapter, debounce, now) => {
     // const now = new Date().toISOString()
@@ -14,7 +15,8 @@ const generateRefAndTimestamp = (adapter, debounce, now) => {
 }
 
 export const generateMutationDoc = (request, adapter, payload, now) => {
-    const mutationName = request.schema.shape.name.value
+    const mutationName = mutationNameFromSchema(request.schema)
+
     const [ref, timestamp] = generateRefAndTimestamp(
         adapter,
         request.settings.debounce,
@@ -24,7 +26,10 @@ export const generateMutationDoc = (request, adapter, payload, now) => {
     return {
         timestamp,
         ref,
-        name: mutationName,
+        operation: {
+            name: mutationName,
+            version: 1,
+        },
         payload,
         log: [],
         changeSetRef: request.changeSetRef,
