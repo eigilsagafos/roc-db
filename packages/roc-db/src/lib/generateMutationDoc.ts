@@ -34,7 +34,7 @@ export const generateMutationDoc = (request, adapter, payload, now) => {
         log: [],
         changeSetRef: request.changeSetRef,
         debounceCount: 0,
-        sessionRef: adapter.session.ref,
+        sessionRef: adapter.session.ref ?? null,
         identityRef: adapter.session.identityRef,
     }
 }

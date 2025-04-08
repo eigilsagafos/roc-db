@@ -31,8 +31,5 @@ export const finalizeMutation = (txn: WriteTransaction, isChangeSetApply) => {
         if (!txn.timestamp) throw new Error("No timestamp")
         doc.appliedAt = txn.timestamp
     }
-    if ("sessionRef" in doc && !doc.sessionRef) {
-        delete doc.sessionRef
-    }
     return doc
 }

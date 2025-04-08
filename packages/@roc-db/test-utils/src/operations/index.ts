@@ -9,6 +9,7 @@ import { deleteBlocks } from "./deleteBlocks"
 import { deletePost } from "./deletePost"
 import { moveBlocks } from "./moveBlocks"
 import { readEntity } from "./readEntity"
+import { readMutation } from "./readMutation"
 import { readPost } from "./readPost"
 import { testTransactionalEdits } from "./testTransactionalEdits"
 import { updateBlockParagraph } from "./updateBlockParagraph"
@@ -28,6 +29,7 @@ export const operations = [
     deletePost,
     moveBlocks,
     readEntity,
+    readMutation,
     readPost,
     testTransactionalEdits,
     updateBlockParagraph,

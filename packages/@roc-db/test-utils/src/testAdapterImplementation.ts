@@ -393,6 +393,10 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
                 persistCratePostMutation.persistedAt >=
                     createPostMutation.timestamp,
             ).toBeTrue()
+            const readMutation = await persistedAdapter.readMutation(
+                persistCratePostMutation.ref,
+            )
+            expect(readMutation).toStrictEqual(persistCratePostMutation)
         })
     })
 }

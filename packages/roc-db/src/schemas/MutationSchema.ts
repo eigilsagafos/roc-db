@@ -14,7 +14,7 @@ export const MutationSchema = z
         log: MutationLogSchema,
         debounceCount: z.number(),
         identityRef: z.string(),
-        sessionRef: z.string().optional(),
+        sessionRef: z.string().nullable().optional(),
         persistedAt: z
             .string()
             .datetime({ precision: 3 })

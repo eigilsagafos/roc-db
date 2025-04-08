@@ -28,9 +28,9 @@ export const postgresRowToMutation = (row: DBRow) => {
         payload,
         log,
         changeSetRef: changeSetRef || null,
-        persistedAt: persisted_at || null,
+        persistedAt: persisted_at ? persisted_at.toISOString() : null,
         debounceCount: debounce_count,
         identityRef: identity_ref,
-        sessionRef: session_ref ?? undefined,
+        sessionRef: session_ref ?? null,
     }
 }

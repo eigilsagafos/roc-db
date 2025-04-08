@@ -17,9 +17,8 @@ export const saveMutation = async (
         identityRef,
         sessionRef,
         appliedAt,
-        persistedAt = null,
+        persistedAt,
     } = finalizedMutation
-
     const id = idFromRef(ref)
     const [changeSetId, changeSetKind] = changeSetRef
         ? parseRef(changeSetRef)
@@ -63,8 +62,8 @@ export const saveMutation = async (
                 change_set_kind,
                 debounce_count,
                 identity_ref,
-                session_ref,
-                persisted_at
+                persisted_at,
+                session_ref
             ) VALUES (
                 ${id},
                 ${new Date(timestamp)},
