@@ -27,13 +27,27 @@ const handlePatch = (
 
     txn.changeSet.entities.set(ref, updatedEntity)
     if (txn.changeSetInitialized) {
-        let action = "update"
         if (txn.log.has(ref)) {
-            if (txn.log.get(ref)[0] === "create") {
-                action = "create"
+            const [prevAction] = txn.log.get(ref)
+            if (prevAction === "create") {
+                txn.log.set(ref, ["create", updatedEntity])
+            } else if (prevAction === "delete") {
+                throw new Error("Cannot update a deleted entity")
+            } else if (prevAction === "update") {
+                const [, prevUpdated, prevRevPatch] = txn.log.get(ref)
+                const [restored] = deepPatch(prevUpdated, prevRevPatch)
+                const [newUpdated, newRevPatch] = deepPatch(restored, {
+                    updated: {
+                        mutationRef: txn.mutation.ref,
+                        timestamp: txn.mutation.timestamp,
+                    },
+                    ...patchSet,
+                })
+                txn.log.set(ref, ["update", newUpdated, newRevPatch])
             }
+        } else {
+            txn.log.set(ref, ["update", updatedEntity, reversePatch])
         }
-        txn.log.set(ref, [action, updatedEntity, reversePatch])
     }
     return updatedEntity
 }

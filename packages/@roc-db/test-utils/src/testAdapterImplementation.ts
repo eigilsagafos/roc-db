@@ -305,6 +305,47 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
             ).toThrow(BadRequestError)
         })
 
+        test("deleteBlocks (patch running 2 times removing on array element every time)", async () => {
+            const [post, createPostMutation] = await adapter1.createPost({
+                title: "Title 1",
+                slug: "title-1",
+                tags: ["Foo", "Bar"],
+            })
+            const [draft, createDraftMutation] = await adapter1.createDraft({
+                postRef: post.ref,
+            })
+            const changeSetAdapter = adapter1.changeSet(draft.ref)
+
+            const [{ block: blockParagraph1 }, createBlockParagraph1Mutation] =
+                await changeSetAdapter.createBlockParagraph({
+                    parentRef: post.ref,
+                })
+            const [{ block: blockParagraph2 }, createBlockParagraph2Mutation] =
+                await changeSetAdapter.createBlockParagraph({
+                    parentRef: post.ref,
+                })
+
+            const readPost = await changeSetAdapter.readEntity(post.ref)
+            expect(readPost.children.blocks).toEqual([
+                blockParagraph1.ref,
+                blockParagraph2.ref,
+            ])
+            const [, deleteMutation] = await changeSetAdapter.deleteBlocks([
+                blockParagraph1.ref,
+                blockParagraph2.ref,
+            ])
+            expect(deleteMutation.log[0][2].children.blocks).toEqual([
+                blockParagraph1.ref,
+                blockParagraph2.ref,
+            ])
+            expect(deleteMutation.log[0][2].updated.mutationRef).toBe(
+                createBlockParagraph2Mutation.ref,
+            )
+
+            const readPost2 = await changeSetAdapter.readEntity(post.ref)
+            expect(readPost2.updated.mutationRef).toEqual(deleteMutation.ref)
+        })
+
         test("applyDraft", async () => {
             const { draftRef } = await prepareChangeSetTest(adapter1)
             const [version, mutation] = await adapter1.applyDraft({

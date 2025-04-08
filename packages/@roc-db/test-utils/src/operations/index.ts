@@ -5,7 +5,7 @@ import { createBlockRow } from "./createBlockRow"
 import { createBlockTitle } from "./createBlockTitle"
 import { createDraft } from "./createDraft"
 import { createPost } from "./createPost"
-import { deleteBlock } from "./deleteBlock"
+import { deleteBlocks } from "./deleteBlocks"
 import { deletePost } from "./deletePost"
 import { moveBlocks } from "./moveBlocks"
 import { readEntity } from "./readEntity"
@@ -24,7 +24,7 @@ export const operations = [
     createBlockRow,
     createDraft,
     createPost,
-    deleteBlock,
+    deleteBlocks,
     deletePost,
     moveBlocks,
     readEntity,
