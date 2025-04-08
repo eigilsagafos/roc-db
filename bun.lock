@@ -26,34 +26,34 @@
     },
     "packages/@roc-db/in-memory": {
       "name": "@roc-db/in-memory",
-      "version": "0.2.0-pre.33",
+      "version": "0.2.0-pre.37",
       "devDependencies": {
-        "@roc-db/test-utils": "0.2.0-pre.33",
-        "roc-db": "0.2.0-pre.33",
+        "@roc-db/test-utils": "0.2.0-pre.37",
+        "roc-db": "0.2.0-pre.37",
         "zod": "3.24.2",
       },
       "peerDependencies": {
-        "roc-db": "0.2.0-pre.33",
+        "roc-db": "0.2.0-pre.37",
         "zod": "^3.0.0",
       },
     },
     "packages/@roc-db/indexed-db": {
       "name": "@roc-db/indexed-db",
-      "version": "0.2.0-pre.33",
+      "version": "0.2.0-pre.37",
       "devDependencies": {
-        "@roc-db/test-utils": "0.2.0-pre.28",
+        "@roc-db/test-utils": "0.2.0-pre.37",
         "fake-indexeddb": "6.0.0",
-        "roc-db": "0.2.0-pre.28",
+        "roc-db": "0.2.0-pre.37",
         "zod": "3.24.2",
       },
       "peerDependencies": {
-        "roc-db": "0.2.0-pre.28",
+        "roc-db": "0.2.0-pre.37",
         "zod": "^3.0.0",
       },
     },
     "packages/@roc-db/postgres": {
       "name": "@roc-db/postgres",
-      "version": "0.2.0-pre.33",
+      "version": "0.2.0-pre.37",
       "dependencies": {
         "postgres": "3.4.5",
       },
@@ -68,23 +68,23 @@
     },
     "packages/@roc-db/test-utils": {
       "name": "@roc-db/test-utils",
-      "version": "0.2.0-pre.33",
+      "version": "0.2.0-pre.37",
       "devDependencies": {
         "@faker-js/faker": "9.6.0",
         "@types/bun": "1.2.5",
         "@types/sanitize-html": "2.13.0",
         "bun": "1.2.5",
         "expect-type": "1.2.0",
-        "roc-db": "0.2.0-pre.33",
+        "roc-db": "0.2.0-pre.37",
       },
       "peerDependencies": {
-        "roc-db": "0.2.0-pre.33",
+        "roc-db": "0.2.0-pre.37",
         "zod": "3.24.2",
       },
     },
     "packages/@roc-db/valdres": {
       "name": "@roc-db/valdres",
-      "version": "0.2.0-pre.33",
+      "version": "0.2.0-pre.37",
       "devDependencies": {
         "@faker-js/faker": "9.3.0",
         "@roc-db/test-utils": "0.2.0-pre.33",
@@ -103,13 +103,15 @@
     },
     "packages/roc-db": {
       "name": "roc-db",
-      "version": "0.2.0-pre.33",
+      "version": "0.2.0-pre.37",
       "devDependencies": {
-        "@roc-db/in-memory": "0.2.0-pre.33",
-        "@roc-db/test-utils": "0.2.0-pre.33",
+        "@roc-db/in-memory": "0.2.0-pre.37",
+        "@roc-db/indexed-db": "0.2.0-pre.37",
+        "@roc-db/test-utils": "0.2.0-pre.37",
         "@types/bun": "1.2.5",
         "bun": "1.2.5",
         "expect-type": "1.1.0",
+        "fake-indexeddb": "6.0.0",
         "zod": "3.24.2",
       },
       "peerDependencies": {

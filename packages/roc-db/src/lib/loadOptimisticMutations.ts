@@ -7,6 +7,14 @@ import { executeWriteRequestAsyncInternal } from "./executeWriteRequestAsync"
 import { executeWriteRequestSyncInternal } from "./executeWriteRequestSync"
 import { findOperation } from "./findOperation"
 
+const shouldSkipMutationImport = (mutation: Mutation, existing: Mutation) => {
+    if (mutation.debounceCount < existing.debounceCount) return true
+    if (mutation.timestamp < existing.timestamp) return true
+    return false
+    // if (mutation.appliedAt && !existing.appliedAt) return
+    // return true
+}
+
 const loadOptimisticMutationsSync = (
     adapterOptions: AdapterOptions,
     engineOptsTxn: any,
@@ -24,10 +32,12 @@ const loadOptimisticMutationsSync = (
                 mutation.ref,
             )
             if (existing) {
-                console.warn(
-                    `Mutation ${mutation.ref} already exists, skipping`,
-                )
-                continue
+                if (shouldSkipMutationImport(mutation, existing)) {
+                    console.warn(
+                        `Mutation ${mutation.ref} already exists, skipping`,
+                    )
+                    continue
+                }
             }
             const operation = findOperation(operations, mutation)
             const request = operation(
@@ -71,10 +81,12 @@ const loadOptimisticMutationsAsync = async (
                 mutation.ref,
             )
             if (existing) {
-                console.warn(
-                    `Mutation ${mutation.ref} already exists, skipping`,
-                )
-                continue
+                if (shouldSkipMutationImport(mutation, existing)) {
+                    console.warn(
+                        `Mutation ${mutation.ref} already exists, skipping`,
+                    )
+                    continue
+                }
             }
             const operation = findOperation(operations, mutation)
             const request = operation(
@@ -121,7 +133,6 @@ export const loadOptimisticMutations = (
         },
         {} as Record<string, Mutation[]>,
     )
-    // console.log("grouped mutations", groups)
     const beginTransaction =
         adapterOptions.functions.begin || defaultBeginTransaction
 

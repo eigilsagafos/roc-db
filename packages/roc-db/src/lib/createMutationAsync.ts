@@ -1,5 +1,5 @@
 import { BadRequestError } from "../errors/BadRequestError"
-import { WriteRequest } from "../types/WriteRequest"
+import type { WriteRequest } from "../types/WriteRequest"
 import { generateMutationDoc } from "./generateMutationDoc"
 
 export const createMutationAsync = async (
