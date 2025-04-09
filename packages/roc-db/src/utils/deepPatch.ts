@@ -1,4 +1,4 @@
-const deepEqual = (a: any, b: any): boolean => {
+export const deepEqual = (a: any, b: any): boolean => {
     // Same reference or identical primitives
     if (a === b) return true
 
@@ -24,6 +24,27 @@ const deepEqual = (a: any, b: any): boolean => {
 
     // Fallback for primitives
     return false
+}
+
+export const deepMergePatchSet = (target, source) => {
+    // Handle null or undefined
+    if (source == null) return source
+    if (target == null) return source
+    // Handle non-object source
+    if (typeof source !== "object") return source
+    // Handle array source
+    if (Array.isArray(source)) return source
+
+    if (typeof target !== "object") return source
+    const result = { ...target }
+    Object.keys(source).forEach(key => {
+        if (source[key] === null) {
+            delete result[key]
+        } else {
+            result[key] = deepMergePatchSet(result[key], source[key])
+        }
+    })
+    return result
 }
 
 export const deepPatch = (original, patch) => {

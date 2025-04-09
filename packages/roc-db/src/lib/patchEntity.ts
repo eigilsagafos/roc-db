@@ -1,6 +1,6 @@
 import type { Entity } from "../types/Entity"
 import type { Ref } from "../types/Ref"
-import { deepPatch } from "../utils/deepPatch"
+import { deepEqual, deepMergePatchSet, deepPatch } from "../utils/deepPatch"
 import type { WriteTransaction } from "./WriteTransaction"
 
 export const patchEntity = (txn: WriteTransaction, ref: Ref, body: any) => {
@@ -17,13 +17,14 @@ const handlePatch = (
     currentEntity: Entity,
     patchSet: any,
 ) => {
-    const [updatedEntity, reversePatch] = deepPatch(currentEntity, {
+    const patch = {
         updated: {
             mutationRef: txn.mutation.ref,
             timestamp: txn.mutation.timestamp,
         },
         ...patchSet,
-    })
+    }
+    const [updatedEntity, reversePatch] = deepPatch(currentEntity, patch)
 
     txn.changeSet.entities.set(ref, updatedEntity)
     if (txn.changeSetInitialized) {
@@ -34,19 +35,33 @@ const handlePatch = (
             } else if (prevAction === "delete") {
                 throw new Error("Cannot update a deleted entity")
             } else if (prevAction === "update") {
-                const [, prevUpdated, prevRevPatch] = txn.log.get(ref)
-                const [restored] = deepPatch(prevUpdated, prevRevPatch)
-                const [newUpdated, newRevPatch] = deepPatch(restored, {
-                    updated: {
-                        mutationRef: txn.mutation.ref,
-                        timestamp: txn.mutation.timestamp,
-                    },
-                    ...patchSet,
-                })
-                txn.log.set(ref, ["update", newUpdated, newRevPatch])
+                const [, , , prevPatch, original] = txn.log.get(ref)
+                const mergedPatch = deepMergePatchSet(prevPatch, patch)
+                const [updatedEntity2, reversePatch2] = deepPatch(
+                    original,
+                    mergedPatch,
+                )
+                if (!deepEqual(updatedEntity2, updatedEntity)) {
+                    throw new Error("Patch failed")
+                }
+                txn.log.set(ref, [
+                    "update",
+                    updatedEntity2,
+                    reversePatch2,
+                    mergedPatch,
+                    original,
+                ])
+            } else {
+                throw new Error("Unhandled action")
             }
         } else {
-            txn.log.set(ref, ["update", updatedEntity, reversePatch])
+            txn.log.set(ref, [
+                "update",
+                updatedEntity,
+                reversePatch,
+                patch,
+                currentEntity,
+            ])
         }
     }
     return updatedEntity

@@ -49,16 +49,11 @@ export const runAsyncFunctionChain = async (query, args = []) => {
             return res
         }
     } else if (query instanceof QueryObjectClass) {
-        const entries = await Promise.all(
-            Object.entries(query.map).map(async ([key, q]) => {
-                const result = await runAsyncFunctionChain(q)
-                return [key, result]
-            }),
-        )
-        return Object.fromEntries(entries)
+        const resultObj = []
+        for (const [key, q] of Object.entries(query.map)) {
+            const result = await runAsyncFunctionChain(q)
+            resultObj[key] = result
+        }
+        return resultObj
     }
-    // else {
-    //     console.error("Unsupported query type", query)
-    //     throw new Error("Unsupported query type")
-    // }
 }
