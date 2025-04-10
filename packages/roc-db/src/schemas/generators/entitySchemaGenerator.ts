@@ -25,7 +25,7 @@ export const entitySchemaGenerator = <
     return z
         .object({
             ref: refSchemaGenerator(entity),
-            entity: z.string(),
+            entity: z.literal(entity),
             created: TimestampWithMutationRefSchema.required().strict(),
             updated: TimestampWithMutationRefSchema.required().strict(),
             data: (args.data ?? z.object({}).strict()) as Data,

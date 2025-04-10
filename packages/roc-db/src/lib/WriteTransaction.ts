@@ -9,6 +9,7 @@ import { applyChangeSet } from "./applyChangeSet"
 import { commit } from "./commit"
 import { createEntity } from "./createEntity"
 import { createRef } from "./createRef"
+import { deleteChangeSet } from "./deleteChangeSet"
 import { deleteEntity } from "./deleteEntity"
 import { finalizeMutation } from "./finalizeMutation"
 import { findDependents } from "./findDependents"
@@ -55,6 +56,7 @@ export class WriteTransaction<
     createRef = (entity: string) => createRef(this, entity)
     deleteEntity = (ref: Ref, cascade = false) =>
         deleteEntity(this, ref, cascade)
+    deleteChangeSet = (changeSetRef: Ref) => deleteChangeSet(this, changeSetRef)
     finalizedMutation = (isChangeSetApply = false) => {
         if (this.mutationFinalized)
             throw new Error("Mutation already finalized")

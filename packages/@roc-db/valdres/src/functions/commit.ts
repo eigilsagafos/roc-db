@@ -1,5 +1,10 @@
-import type { Entity, Mutation, Ref, WriteTransaction } from "roc-db"
-import { commitDelete } from "./commitDelete"
+import {
+    entityFromRef,
+    type Entity,
+    type Mutation,
+    type Ref,
+    type WriteTransaction,
+} from "roc-db"
 import { saveMutation } from "./saveMutation"
 
 export const commit = (
@@ -44,7 +49,15 @@ export const commit = (
         valdresTxn.set(entityAtom(doc.ref), doc)
     }
     for (const ref of deleted) {
-        commitDelete(txn, ref)
+        const entity = entityFromRef(ref)
+        if (entity === "Mutation") {
+            txn.engineOpts.txn.del(mutationAtom(ref))
+        } else {
+            txn.engineOpts.txn.del(entityAtom(ref))
+            if (entityRefListAtom) {
+                throw new Error("TODO support entityRefListAtom")
+            }
+        }
     }
     return mutation
 }

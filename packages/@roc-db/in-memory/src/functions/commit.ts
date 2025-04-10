@@ -1,6 +1,15 @@
+import type { Entity, Mutation, Ref, WriteTransaction } from "roc-db"
 import { saveMutation } from "./saveMutation"
 
-export const commit = (txn, mutation, { created, updated, deleted }) => {
+export const commit = (
+    txn: WriteTransaction,
+    mutation: Mutation,
+    {
+        created,
+        updated,
+        deleted,
+    }: { created: Entity[]; updated: Entity[]; deleted: Ref[] },
+) => {
     const { mutations } = txn.engineOpts
     const currentMutation = mutations.get(txn.mutation.ref)
     if (currentMutation) {
@@ -27,7 +36,11 @@ export const commit = (txn, mutation, { created, updated, deleted }) => {
         txn.engineOpts.entities.set(doc.ref, doc)
     }
     for (const ref of deleted) {
-        txn.engineOpts.entities.delete(ref)
+        if (ref.startsWith("Mutation/")) {
+            txn.engineOpts.mutations.delete(ref)
+        } else {
+            txn.engineOpts.entities.delete(ref)
+        }
     }
 
     return mutation

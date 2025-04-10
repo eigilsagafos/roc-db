@@ -3,7 +3,7 @@ import { z } from "zod"
 import { PostVersionRefSchema } from "./PostVersionRefSchema"
 import { PostRefSchema } from "./PostRefSchema"
 
-export const PostVersionSchema = entitySchemaGenerator("Post", {
+export const PostVersionSchema = entitySchemaGenerator("PostVersion", {
     ref: PostVersionRefSchema,
     data: z.object({
         version: z.number(),

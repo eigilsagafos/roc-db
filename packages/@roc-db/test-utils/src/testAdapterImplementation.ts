@@ -354,6 +354,19 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
             })
         })
 
+        test("deleteDraft", async () => {
+            const { draftRef } = await prepareChangeSetTest(adapter1)
+            const mutationsBefore = await adapter1.pageMutations({
+                changeSetRef: draftRef,
+            })
+            const [, mutation] = await adapter1.deleteDraft(draftRef)
+            expect(mutation.log).toHaveLength(mutationsBefore.length + 1)
+            const mutationsAfter = await adapter1.pageMutations({
+                changeSetRef: draftRef,
+            })
+            expect(mutationsAfter).toHaveLength(0)
+        })
+
         test("init adapter2", async () => {
             const adapterA = await createAdapter({ optimistic: true })
             const adapterB = await createAdapter({ optimistic: true })
