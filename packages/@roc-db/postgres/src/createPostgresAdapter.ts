@@ -17,6 +17,8 @@ export const createPostgresAdapter = ({
     mutationsTableName = "mutations",
     entitiesTableName = "entities",
     optimistic = false,
+    beforeTransactionStart,
+    afterTransactionEnd,
     onTransactionStart,
     onTransactionEnd,
 }: {
@@ -40,6 +42,8 @@ export const createPostgresAdapter = ({
             getClient,
             mutationsTableName,
             entitiesTableName,
+            beforeTransactionStart,
+            afterTransactionEnd,
             onTransactionStart,
             onTransactionEnd,
         },

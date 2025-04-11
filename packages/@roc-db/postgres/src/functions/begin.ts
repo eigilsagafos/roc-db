@@ -8,7 +8,10 @@ const findClient = (engineOpts: PostgresEngineOpts): Sql => {
 }
 export const begin = async (engineOpts: PostgresEngineOpts, callback) => {
     const rootClient = findClient(engineOpts)
-    return rootClient.begin(async tx => {
+    if (engineOpts.beforeTransactionStart) {
+        await engineOpts.beforeTransactionStart(rootClient)
+    }
+    const res = await rootClient.begin(async tx => {
         if (engineOpts.onTransactionStart) {
             await engineOpts.onTransactionStart(tx)
         }
@@ -18,4 +21,8 @@ export const begin = async (engineOpts: PostgresEngineOpts, callback) => {
             sqlTxn: tx,
         })
     })
+    if (engineOpts.afterTransactionEnd) {
+        await engineOpts.afterTransactionEnd(rootClient)
+    }
+    return res
 }
