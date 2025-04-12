@@ -6,8 +6,8 @@ import { initializeChangeSet } from "./initializeChangeSet"
 import { ReadTransaction } from "./ReadTransaction"
 import { runAsyncFunctionChain } from "./runAsyncFunctionChain"
 
-const parseAndValidatePayload = operation => {
-    return operation.schema.parse(operation.payload)
+const parseAndValidatePayload = (request: ReadRequest) => {
+    return request.operation.payloadSchema.parse(request.payload)
 }
 
 export const executeReadRequestAsync = async <
@@ -18,13 +18,13 @@ export const executeReadRequestAsync = async <
 >(
     request: Request,
     engineOpts: EngineOpts,
-    adapterOpts: AdapterOpts,
+    adapter: AdapterOpts,
 ) => {
     const payload = parseAndValidatePayload(request)
-    const begin = adapterOpts.functions.begin || defaultBeginTransaction
+    const begin = adapter.functions.begin || defaultBeginTransaction
     return begin(engineOpts, async engineOptsTxn => {
         const beginRequest =
-            adapterOpts.functions.beginRequest || defaultBeginRequest
+            adapter.functions.beginRequest || defaultBeginRequest
         const result = beginRequest(
             request,
             engineOptsTxn,
@@ -32,20 +32,23 @@ export const executeReadRequestAsync = async <
                 const txn = new ReadTransaction(
                     request,
                     engineOptsReq,
-                    adapterOpts,
+                    adapter,
                     payload,
                 )
 
                 await initializeChangeSet(txn)
 
-                const functions = request.callback(txn, adapterOpts.session)
+                const functions = request.operation.callback(
+                    txn,
+                    adapter.session,
+                )
 
                 const res = runAsyncFunctionChain(functions)
                 return res
             },
         )
-        if (adapterOpts.functions.end) {
-            await adapterOpts.functions.end(engineOptsTxn)
+        if (adapter.functions.end) {
+            await adapter.functions.end(engineOptsTxn)
         }
         return result
     })

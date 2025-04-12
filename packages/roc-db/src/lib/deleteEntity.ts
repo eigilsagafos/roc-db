@@ -7,7 +7,7 @@ export const deleteEntity = (
     ref: Ref,
     cascade: boolean,
 ) => {
-    if (txn.adapterOpts.async) {
+    if (txn.adapter.async) {
         return deleteEntityAsync(txn, ref, cascade)
     } else {
         return deleteEntitySync(txn, ref, cascade)

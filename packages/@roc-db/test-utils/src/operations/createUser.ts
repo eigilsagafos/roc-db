@@ -1,12 +1,11 @@
 import { Query, writeOperation } from "roc-db"
-import { CreateUserMutationSchema } from "../schemas/CreateUserMutationSchema"
-import { PostSchema } from "../schemas/PostSchema"
+import { z } from "zod"
 
 export const createUser = writeOperation(
-    CreateUserMutationSchema,
-    PostSchema,
+    "createUser",
+    z.object({ email: z.string() }),
     txn => {
-        const ref = txn.createRef("Post")
-        return Query(() => txn.createEntity(ref, { data: { title: "Foo" } }))
+        const ref = txn.createRef("User")
+        return Query(() => txn.createEntity(ref, { data: { name: "Foo" } }))
     },
 )

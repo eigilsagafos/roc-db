@@ -1,10 +1,11 @@
 import { Query, writeOperation } from "roc-db"
+import { z } from "zod"
 import { BlockImageSchema } from "../schemas/BlockImageSchema"
-import { CreateBlockImageMutationSchema } from "../schemas/CreateBlockImageMutationSchema"
+import { PostRefSchema } from "../schemas/PostRefSchema"
 
 export const createBlockImage = writeOperation(
-    CreateBlockImageMutationSchema,
-    BlockImageSchema,
+    "createBlockImage",
+    z.object({ postRef: PostRefSchema }).strict(),
     txn => {
         const ref = txn.createRef("BlockImage")
         const { postRef } = txn.payload
@@ -12,5 +13,5 @@ export const createBlockImage = writeOperation(
             txn.createEntity(ref, { parents: { post: postRef } }),
         )
     },
-    { changeSetOnly: true },
+    { changeSetOnly: true, outputSchema: BlockImageSchema },
 )

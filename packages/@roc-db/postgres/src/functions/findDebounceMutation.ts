@@ -4,10 +4,10 @@ import { postgresRowToMutation } from "../lib/postgresRowToMutation"
 export const findDebounceMutation = async (
     request: WriteRequest,
     engineOpts,
-    now,
+    now: number,
     mutationName: string,
 ) => {
-    const debounceTime = request.settings.debounce
+    const debounceTime = request.operation.debounce
 
     const thresholdTime = new Date(now - debounceTime * 1000).toISOString()
     const { sqlTxn, mutationsTableName } = engineOpts

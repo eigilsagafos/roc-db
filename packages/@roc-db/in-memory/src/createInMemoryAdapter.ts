@@ -1,4 +1,4 @@
-import { createAdapter, Snowflake, type Adapter, type Operation } from "roc-db"
+import { createAdapter, Snowflake, type Operation, type Session } from "roc-db"
 import * as functions from "./functions"
 import type { z } from "zod"
 
@@ -14,12 +14,14 @@ export const createInMemoryAdapter = <
     operations,
     entities,
     snowflake = new Snowflake(1, 1),
-    session,
     optimistic = true,
+    session,
 }: {
     operations: Operations
     entities: Entities
     snowflake?: Snowflake
+    optimistic?: boolean
+    session: Session
 }) => {
     return createAdapter(
         {
@@ -28,12 +30,12 @@ export const createInMemoryAdapter = <
             entities,
             functions,
             snowflake,
-            session,
             optimistic,
+            session,
         },
         {
             entities: new Map(),
             mutations: new Map(),
         },
-    ) as Adapter
+    )
 }

@@ -1,7 +1,7 @@
 import { BadRequestError } from "../errors/BadRequestError"
 import type { AdapterOptions } from "../types/AdapterOptions"
 import type { Ref } from "../types/Ref"
-import type { RocRequest } from "../types/RocRequest"
+import type { RocDBRequest } from "../types/RocDBRequest"
 import { refsFromRelations } from "../utils/refsFromRelations"
 import { batchReadEntities } from "./batchReadEntities"
 import { readEntity } from "./readEntity"
@@ -11,9 +11,9 @@ export class ReadTransaction<EngineOpts extends any = any> {
     changeSetRef: Ref | null
     changeSetInitialized: boolean
     constructor(
-        public request: RocRequest,
+        public request: RocDBRequest,
         public engineOpts: EngineOpts,
-        public adapterOpts: AdapterOptions<EngineOpts>,
+        public adapter: AdapterOptions<EngineOpts>,
         public payload: any,
         public changeSet: {
             mutations: Map<any, any>
@@ -24,7 +24,7 @@ export class ReadTransaction<EngineOpts extends any = any> {
         },
     ) {
         this.request = request
-        this.adapterOpts = adapterOpts
+        this.adapter = adapter
         this.engineOpts = engineOpts
         this.payload = payload
         this.changeSetRef = request.changeSetRef
@@ -39,7 +39,7 @@ export class ReadTransaction<EngineOpts extends any = any> {
             throw new BadRequestError(
                 "No ref provided to getChangeSetMutations",
             )
-        return this.adapterOpts.functions.getChangeSetMutations(this, ref)
+        return this.adapter.functions.getChangeSetMutations(this, ref)
     }
 
     readEntity = (ref: Ref, throwIfNotFound = true) =>
@@ -49,10 +49,10 @@ export class ReadTransaction<EngineOpts extends any = any> {
         readMutation(this, ref, throwIfNotFound)
 
     pageMutations = args => {
-        return this.adapterOpts.functions.pageMutations(this, args)
+        return this.adapter.functions.pageMutations(this, args)
     }
     pageEntities = args => {
-        return this.adapterOpts.functions.pageEntities(this, args)
+        return this.adapter.functions.pageEntities(this, args)
     }
     childRefsOf = (ref, recursive = false) => {
         return childRefsOf(this, ref, recursive)
@@ -90,7 +90,7 @@ const childRefsOfAsync = async (txn, refs, recursive) => {
 }
 
 const childRefsOf = (txn, ref, recursive) => {
-    if (txn.adapterOpts.async) {
+    if (txn.adapter.async) {
         return childRefsOfAsync(txn, [ref], recursive)
     } else {
         return childRefsOfSync(txn, [ref], recursive)

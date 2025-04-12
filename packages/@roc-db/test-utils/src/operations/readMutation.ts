@@ -4,7 +4,6 @@ import { z } from "zod"
 export const readMutation: any = readOperation(
     "readMutation",
     z.string(),
-    z.any(),
     txn => {
         const ref = txn.payload
         return QueryChain(

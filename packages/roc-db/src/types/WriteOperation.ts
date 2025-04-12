@@ -1,16 +1,15 @@
-import type { ZodSchema } from "zod"
-import type { WriteOperationSettings } from "./WriteOperationSettings"
-import type { Ref } from "./Ref"
-import type { WriteRequest } from "./WriteRequest"
+import type { z, ZodSchema } from "zod"
 
 export type WriteOperation<
-    OperationName extends string = any,
-    Mutation = any,
-    Payload = any,
-    Output = any,
+    Name extends string = string,
+    PayloadSchema extends ZodSchema = ZodSchema,
 > = {
-    (payload: Payload, changeSetRef?: Ref): WriteRequest<Payload>
-    readonly operationName: OperationName
-    readonly outputSchema: ZodSchema
-    readonly settings: WriteOperationSettings
+    readonly type: "write"
+    readonly name: Name
+    readonly payloadSchema: PayloadSchema
+    readonly outputSchema?: ZodSchema
+    readonly version: number
+    readonly debounce: number
+    readonly changeSetOnly: boolean
+    readonly callback: (payload: z.output<PayloadSchema>) => any
 }

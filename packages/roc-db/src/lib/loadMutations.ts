@@ -40,11 +40,13 @@ const loadMutationsSync = (
                 }
             }
             const operation = findOperation(operations, mutation)
-            const request = operation(
-                mutation.payload,
-                mutation.changeSetRef,
-                mutation,
-            )
+            const request = {
+                operation,
+                payload: mutation.payload,
+                changeSetRef: mutation.changeSetRef,
+                optimisticMutation: mutation,
+            }
+
             const result = beginRequest(request, engineOptsTxn, engineOptsReq =>
                 executeWriteRequestSyncInternal(
                     request,
@@ -89,11 +91,12 @@ const loadMutationsAsync = async (
                 }
             }
             const operation = findOperation(operations, mutation)
-            const request = operation(
-                mutation.payload,
-                mutation.changeSetRef,
-                mutation,
-            )
+            const request = {
+                operation,
+                payload: mutation.payload,
+                changeSetRef: mutation.changeSetRef,
+                optimisticMutation: mutation,
+            }
             const result = await beginRequest(
                 request,
                 engineOptsTxn,

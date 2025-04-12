@@ -3,7 +3,7 @@ import { DELETED_IN_CHANGE_SET_SYMBOL } from "../utils/DELETED_IN_CHANGE_SET_SYM
 import type { WriteTransaction } from "./WriteTransaction"
 
 export const deleteChangeSet = (txn: WriteTransaction, ref: Ref) => {
-    if (txn.adapterOpts.async) {
+    if (txn.adapter.async) {
         return deleteChangeSetAsync(txn, ref)
     } else {
         return deleteChangeSetSync(txn, ref)
@@ -11,7 +11,7 @@ export const deleteChangeSet = (txn: WriteTransaction, ref: Ref) => {
 }
 
 const deleteChangeSetAsync = async (txn: WriteTransaction, ref: Ref) => {
-    const changeSet = await txn.adapterOpts.functions.getChangeSetMutations(
+    const changeSet = await txn.adapter.functions.getChangeSetMutations(
         txn,
         ref,
     )
@@ -19,7 +19,7 @@ const deleteChangeSetAsync = async (txn: WriteTransaction, ref: Ref) => {
     return changeSet.map(m => m.ref)
 }
 const deleteChangeSetSync = (txn: WriteTransaction, ref: Ref) => {
-    const changeSet = txn.adapterOpts.functions.getChangeSetMutations(txn, ref)
+    const changeSet = txn.adapter.functions.getChangeSetMutations(txn, ref)
     changeSet.forEach(mutation => applyInLog(txn, mutation.ref))
     return changeSet.length
 }

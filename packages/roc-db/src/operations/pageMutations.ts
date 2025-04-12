@@ -11,7 +11,6 @@ export const pageMutations = readOperation(
             changeSetRef: z.string().optional(),
         })
         .optional(),
-    z.object({}),
     txn => {
         // console.log("txn.pageMutations()", txn.)
         // throw new Error("Not implemented")

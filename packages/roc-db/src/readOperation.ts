@@ -5,35 +5,35 @@ import type { ReadRequest } from "./types/ReadRequest"
 import type { Ref } from "./types/Ref"
 
 export const readOperation = <
-    const OperationName extends string,
-    InputSchema extends ZodSchema,
-    OutputSchema extends ZodSchema,
+    const Name extends string,
+    const PayloadSchema extends ZodSchema,
 >(
-    operationName: OperationName,
-    inputSchema: InputSchema,
-    outputSchema: OutputSchema,
-    queryFn: (
+    name: Name,
+    payloadSchema: PayloadSchema,
+    callback: (
         txn: ReadTransaction<ReadRequest<z.infer<InputSchema>>, any, any, any>,
     ) => ZodType<OutputSchema>,
-): ReadOperation<
-    OperationName,
-    ZodType<InputSchema>,
-    ZodType<OutputSchema>
-> => {
-    return Object.assign(
-        (payload: ZodType<InputSchema>, changeSetRef?: Ref) => {
-            return {
-                type: "read",
-                schema: inputSchema,
-                payload,
-                callback: queryFn,
-                changeSetRef,
-                operationName,
-            } as const
-        },
-        {
-            operationName: operationName,
-            outputSchema: outputSchema,
-        },
-    )
+): ReadOperation<Name, ZodType<InputSchema>, ZodType<OutputSchema>> => {
+    return {
+        type: "read",
+        name,
+        payloadSchema,
+        callback,
+    }
+    // return Object.assign(
+    //     (payload: ZodType<InputSchema>, changeSetRef?: Ref) => {
+    //         return {
+    //             type: "read",
+    //             schema: inputSchema,
+    //             payload,
+    //             callback: queryFn,
+    //             changeSetRef,
+    //             operationName,
+    //         } as const
+    //     },
+    //     {
+    //         operationName: operationName,
+    //         outputSchema: outputSchema,
+    //     },
+    // )
 }

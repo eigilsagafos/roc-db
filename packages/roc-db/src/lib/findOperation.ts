@@ -6,7 +6,7 @@ export const findOperation = (
     mutation: Mutation,
 ) => {
     const operation = operations.find(
-        operation => operation.operationName === mutation.operation.name,
+        operation => operation.name === mutation.operation.name,
     )
     if (operation) return operation
     throw new Error(`Operation "${mutation.operation.name}" not found`)

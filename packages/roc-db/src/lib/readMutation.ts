@@ -17,7 +17,7 @@ export const readMutation = (
         }
         return mutation
     }
-    if (txn.adapterOpts.async) {
+    if (txn.adapter.async) {
         return readMutationAsync(txn, ref, throwIfMissing)
     } else {
         return readMutationSync(txn, ref, throwIfMissing)
@@ -29,7 +29,7 @@ const readMutationAsync = async (
     ref: Ref,
     throwIfMissing = true,
 ) => {
-    const mutation = await txn.adapterOpts.functions.readMutation(
+    const mutation = await txn.adapter.functions.readMutation(
         txn.engineOpts,
         ref,
     )
@@ -41,7 +41,7 @@ const readMutationSync = (
     ref: Ref,
     throwIfMissing = true,
 ) => {
-    const mutation = txn.adapterOpts.functions.readMutation(txn.engineOpts, ref)
+    const mutation = txn.adapter.functions.readMutation(txn.engineOpts, ref)
     return handleReadResponse(txn, ref, mutation, throwIfMissing)
 }
 

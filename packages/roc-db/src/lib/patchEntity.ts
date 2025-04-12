@@ -4,7 +4,7 @@ import { deepEqual, deepMergePatchSet, deepPatch } from "../utils/deepPatch"
 import type { WriteTransaction } from "./WriteTransaction"
 
 export const patchEntity = (txn: WriteTransaction, ref: Ref, body: any) => {
-    if (txn.adapterOpts.async) {
+    if (txn.adapter.async) {
         return patchEntityAsync(txn, ref, body)
     } else {
         return patchEntitySync(txn, ref, body)

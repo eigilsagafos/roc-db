@@ -1,9 +1,9 @@
-import { Ref } from "./Ref"
+import type { ReadOperation } from "./ReadOperation"
+import type { Ref } from "./Ref"
 
 export type ReadRequest<Payload = any, Session = any> = {
     type: "read"
+    operation: ReadOperation
     payload: Payload
-    settings: {}
-    callback: (s: string, session: Session) => {}
     changeSetRef: Ref | null
 }

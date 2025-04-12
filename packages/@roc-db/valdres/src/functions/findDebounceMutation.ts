@@ -3,10 +3,10 @@ import type { WriteOperation } from "roc-db"
 export const findDebounceMutation = (
     request: WriteOperation,
     engine: InMemoryEngine,
-    now,
+    now: number,
     mutationName: string,
 ) => {
-    const debounceTime = request.settings.debounce
+    const debounceTime = request.operation.debounce
     if (debounceTime === undefined) return
     // TODO: Make this more efficient. We could store a list of mutation refs pr operation seperatly if the operation supports debounce
     // const threshold = now - debounceTime * 1000

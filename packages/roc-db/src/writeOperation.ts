@@ -1,57 +1,31 @@
 import { z, ZodSchema } from "zod"
 import { WriteTransaction } from "./lib/WriteTransaction"
-import type { Mutation } from "./types/Mutation"
-import type { Ref } from "./types/Ref"
 import type { WriteOperation } from "./types/WriteOperation"
 import type { WriteOperationSettings } from "./types/WriteOperationSettings"
-import type { WriteRequest } from "./types/WriteRequest"
-import { mutationNameFromSchema } from "./lib/mutationNameFromSchema"
 
-type MutationSchema = z.ZodObject<{
-    name: z.ZodLiteral<string>
-    payload: z.ZodTypeAny
-    debounceCount: z.ZodNumber
-}>
-
-export const writeOperation = <M extends MutationSchema, O extends ZodSchema>(
-    mutationSchema: M,
-    outputSchema: O,
-    mutateFunction: (
-        txn: WriteTransaction<
-            WriteRequest<z.infer<M>["payload"]>,
-            any,
-            any,
-            any
-        >,
-    ) => any,
+export const writeOperation = <
+    const Name extends string = string,
+    PayloadSchema extends ZodSchema = ZodSchema,
+>(
+    name: Name,
+    payloadSchema: PayloadSchema,
+    callback: (txn: WriteTransaction) => any,
     settings: WriteOperationSettings = {},
-): WriteOperation<
-    z.infer<M>["name"],
-    z.infer<M>,
-    z.infer<M>["payload"],
-    z.infer<O>
-> => {
-    const operationName = mutationNameFromSchema(mutationSchema)
-    return Object.assign(
-        (
-            payload: z.infer<M>["payload"],
-            changeSetRef?: Ref,
-            optimisticMutation?: Mutation,
-        ) => {
-            return {
-                type: "write",
-                schema: mutationSchema,
-                payload,
-                callback: mutateFunction,
-                settings,
-                changeSetRef,
-                optimisticMutation,
-                operationName,
-            } as const
-        },
-        {
-            operationName,
-            outputSchema: outputSchema,
-        },
-    )
+): WriteOperation<Name, PayloadSchema> => {
+    const {
+        version = 1,
+        debounce = 0,
+        changeSetOnly = false,
+        outputSchema = z.any(),
+    } = settings
+    return Object.freeze({
+        type: "write",
+        name,
+        payloadSchema,
+        callback,
+        version,
+        debounce,
+        changeSetOnly,
+        outputSchema,
+    })
 }

@@ -1,18 +1,21 @@
 import { Query, writeOperation } from "roc-db"
-import { PostSchema } from "../schemas/PostSchema"
-import { CreatePostMutationSchema } from "../schemas/CreatePostMutationSchema"
+import { z } from "zod"
 
-export const createPost = writeOperation(
-    CreatePostMutationSchema,
-    PostSchema,
-    txn => {
-        const ref = txn.createRef("Post")
-        const { title, slug, tags } = txn.payload
-        return Query(() =>
-            txn.createEntity(ref, {
-                data: { title, tags, slug },
-                children: { blocks: [] },
-            }),
-        )
-    },
-)
+const PayloadSchema = z
+    .object({
+        title: z.string(),
+        slug: z.string().optional(),
+        tags: z.array(z.string()).default([]),
+    })
+    .strict()
+
+export const createPost = writeOperation("createPost", PayloadSchema, txn => {
+    const ref = txn.createRef("Post")
+    const { title, slug, tags } = txn.payload
+    return Query(() =>
+        txn.createEntity(ref, {
+            data: { title, tags, slug },
+            children: { blocks: [] },
+        }),
+    )
+})

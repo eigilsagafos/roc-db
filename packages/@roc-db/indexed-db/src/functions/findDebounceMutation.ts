@@ -10,7 +10,7 @@ export const findDebounceMutation = async (
     const objectStore = engine.txn.objectStore("mutations")
     const index = objectStore.index("timestamp")
     const timestamp = new Date(
-        now - request.settings.debounce * 1000,
+        now - request.operation.debounce * 1000,
     ).toISOString()
     const range = IDBKeyRange.lowerBound(timestamp, true) // timestamp > value
     const idbRequest = index.openCursor(range)

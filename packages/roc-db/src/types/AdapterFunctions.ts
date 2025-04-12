@@ -1,11 +1,11 @@
 import type { WriteTransaction } from "../lib/WriteTransaction"
 import type { Mutation } from "./Mutation"
 import type { Ref } from "./Ref"
-import type { RocRequest } from "./RocRequest"
+import type { RocDBRequest } from "./RocDBRequest"
 import type { Transaction } from "./Transaction"
 
 export type BeginFunction<EngineOptions> = (
-    request: RocRequest,
+    request: RocDBRequest,
     engineOpts: EngineOptions,
 ) => EngineOptions
 

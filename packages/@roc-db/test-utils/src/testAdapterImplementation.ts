@@ -349,9 +349,7 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
 
         test("applyDraft", async () => {
             const { draftRef } = await prepareChangeSetTest(adapter1)
-            const [version, mutation] = await adapter1.applyDraft({
-                ref: draftRef,
-            })
+            const [version, mutation] = await adapter1.applyDraft(draftRef)
         })
 
         test("deleteDraft", async () => {

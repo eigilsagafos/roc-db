@@ -1,7 +1,6 @@
 import { BadRequestError } from "../errors/BadRequestError"
 import type { WriteRequest } from "../types/WriteRequest"
 import { generateMutationDoc } from "./generateMutationDoc"
-import { mutationNameFromSchema } from "./mutationNameFromSchema"
 
 export const createMutationAsync = async (
     request: WriteRequest,
@@ -23,12 +22,12 @@ export const createMutationAsync = async (
         return [request.optimisticMutation, request.optimisticMutation.log]
     }
     const now = new Date()
-    if (request.settings.debounce) {
+    if (request.operation.debounce) {
         const res = await adapter.functions.findDebounceMutation(
             request,
             engine,
             now,
-            mutationNameFromSchema(request.schema),
+            request.operation.name,
         )
         if (res) {
             return [

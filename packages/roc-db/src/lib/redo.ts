@@ -1,17 +1,17 @@
-const undoAsync = async (txn, mutationRef) => {
+const redoAsync = async (txn, mutationRef) => {
     const mutation = await txn.readMutation(mutationRef)
     addToLog(txn, mutation)
 }
 
-const undoSync = (txn, mutationRef) => {
+const redoSync = (txn, mutationRef) => {
     const mutation = txn.readMutation(mutationRef)
     addToLog(txn, mutation)
 }
-export const undo = (txn, mutationRef) => {
+export const redo = (txn, mutationRef) => {
     if (txn.adapter.async) {
-        return undoAsync(txn, mutationRef)
+        return redoAsync(txn, mutationRef)
     } else {
-        return undoSync(txn, mutationRef)
+        return redoSync(txn, mutationRef)
     }
 }
 
@@ -19,7 +19,8 @@ const addToLog = (txn, mutation) => {
     mutation.log.forEach(([ref, action, document]) => {
         switch (action) {
             case "create": {
-                txn.deleteEntity(ref)
+                const { ref, data, children, parents, ancestors } = document
+                txn.createEntity(ref, { data, children, parents, ancestors })
                 break
             }
             case "update": {
@@ -27,8 +28,7 @@ const addToLog = (txn, mutation) => {
                 break
             }
             case "delete": {
-                const { ref, data, children, parents, ancestors } = document
-                txn.createEntity(ref, { data, children, parents, ancestors })
+                txn.deleteEntity(ref)
                 break
             }
             default: {

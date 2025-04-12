@@ -6,7 +6,6 @@ import { BlockImageSchema, BlockParagraphSchema } from "../schemas"
 export const readEntity: any = readOperation(
     "readEntity",
     z.string(),
-    z.union([PostSchema, BlockImageSchema, BlockParagraphSchema]),
     txn => {
         const ref = txn.payload
         return QueryChain(
@@ -18,5 +17,12 @@ export const readEntity: any = readOperation(
                 return entity
             }),
         )
+    },
+    {
+        outputSchema: z.union([
+            PostSchema,
+            BlockImageSchema,
+            BlockParagraphSchema,
+        ]),
     },
 )

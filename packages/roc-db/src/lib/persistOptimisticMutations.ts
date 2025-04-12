@@ -41,10 +41,13 @@ const persistOptimisticMutationsSync = (
                 }
             }
             const operation = findOperation(operations, mutation)
-            const request = operation(mutation.payload, mutation.changeSetRef, {
-                ...mutation,
-                persistedAt,
-            })
+            const request = {
+                operation,
+                payload: mutation.payload,
+                changeSetRef: mutation.changeSetRef,
+                optimisticMutation: { ...mutation, persistedAt },
+            }
+
             const [, persistedMutation] = beginRequest(
                 request,
                 engineOptsTxn,
@@ -93,10 +96,12 @@ const persistOptimisticMutationsAsync = async (
                 }
             }
             const operation = findOperation(operations, mutation)
-            const request = operation(mutation.payload, mutation.changeSetRef, {
-                ...mutation,
-                persistedAt,
-            })
+            const request = {
+                operation,
+                payload: mutation.payload,
+                changeSetRef: mutation.changeSetRef,
+                optimisticMutation: { ...mutation, persistedAt },
+            }
             const [, persistedMutation] = await beginRequest(
                 request,
                 engineOptsTxn,

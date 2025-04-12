@@ -11,25 +11,27 @@ import { WriteTransaction } from "./WriteTransaction"
 export const executeWriteRequestSyncInternal = (
     request: WriteRequest,
     engineOpts: any,
-    adapterOpts: AdapterOptions,
+    adapter: AdapterOptions,
     payload: any,
 ) => {
     const [mutation, optimisticRefs] = createMutationSync(
         request,
         engineOpts,
-        adapterOpts,
+        adapter,
         payload,
     )
     const txn = new WriteTransaction(
         request,
         engineOpts,
-        adapterOpts,
+        adapter,
         payload,
         mutation,
         optimisticRefs,
     )
     initializeChangeSet(txn)
-    const res = runSyncFunctionChain(request.callback(txn, adapterOpts.session))
+    const res = runSyncFunctionChain(
+        request.operation.callback(txn, adapter.session),
+    )
     const savedMutation = txn.commit()
 
     return [res, savedMutation]
@@ -43,23 +45,23 @@ export const executeWriteRequestSync = <
 >(
     request: Request,
     engineOpts: EngineOpts,
-    adapterOpts: AdapterOpts,
+    adapter: AdapterOpts,
 ) => {
     const payload = validateWriteRequestAndParsePayload(request)
-    const begin = adapterOpts.functions.begin || defaultBeginTransaction
+    const begin = adapter.functions.begin || defaultBeginTransaction
     return begin(engineOpts, engineOptsTxn => {
         const beginRequest =
-            adapterOpts.functions.beginRequest || defaultBeginRequest
+            adapter.functions.beginRequest || defaultBeginRequest
         const res = beginRequest(request, engineOptsTxn, engineOptsReq =>
             executeWriteRequestSyncInternal(
                 request,
                 engineOptsReq,
-                adapterOpts,
+                adapter,
                 payload,
             ),
         )
-        if (adapterOpts.functions.end) {
-            adapterOpts.functions.end(engineOptsTxn)
+        if (adapter.functions.end) {
+            adapter.functions.end(engineOptsTxn)
         }
         return res
     })

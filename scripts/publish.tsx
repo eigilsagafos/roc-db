@@ -146,19 +146,12 @@ const steps = [
             const meta = valdresStore.get(jobMeta(key))
             // const dir = packagePath.split("/")
             // dir.pop()
-            // console.log(packagePath, meta, dir.join("/"))
             // const tarPath = `${dir.join("/")}/${meta.tarball}`
-            // console.log(tarPath)
-            // console.log(packagePath)
             // const tarData = await Bun.file(tarPath).arrayBuffer()
             // // const res = await $`npm config get //registry.npmjs.org/:_authToken`
-            // // console.log(res)
-            // console.log(process.env.HOME)
             // const ssss = await Bun.file(`${process.env.HOME}/.npmrc`).text()
-            // console.log(ssss)
             // const packageJson = await Bun.file(packagePath).json()
             // // throw new Error("asdfasdf")
-            // console.log("packageJson", packageJson)
             // return publish(
             //     packageJson,
             //     Buffer.from(tarData),
@@ -189,7 +182,6 @@ const steps = [
             )`npm publish ${file}`.quiet()
         },
         // onSuccess: (output, key) => {
-        //     console.log(output)
         // },
     },
     {

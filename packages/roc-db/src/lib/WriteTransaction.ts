@@ -3,7 +3,7 @@ import type { Entity } from "../types/Entity"
 import type { Mutation } from "../types/Mutation"
 import type { MutationRef } from "../types/MutationRef"
 import type { Ref } from "../types/Ref"
-import type { RocRequest } from "../types/RocRequest"
+import type { RocDBRequest } from "../types/RocDBRequest"
 import { ReadTransaction } from "./ReadTransaction"
 import { applyChangeSet } from "./applyChangeSet"
 import { commit } from "./commit"
@@ -32,15 +32,15 @@ export class WriteTransaction<
     log: Log
 
     constructor(
-        public request: RocRequest,
+        public request: RocDBRequest,
         public engineOpts: EngineOpts,
-        public adapterOpts: AdapterOptions<EngineOpts>,
-        public payload: RocRequest["payload"],
+        public adapter: AdapterOptions<EngineOpts>,
+        public payload: RocDBRequest["payload"],
         public mutation: Mutation,
         public optimisticRefs: [string, string, string][] = [],
         changeSet: any = undefined,
     ) {
-        super(request, engineOpts, adapterOpts, payload, changeSet)
+        super(request, engineOpts, adapter, payload, changeSet)
         this.mutation = mutation
         this.optimisticCreateRefs = optimisticRefs
             .filter(([_, action]) => action === "create")

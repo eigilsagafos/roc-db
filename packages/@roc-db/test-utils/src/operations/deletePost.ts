@@ -1,11 +1,7 @@
 import { Query, writeOperation } from "roc-db"
-import { DeletePostMutationSchema } from "../schemas/DeletePostMutationSchema"
+import { PostRefSchema } from "../schemas"
 
-export const deletePost = writeOperation(
-    DeletePostMutationSchema,
-    undefined,
-    txn => {
-        const ref = txn.payload
-        return Query(() => txn.deleteEntity(ref, true))
-    },
-)
+export const deletePost = writeOperation("deletePost", PostRefSchema, txn => {
+    const ref = txn.payload
+    return Query(() => txn.deleteEntity(ref, true))
+})

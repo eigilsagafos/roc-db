@@ -1,12 +1,15 @@
 import type { ZodSchema } from "zod"
-import type { Ref } from "./Ref"
 
 export type ReadOperation<
-    OperationName extends string = any,
-    Input = any,
-    Output = any,
+    Name extends string = string,
+    PayloadSchema extends ZodSchema = ZodSchema,
+    OutputSchema extends ZodSchema = ZodSchema,
 > = {
-    (input: Input, changeSetRef?: Ref): Output
-    readonly operationName: OperationName
-    readonly outputSchema: ZodSchema
+    readonly type: "read"
+    readonly name: Name
+    readonly payloadSchema: PayloadSchema
+    readonly ouputSchema: OutputSchema
+    readonly callback: (s: string) => {}
 }
+
+// (input: Input, changeSetRef?: Ref): Output

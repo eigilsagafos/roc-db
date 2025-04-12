@@ -5,9 +5,9 @@ import { PostRefSchema } from "../schemas/PostRefSchema"
 export const readPost: any = readOperation(
     "readPost",
     PostRefSchema,
-    PostSchema,
     txn => {
         const ref = txn.payload
         return Query(() => txn.readEntity(ref, true))
     },
+    { outputSchema: PostSchema },
 )

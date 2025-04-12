@@ -15,7 +15,6 @@ export const createPageEntitiesOperation = entities =>
                 exclude: z.array(z.string()).default([]),
             })
             .strict(),
-        z.object({}),
         txn => {
             // throw new Error("Not implemented")
             const { size, skip, include, exclude } = txn.payload

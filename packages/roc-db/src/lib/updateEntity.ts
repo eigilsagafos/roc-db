@@ -3,7 +3,7 @@ import type { WriteTransaction } from "./WriteTransaction"
 
 export const updateEntity = (txn: WriteTransaction, ref: Ref, body: any) => {
     throw new Error("Not Implemented")
-    if (txn.adapterOpts.async) {
+    if (txn.adapter.async) {
         return updateEntityAsync(txn, ref, body)
     } else {
         return updateEntitySync(txn, ref, body)

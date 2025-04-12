@@ -21,11 +21,6 @@ export const finalizeMutation = (txn: WriteTransaction, isChangeSetApply) => {
     }
     // isChangeSetApply:
     // TODO: Remove this once we ensure sessionRef is never undefined
-    // console.log("finalizeMutation", {
-    //     isChangeSetApply,
-    //     // log,
-    //     // txn,
-    // })
 
     if (isChangeSetApply) {
         if (!txn.timestamp) throw new Error("No timestamp")

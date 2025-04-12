@@ -1,13 +1,12 @@
+import type { ZodSchema } from "zod"
 import type { Mutation } from "./Mutation"
 import type { Ref } from "./Ref"
+import type { WriteOperation } from "./WriteOperation"
 
-export type WriteRequest<Payload = any> = {
+export type WriteRequest<PayloadSchema extends ZodSchema = ZodSchema> = {
     type: "write"
-    payload: Payload
-    settings: {
-        debounce?: number
-    }
+    operation: WriteOperation
+    payload: any
     changeSetRef: Ref | null
-    callback: (s: string, session: any) => {}
     optimisticMutation?: Mutation
 }

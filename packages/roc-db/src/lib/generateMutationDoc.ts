@@ -1,5 +1,5 @@
+import type { WriteRequest } from "../types/WriteRequest"
 import { generateRef } from "../utils/generateRef"
-import { mutationNameFromSchema } from "./mutationNameFromSchema"
 
 const generateRefAndTimestamp = (adapter, debounce, now) => {
     // const now = new Date().toISOString()
@@ -14,21 +14,25 @@ const generateRefAndTimestamp = (adapter, debounce, now) => {
     return [generateRef("Mutation", adapter.snowflake, now), now]
 }
 
-export const generateMutationDoc = (request, adapter, payload, now) => {
-    const mutationName = mutationNameFromSchema(request.schema)
-
+export const generateMutationDoc = (
+    request: WriteRequest,
+    adapter,
+    payload: any,
+    now,
+) => {
     const [ref, timestamp] = generateRefAndTimestamp(
         adapter,
-        request.settings.debounce,
+        request.operation.debounce,
         now.toISOString(),
     )
 
+    if (!request.operation.name) throw new Error("Operation name is required")
     return {
         timestamp,
         ref,
         operation: {
-            name: mutationName,
-            version: 1,
+            name: request.operation.name,
+            version: request.operation.version,
         },
         payload,
         log: [],

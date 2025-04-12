@@ -1,10 +1,19 @@
 import { Query, writeOperation } from "roc-db"
 import { PostSchema } from "../schemas/PostSchema"
-import { UpdatePostMutationSchema } from "../schemas/UpdatePostMutationSchema"
+import { z } from "zod"
+import { PostRefSchema } from "../schemas/PostRefSchema"
+import { UserRefSchema } from "../schemas/UserRefSchema"
+
+const PayloadSchema = z.object({
+    ref: PostRefSchema,
+    title: z.string().optional(),
+    tags: z.array(z.string()).optional().default([]),
+    authorRef: UserRefSchema.optional(),
+})
 
 export const updatePost = writeOperation(
-    UpdatePostMutationSchema,
-    PostSchema,
+    "updatePost",
+    PayloadSchema,
     txn => {
         const { ref, authorRef, ...data } = txn.payload
         return Query(() =>
@@ -15,4 +24,5 @@ export const updatePost = writeOperation(
             }),
         )
     },
+    { outputSchema: PostSchema },
 )

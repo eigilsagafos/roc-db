@@ -1,10 +1,11 @@
 import { Query, writeOperation } from "roc-db"
-import { CreateDraftMutationSchema } from "../schemas/CreateDraftMutationSchema"
 import { DraftSchema } from "../schemas/DraftSchema"
+import { z } from "zod"
+import { PostRefSchema } from "../schemas"
 
 export const createDraft = writeOperation(
-    CreateDraftMutationSchema,
-    DraftSchema,
+    "createDraft",
+    z.object({ postRef: PostRefSchema }).strict(),
     txn => {
         const ref = txn.createRef("Draft")
         const { postRef } = txn.payload
@@ -16,4 +17,5 @@ export const createDraft = writeOperation(
             }),
         )
     },
+    { outputSchema: DraftSchema },
 )

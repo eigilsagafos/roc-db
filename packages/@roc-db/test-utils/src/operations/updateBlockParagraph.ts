@@ -1,10 +1,14 @@
 import { Query, writeOperation } from "roc-db"
-import { UpdateBlockParagraphMutationSchema } from "../schemas/UpdateBlockParagraphMutationSchema"
+import { z } from "zod"
 import { BlockParagraphRefSchema } from "../schemas/BlockParagraphRefSchema"
+import { BlockParagraphSchema } from "../schemas/BlockParagraphSchema"
 
 export const updateBlockParagraph = writeOperation(
-    UpdateBlockParagraphMutationSchema,
-    BlockParagraphRefSchema,
+    "updateBlockParagraph",
+    z.object({
+        ref: BlockParagraphRefSchema,
+        content: z.string(),
+    }),
     txn => {
         const { ref, content } = txn.payload
         return Query(() =>
@@ -13,4 +17,5 @@ export const updateBlockParagraph = writeOperation(
             }),
         )
     },
+    { outputSchema: BlockParagraphSchema },
 )

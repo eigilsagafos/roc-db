@@ -1,9 +1,9 @@
 import { Query, QueryChain, writeOperation } from "roc-db"
-import { DeleteDraftMutationSchema } from "../schemas/DeleteDraftMutationSchema"
+import { DraftRefSchema } from "../schemas/DraftRefSchema"
 
 export const deleteDraft = writeOperation(
-    DeleteDraftMutationSchema,
-    undefined,
+    "deleteDraft",
+    DraftRefSchema,
     txn => {
         const ref = txn.payload
         return QueryChain(

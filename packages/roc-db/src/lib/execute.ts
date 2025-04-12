@@ -1,20 +1,20 @@
 import type { AdapterOptions } from "../types/AdapterOptions"
-import type { RocRequest } from "../types/RocRequest"
+import type { RocDBRequest } from "../types/RocDBRequest"
 import { executeAsync } from "./executeAsync"
 import { executeSync } from "./executeSync"
 
 export const execute = <
-    Request extends RocRequest,
+    Request extends RocDBRequest,
     EngineOpts extends {},
     AdapterOpts extends AdapterOptions,
 >(
     request: Request,
     engineOpts: EngineOpts,
-    adapterOpts: AdapterOpts,
+    adapter: AdapterOpts,
 ) => {
-    if (adapterOpts.async) {
-        return executeAsync(request, engineOpts, adapterOpts)
+    if (adapter.async) {
+        return executeAsync(request, engineOpts, adapter)
     } else {
-        return executeSync(request, engineOpts, adapterOpts)
+        return executeSync(request, engineOpts, adapter)
     }
 }

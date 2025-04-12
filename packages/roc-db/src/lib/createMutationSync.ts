@@ -1,11 +1,10 @@
 import { BadRequestError } from "../errors/BadRequestError"
-import { RocRequest } from "../types/RocRequest"
-import { WriteRequest } from "../types/WriteRequest"
+import type { RocDBRequest } from "../types/RocDBRequest"
+import type { WriteRequest } from "../types/WriteRequest"
 import { generateMutationDoc } from "./generateMutationDoc"
-import { mutationNameFromSchema } from "./mutationNameFromSchema"
 
 export const createMutationSync = <
-    Request extends RocRequest,
+    Request extends RocDBRequest,
     Engine extends {},
 >(
     request: WriteRequest,
@@ -27,12 +26,12 @@ export const createMutationSync = <
         return [request.optimisticMutation, request.optimisticMutation.log]
     }
     const now = new Date()
-    if (request.settings.debounce) {
+    if (request.operation.debounce) {
         const res = adapter.functions.findDebounceMutation(
             request,
             engine,
             now,
-            mutationNameFromSchema(request.schema),
+            request.operation.name,
         )
         if (res) {
             return [

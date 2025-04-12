@@ -1,4 +1,4 @@
-import type { RocRequest } from "../types/RocRequest"
+import type { RocDBRequest } from "../types/RocDBRequest"
 
-export const parseRequestPayload = (request: RocRequest) =>
-    request.schema.shape.payload.parse(request.payload)
+export const parseRequestPayload = (request: RocDBRequest) =>
+    request.operation.payloadSchema.parse(request.payload)

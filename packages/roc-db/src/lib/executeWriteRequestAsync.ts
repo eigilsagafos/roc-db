@@ -12,25 +12,25 @@ import { WriteTransaction } from "./WriteTransaction"
 export const executeWriteRequestAsyncInternal = async (
     request: WriteRequest,
     engineOpts: any,
-    adapterOpts: AdapterOptions,
+    adapter: AdapterOptions,
     payload: any,
 ) => {
     const [mutation, optimisticRefs] = await createMutationAsync(
         request,
         engineOpts,
-        adapterOpts,
+        adapter,
         payload,
     )
     const txn = new WriteTransaction(
         request,
         engineOpts,
-        adapterOpts,
+        adapter,
         payload,
         mutation,
         optimisticRefs,
     )
     await initializeChangeSet(txn)
-    const functions = request.callback(txn, adapterOpts.session)
+    const functions = request.operation.callback(txn, adapter.session)
     const res = await runAsyncFunctionChain(functions)
     const savedMutation = await txn.commit()
 
@@ -45,13 +45,13 @@ export const executeWriteRequestAsync = async <
 >(
     request: Request,
     engineOpts: EngineOpts,
-    adapterOpts: AdapterOpts,
+    adapter: AdapterOpts,
 ) => {
     const payload = validateWriteRequestAndParsePayload(request)
-    const begin = adapterOpts.functions.begin || defaultBeginTransaction
+    const begin = adapter.functions.begin || defaultBeginTransaction
     return begin(engineOpts, async (engineOptsTxn: EngineOpts) => {
         const beginRequest =
-            adapterOpts.functions.beginRequest || defaultBeginRequest
+            adapter.functions.beginRequest || defaultBeginRequest
         const result = await beginRequest(
             request,
             engineOptsTxn,
@@ -59,13 +59,13 @@ export const executeWriteRequestAsync = async <
                 return executeWriteRequestAsyncInternal(
                     request,
                     engineOptsReq,
-                    adapterOpts,
+                    adapter,
                     payload,
                 )
             },
         )
-        if (adapterOpts.functions.end) {
-            await adapterOpts.functions.end(engineOptsTxn)
+        if (adapter.functions.end) {
+            await adapter.functions.end(engineOptsTxn)
         }
         return result
     })

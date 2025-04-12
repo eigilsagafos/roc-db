@@ -8,17 +8,17 @@ export const commit = (txn: WriteTransaction, isChangeSetApply = false) => {
             finalizedMutation.operation.name === "redo"
         )
     ) {
-        txn.adapterOpts.undoStack.push(finalizedMutation)
+        txn.adapter.undoStack.push(finalizedMutation)
     }
-    // txn.adapterOpts.undoStack.push(finalizedMutation)
+    // txn.adapter.undoStack.push(finalizedMutation)
     // if (isChangeSetInit) return
     const { docsToCreate, docsToUpdate, refsToDelete } = convertLog(txn.log)
-    return txn.adapterOpts.functions.commit(txn, finalizedMutation, {
+    return txn.adapter.functions.commit(txn, finalizedMutation, {
         created: docsToCreate,
         updated: docsToUpdate,
         deleted: refsToDelete,
     })
-    // if (txn.adapterOpts.async) {
+    // if (txn.adapter.async) {
     //     return commitAsync(txn, isChangeSetApply)
     // } else {
     //     return commitSync(txn, isChangeSetApply)

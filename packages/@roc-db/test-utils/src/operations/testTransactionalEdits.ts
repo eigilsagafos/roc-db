@@ -1,7 +1,7 @@
-import { Query, QueryChain, writeOperation } from "roc-db"
-import { TestTransactionalEditsMutationSchema } from "../schemas/TestTransactionalEditsMutationSchema"
-import { PostSchema } from "../schemas"
 import { expect } from "bun:test"
+import { Query, QueryChain, writeOperation } from "roc-db"
+import { z } from "zod"
+import { PostRefSchema } from "../schemas"
 
 const TestCreatePatchDeleteInSameTransaction = (txn, name) => {
     const postRef = txn.createRef("Post")
@@ -59,10 +59,17 @@ const TestCreateOnExistingRef = txn => {
         Query(() => txn.createEntity(ref, { data: { foo: "bar" } })),
     )
 }
+const PayloadSchema = z
+    .object({
+        name: z.string().optional(),
+        post1ref: PostRefSchema.optional(),
+        post2ref: PostRefSchema.optional(),
+    })
+    .strict()
 
 export const testTransactionalEdits = writeOperation(
-    TestTransactionalEditsMutationSchema,
-    PostSchema,
+    "testTransactionalEdits",
+    PayloadSchema,
     txn => {
         const { name, post1ref, post2ref } = txn.payload
         if (name) return TestCreatePatchDeleteInSameTransaction(txn, name)
@@ -72,3 +79,5 @@ export const testTransactionalEdits = writeOperation(
     },
     {},
 )
+
+// PostSchema,

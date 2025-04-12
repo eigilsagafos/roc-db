@@ -10,7 +10,6 @@ import type { AdapterFunctions } from "./types/AdapterFunctions"
 import type { Mutation } from "./types/Mutation"
 import type { Operation } from "./types/Operation"
 import type { Ref } from "./types/Ref"
-import type { RocRequest } from "./types/RocRequest"
 import { Snowflake } from "./utils/Snowflake"
 import { generateRef } from "./utils/generateRef"
 
@@ -26,16 +25,16 @@ type AdapterOptions<
     EngineOptions extends {} = {},
 > = {
     name: string
-    functions: AdapterFunctions<
-        RocRequest,
-        {},
-        Entities,
-        AdapterOptions<Operations, Entities, EngineOptions>
-    >
+    functions: AdapterFunctions<EngineOptions>
     operations: Operations
     entities: Entities
     changeSetRefs: Ref[]
     snowflake: Snowflake
+    session: {
+        identityRef: string
+        sessionRef?: string
+        [key: string]: any
+    }
     async?: boolean
     changeSetRef?: Ref
     optimistic?: boolean
@@ -48,30 +47,36 @@ export const createAdapter = <
     adapterOptions: AdapterOptions<Operations, Entities, EngineOptions>,
     engineOptions: EngineOptions = {} as EngineOptions,
 ) => {
+    const allOperations = [
+        pageMutations,
+        createPageEntitiesOperation(adapterOptions.entities),
+        undo,
+        redo,
+        ...adapterOptions.operations,
+    ]
+
     type FunctionMap = {
-        [Item in (typeof adapterOptions.operations)[number] as Item["operationName"]]: Item
+        [Item in (typeof allOperations)[number] as Item["name"]]: (
+            payload: z.input<Item["payloadSchema"]>,
+        ) => z.output<Item["payloadSchema"]>
     }
     adapterOptions.undoStack = []
     adapterOptions.redoStack = []
 
-    const operations = [...adapterOptions.operations, undo, redo]
-    adapterOptions.operations = operations
+    // const operations = [...adapterOptions.operations, undo, redo]
+    adapterOptions.operations = allOperations
 
     const operationsMap: FunctionMap = Object.fromEntries(
-        [
-            pageMutations,
-            createPageEntitiesOperation(adapterOptions.entities),
-            ...operations,
-        ].map(
+        allOperations.map(
             operation =>
                 [
-                    operation.operationName,
-                    payload => {
-                        const request = operation(
+                    operation.name,
+                    (payload: z.input<typeof operation.payloadSchema>) => {
+                        const request = {
                             payload,
-                            adapterOptions.changeSetRef || null,
-                            // optimisticMutation,
-                        )
+                            changeSetRef: adapterOptions.changeSetRef ?? null,
+                            operation,
+                        }
                         return execute(request, engineOptions, adapterOptions)
                     },
                 ] as const,
@@ -94,7 +99,7 @@ export const createAdapter = <
             )
         },
         get _operationNames(): Operations[number]["operationName"] {
-            return adapterOptions.operations.map(op => op.operationName)
+            return adapterOptions.operations.map(op => op.name)
         },
         get _operations() {
             return adapterOptions.operations
@@ -127,14 +132,19 @@ export const createAdapter = <
     }
     if (adapterOptions.optimistic) {
         adapter.loadMutations = (mutations: Mutation[]) =>
-            loadMutations(adapterOptions, engineOptions, mutations, operations)
+            loadMutations(
+                adapterOptions,
+                engineOptions,
+                mutations,
+                allOperations,
+            )
     } else {
         adapter.persistOptimisticMutations = (mutations: Mutation[]) =>
             persistOptimisticMutations(
                 adapterOptions,
                 engineOptions,
                 mutations,
-                operations,
+                allOperations,
             )
     }
 

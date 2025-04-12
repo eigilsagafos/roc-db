@@ -3,7 +3,7 @@ import type { Transaction } from "../types/Transaction"
 import { refsFromRelations } from "../utils/refsFromRelations"
 
 export const findDependents = (txn: Transaction, ref: Ref) => {
-    if (txn.adapterOpts.async) {
+    if (txn.adapter.async) {
         return findDependentsAsync(txn, ref)
     } else {
         return findDependentsSync(txn, ref)

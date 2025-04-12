@@ -17,7 +17,7 @@ export const readEntity = (
         }
         return entity
     }
-    if (txn.adapterOpts.async) {
+    if (txn.adapter.async) {
         return readEntityAsync(txn, ref, throwIfMissing)
     } else {
         return readEntitySync(txn, ref, throwIfMissing)
@@ -29,12 +29,12 @@ const readEntityAsync = async (
     ref: Ref,
     throwIfMissing = true,
 ) => {
-    const entity = await txn.adapterOpts.functions.readEntity(txn, ref)
+    const entity = await txn.adapter.functions.readEntity(txn, ref)
     return handleReadResponse(txn, ref, entity, throwIfMissing)
 }
 
 const readEntitySync = (txn: Transaction, ref: Ref, throwIfMissing = true) => {
-    const entity = txn.adapterOpts.functions.readEntity(txn, ref)
+    const entity = txn.adapter.functions.readEntity(txn, ref)
     return handleReadResponse(txn, ref, entity, throwIfMissing)
 }
 
