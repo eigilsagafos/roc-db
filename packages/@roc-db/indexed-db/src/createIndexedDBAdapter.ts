@@ -1,4 +1,4 @@
-import { createAdapter, Snowflake } from "roc-db"
+import { createAdapter, Snowflake, type Adapter } from "roc-db"
 import * as functions from "./functions"
 
 export const createIndexedDBAdapter = ({
