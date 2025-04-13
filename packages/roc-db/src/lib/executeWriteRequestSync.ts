@@ -5,6 +5,7 @@ import { defaultBeginRequest } from "./defaultBeginRequest"
 import { defaultBeginTransaction } from "./defaultBeginTransaction"
 import { initializeChangeSet } from "./initializeChangeSet"
 import { runSyncFunctionChain } from "./runSyncFunctionChain"
+import { validateOutput } from "./validateOutput"
 import { validateWriteRequestAndParsePayload } from "./validateWriteRequestAndParsePayload"
 import { WriteTransaction } from "./WriteTransaction"
 
@@ -32,6 +33,9 @@ export const executeWriteRequestSyncInternal = (
     const res = runSyncFunctionChain(
         request.operation.callback(txn, adapter.session),
     )
+    if (request.operation.outputSchema) {
+        validateOutput(res, request)
+    }
     const savedMutation = txn.commit()
 
     return [res, savedMutation]

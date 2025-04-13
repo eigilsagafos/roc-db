@@ -1,5 +1,9 @@
 import { describe, expect, test } from "bun:test"
 import { inMemoryAdapter } from "@roc-db/test-utils"
+import { writeOperation } from "./writeOperation"
+import { z } from "zod"
+import { createInMemoryAdapter } from "@roc-db/in-memory"
+import { Query } from "./utils/Query"
 
 describe("writeOperation", () => {
     test("should create a read operation", async () => {
@@ -22,5 +26,22 @@ describe("writeOperation", () => {
             },
         )
         expect(updateMutation2.debounceCount).toBe(1)
+    })
+
+    test("output schema is validated if provided", () => {
+        const testOperation = writeOperation(
+            "testOutput",
+            z.string(),
+            () => Query(() => ({ foo: "bar" })),
+            { outputSchema: z.object({ bar: z.string() }).strict() },
+        )
+
+        const adapter = createInMemoryAdapter({
+            operations: [testOperation],
+            entities: [],
+            session: { identityRef: "Foo/bar" },
+        })
+
+        expect(() => adapter.testOutput("Fish")).toThrowError()
     })
 })

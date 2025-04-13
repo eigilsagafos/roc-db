@@ -37,5 +37,5 @@ export const deleteBlocks = writeOperation(
         const refs = txn.payload
         return QueryChain(...refs.map(ref => DeleteBlockQuery(txn, ref)))
     },
-    { changeSetOnly: true, outputSchema: PostSchema },
+    { changeSetOnly: true },
 )

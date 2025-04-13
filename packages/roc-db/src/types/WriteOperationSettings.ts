@@ -5,4 +5,5 @@ export type WriteOperationSettings = {
     debounce?: number
     changeSetOnly?: boolean
     outputSchema?: ZodSchema
+    mutationLogSchema?: ZodSchema
 }

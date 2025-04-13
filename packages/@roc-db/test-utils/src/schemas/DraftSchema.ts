@@ -5,7 +5,7 @@ import { DraftRefSchema } from "./DraftRefSchema"
 
 export const DraftSchema = entitySchemaGenerator("Draft", {
     ref: DraftRefSchema,
-    data: z.object({
-        postRef: PostRefSchema,
+    parents: z.object({
+        post: PostRefSchema,
     }),
 })

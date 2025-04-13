@@ -1,6 +1,5 @@
 import { Query, QueryChain, writeOperation } from "roc-db"
 import { z } from "zod"
-import { BlockParagraphSchema } from "../schemas/BlockParagraphSchema"
 import { BlockRowRefSchema } from "../schemas/BlockRowRefSchema"
 import { PostRefSchema } from "../schemas/PostRefSchema"
 
@@ -28,5 +27,11 @@ export const createBlockRow = writeOperation(
             Query((block, updatedParent) => ({ block, updatedParent })),
         )
     },
-    { changeSetOnly: true, outputSchema: BlockParagraphSchema },
+    {
+        changeSetOnly: true,
+        outputSchema: z.object({
+            block: z.any(),
+            updatedParent: z.any(),
+        }),
+    },
 )

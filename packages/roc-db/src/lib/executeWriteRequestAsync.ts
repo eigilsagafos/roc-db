@@ -6,6 +6,7 @@ import { defaultBeginRequest } from "./defaultBeginRequest"
 import { defaultBeginTransaction } from "./defaultBeginTransaction"
 import { initializeChangeSet } from "./initializeChangeSet"
 import { runAsyncFunctionChain } from "./runAsyncFunctionChain"
+import { validateOutput } from "./validateOutput"
 import { validateWriteRequestAndParsePayload } from "./validateWriteRequestAndParsePayload"
 import { WriteTransaction } from "./WriteTransaction"
 
@@ -32,6 +33,9 @@ export const executeWriteRequestAsyncInternal = async (
     await initializeChangeSet(txn)
     const functions = request.operation.callback(txn, adapter.session)
     const res = await runAsyncFunctionChain(functions)
+    if (request.operation.outputSchema) {
+        validateOutput(res, request)
+    }
     const savedMutation = await txn.commit()
 
     return [res, savedMutation]
