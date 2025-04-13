@@ -10,14 +10,14 @@ export const mutationSchemaGenerator = <
     name: Name,
     payloadSchema: Payload,
     refsSchema: ZodType<z.infer<typeof MutationLogSchema>> = MutationLogSchema,
-    draftOnly: boolean = false,
+    changeSetOnly: boolean = false,
 ) =>
     MutationSchema.extend({
         operation: z.object({
             name: z.literal(name),
             version: z.number().default(1),
         }),
-        changeSetRef: draftOnly ? RefSchema : RefSchema.nullable(),
+        changeSetRef: changeSetOnly ? RefSchema : RefSchema.nullable(),
         payload: payloadSchema,
         log: refsSchema,
     })

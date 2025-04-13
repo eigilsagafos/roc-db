@@ -1,5 +1,6 @@
 import { z, ZodSchema } from "zod"
 import { WriteTransaction } from "./lib/WriteTransaction"
+import { mutationSchemaGenerator } from "./schemas/generators/mutationSchemaGenerator"
 import type { WriteOperation } from "./types/WriteOperation"
 import type { WriteOperationSettings } from "./types/WriteOperationSettings"
 
@@ -17,6 +18,7 @@ export const writeOperation = <
         debounce = 0,
         changeSetOnly = false,
         outputSchema = z.any(),
+        mutationLogSchema = z.any(),
     } = settings
     return Object.freeze({
         type: "write",
@@ -27,5 +29,12 @@ export const writeOperation = <
         debounce,
         changeSetOnly,
         outputSchema,
+        mutationLogSchema,
+        mutationSchema: mutationSchemaGenerator(
+            name,
+            payloadSchema,
+            mutationLogSchema,
+            changeSetOnly,
+        ),
     })
 }
