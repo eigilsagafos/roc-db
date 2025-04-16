@@ -2,6 +2,7 @@ import { QueryBaseClass } from "../utils/QueryBaseClass"
 import { QueryChainClass } from "../utils/QueryChainClass"
 import { QueryClass } from "../utils/QueryClass"
 import { QueryObjectClass } from "../utils/QueryObjectClass"
+import { QueryArrayClass } from "../utils/QueryArrayClass"
 
 export const runSyncFunctionChain = (query, args = []) => {
     if (query instanceof QueryChainClass) {
@@ -33,5 +34,7 @@ export const runSyncFunctionChain = (query, args = []) => {
                 runSyncFunctionChain(q),
             ]),
         )
+    } else if (query instanceof QueryArrayClass) {
+        return query.array.map(q => runSyncFunctionChain(q))
     }
 }

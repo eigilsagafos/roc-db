@@ -1,3 +1,4 @@
+import { QueryArrayClass } from "../utils/QueryArrayClass"
 import { QueryBaseClass } from "../utils/QueryBaseClass"
 import { QueryChainClass } from "../utils/QueryChainClass"
 import { QueryClass } from "../utils/QueryClass"
@@ -55,5 +56,12 @@ export const runAsyncFunctionChain = async (query, args = []) => {
             resultObj[key] = result
         }
         return resultObj
+    } else if (query instanceof QueryArrayClass) {
+        const resultArray = []
+        for (const q of query.array) {
+            const result = await runAsyncFunctionChain(q)
+            resultArray.push(result)
+        }
+        return resultArray
     }
 }
