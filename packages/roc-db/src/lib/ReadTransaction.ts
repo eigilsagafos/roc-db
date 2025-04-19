@@ -5,6 +5,7 @@ import type { RocDBRequest } from "../types/RocDBRequest"
 import { refsFromRelations } from "../utils/refsFromRelations"
 import { batchReadEntities } from "./batchReadEntities"
 import { readEntity } from "./readEntity"
+import { readEntityByUniqueField } from "./readEntityByUniqueField"
 import { readMutation } from "./readMutation"
 
 export class ReadTransaction<EngineOpts extends any = any> {
@@ -45,6 +46,9 @@ export class ReadTransaction<EngineOpts extends any = any> {
     readEntity = (ref: Ref, throwIfNotFound = true) =>
         readEntity(this, ref, throwIfNotFound)
 
+    readEntityByUniqueField = (entity, field, value, throwIfNotFound = true) =>
+        readEntityByUniqueField(this, entity, field, value, throwIfNotFound)
+
     readMutation = (ref: Ref, throwIfNotFound = true) =>
         readMutation(this, ref, throwIfNotFound)
 
@@ -53,6 +57,14 @@ export class ReadTransaction<EngineOpts extends any = any> {
     }
     pageEntities = args => {
         return this.adapter.functions.pageEntities(this, args)
+    }
+    pageEntitiesByIndex = (entity, key, value) => {
+        return this.adapter.functions.pageEntitiesByIndex(
+            this,
+            entity,
+            key,
+            value,
+        )
     }
     childRefsOf = (ref, recursive = false) => {
         return childRefsOf(this, ref, recursive)

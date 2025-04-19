@@ -1,24 +1,31 @@
 import { beforeAll, describe, expect, test } from "bun:test"
-import { BadRequestError, NotFoundError, Snowflake } from "roc-db"
+import {
+    BadRequestError,
+    ConflictError,
+    NotFoundError,
+    Snowflake,
+} from "roc-db"
 import type { z } from "zod"
+import { faker } from "@faker-js/faker"
 import { operations } from "./operations"
 import {
-    BlockParagraphSchema,
     CreatePostMutationSchema,
-    entities,
     PostSchema,
     UpdatePostTitleMutationSchema,
 } from "./schemas"
-import type { Post } from "./schemas/PostSchema"
+import { entities } from "./entities"
+// import type { Post } from "./schemas/PostSchema"
 import type { BlockParagraph } from "./schemas/BlockParagraphSchema"
 import type { BlockRow } from "./schemas/BlockRowSchema"
+import { PostEntity } from "./entities/PostEntity"
+import { BlockParagraph, BlockParagraph } from "./entities/BlockParagraph"
 
 const snowflake = new Snowflake(10, 10)
 
 const prepareChangeSetTest = async (adapter, adapter2) => {
     const [post, createPostMutation] = await adapter.createPost({
         title: "Title 1",
-        slug: "title-1",
+        slug: faker.lorem.slug(5),
         tags: ["Foo", "Bar"],
     })
     expect(createPostMutation.log).toStrictEqual([[post.ref, "create"]])
@@ -99,7 +106,7 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
         beforeAll(async () => {
             const createPostRes = await adapter1.createPost({
                 title: "Title 1",
-                slug: "title-1",
+                slug: faker.lorem.slug(5),
                 tags: ["Foo", "Bar"],
             })
             post = createPostRes[0]
@@ -108,7 +115,7 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
         })
 
         test("create (createEntity function)", async () => {
-            expect(post).toMatchZodSchema(PostSchema)
+            expect(post).toMatchZodSchema(PostEntity.schema)
             expect(post.data.title).toBe("Title 1")
             expect(post.data.tags).toStrictEqual(["Foo", "Bar"])
             expect(createPostMutation).toMatchZodSchema(
@@ -120,7 +127,62 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
             const readPostRes = await adapter1.readPost(postRef)
             expect(readPostRes.data.title).toStrictEqual("Title 1")
             expect(readPostRes.data.tags).toStrictEqual(["Foo", "Bar"])
-            expect(readPostRes).toMatchZodSchema(PostSchema)
+            expect(readPostRes).toMatchZodSchema(PostEntity.schema)
+        })
+
+        test("read by unique", async () => {
+            const readPostRes = await adapter1.readPostBySlug(post.data.slug)
+            expect(readPostRes.data.title).toStrictEqual("Title 1")
+            expect(readPostRes.data.tags).toStrictEqual(["Foo", "Bar"])
+            expect(readPostRes.data.slug).toStrictEqual(post.data.slug)
+        })
+
+        test("create with same slug", async () => {
+            expect(() =>
+                adapter1.createPost({
+                    title: "Title 2",
+                    slug: post.data.slug,
+                    tags: ["Foo", "Bar"],
+                }),
+            ).toThrow(ConflictError)
+        })
+
+        test("update unique slug", async () => {
+            const slug1 = faker.lorem.slug(5)
+            const slug2 = faker.lorem.slug(5)
+            const [post] = await adapter1.createPost({
+                title: "Title 1",
+                slug: slug1,
+            })
+            const readPostRes1 = await adapter1.readPostBySlug(slug1)
+            expect(readPostRes1.data.slug).toStrictEqual(slug1)
+            const [updateRes] = await adapter1.updatePostSlug({
+                ref: post.ref,
+                slug: slug2,
+            })
+            expect(updateRes.data.slug).toStrictEqual(slug2)
+            expect(() => adapter1.readPostBySlug(slug1)).toThrow(NotFoundError)
+            const readPostRes2 = await adapter1.readPostBySlug(slug2)
+            expect(readPostRes2.data.slug).toStrictEqual(slug2)
+        })
+
+        test("update index entries", async () => {
+            const [post] = await adapter1.createPost({
+                title: "Title 1",
+                tags: ["foo"],
+            })
+            const pageTagFoo1 = await adapter1.pagePostsByTag("foo")
+            expect(pageTagFoo1.length).toBe(1)
+            expect(pageTagFoo1[0].ref).toBe(post.ref)
+
+            const [updatedRes] = await adapter1.updatePostTags({
+                ref: post.ref,
+                tags: ["bar"],
+            })
+            const pageTagFoo2 = await adapter1.pagePostsByTag("foo")
+            expect(pageTagFoo2.length).toBe(0)
+            const pageTagBar = await adapter1.pagePostsByTag("bar")
+            expect(pageTagBar.length).toBe(1)
         })
 
         test("read not found (readEntity function)", async () => {
@@ -135,7 +197,7 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
             })
             expect(post.data.tags).toStrictEqual(["Foo"])
             expect(post.data.title).toBe("Title 2")
-            expect(post).toMatchZodSchema(PostSchema)
+            expect(post).toMatchZodSchema(PostEntity.schema)
         })
 
         test("updateTitle (patchEntity function + debounce)", async () => {
@@ -143,13 +205,13 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
                 ref: postRef,
                 title: "Title 3",
             })
-            expect(update1).toMatchZodSchema(PostSchema)
+            expect(update1).toMatchZodSchema(PostEntity.schema)
             expect(mutation1).toMatchZodSchema(UpdatePostTitleMutationSchema)
             const [update2, mutation2] = await adapter1.updatePostTitle({
                 ref: postRef,
                 title: "Title 4",
             })
-            expect(update2).toMatchZodSchema(PostSchema)
+            expect(update2).toMatchZodSchema(PostEntity.schema)
             expect(mutation2).toMatchZodSchema(UpdatePostTitleMutationSchema)
             expect(mutation1.ref).toBe(mutation2.ref)
             expect(mutation2.timestamp >= mutation1.timestamp).toBeTrue()
@@ -228,13 +290,13 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
         })
 
         test("create (createEntity function w/changeSetRef)", async () => {
-            expect(blockParagraph1).toMatchZodSchema(BlockParagraphSchema)
-            expect(post).toMatchZodSchema(PostSchema)
+            expect(blockParagraph1).toMatchZodSchema(BlockParagraph.schema)
+            expect(post).toMatchZodSchema(PostEntity.schema)
         })
 
         test("read (readEntity function w/changeSetRef)", async () => {
             const read = await changeSetAdapter.readEntity(blockParagraph1.ref)
-            expect(read).toMatchZodSchema(BlockParagraphSchema)
+            expect(read).toMatchZodSchema(BlockParagraph.schema)
         })
 
         test("update (patchEntity function w/changeSetRef)", async () => {
@@ -242,7 +304,7 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
                 ref: blockParagraph1.ref,
                 content: "Hello, world!",
             })
-            expect(updatedBlock).toMatchZodSchema(BlockParagraphSchema)
+            expect(updatedBlock).toMatchZodSchema(BlockParagraph.schema)
         })
 
         test("move (batchReadEntities function)", async () => {
@@ -309,7 +371,7 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
         test("deleteBlocks (patch running 2 times removing on array element every time)", async () => {
             const [post, createPostMutation] = await adapter1.createPost({
                 title: "Title 1",
-                slug: "title-1",
+                slug: faker.lorem.slug(5),
                 tags: ["Foo", "Bar"],
             })
             const [draft, createDraftMutation] = await adapter1.createDraft({
@@ -395,6 +457,7 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
             const [post, createPostMutation] =
                 await optimisticAdapter.createPost({
                     title: "Foo",
+                    slug: faker.lorem.slug(5),
                     tags: [],
                 })
             const [persistCratePostMutation] =

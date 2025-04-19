@@ -14,7 +14,6 @@ export const commitUpdate = async (
             updated_at,
             updated_mutation_id,
             data,
-            indexed_data,
             children,
             children_ids,
             children_refs,
@@ -23,12 +22,14 @@ export const commitUpdate = async (
             parent_refs,
             ancestors,
             ancestor_ids,
-            ancestor_refs
+            ancestor_refs,
+            index_entries,
+            unique_constraint_0,
+            unique_constraint_1
         ) = (
             ${row.updated_at},
             ${row.updated_mutation_id},
             ${row.data},
-            ${row.indexed_data},
             ${row.children},
             ${row.children_ids},
             ${row.children_refs},
@@ -37,7 +38,10 @@ export const commitUpdate = async (
             ${row.parent_refs},
             ${row.ancestors},
             ${row.ancestor_ids},
-            ${row.ancestor_refs}
+            ${row.ancestor_refs},
+            ${row.index_entries},
+            ${row.unique_constraint_0},
+            ${row.unique_constraint_1}
         )
         WHERE
             id = ${row.id}

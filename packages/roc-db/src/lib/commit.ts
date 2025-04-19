@@ -1,4 +1,5 @@
 import type { WriteTransaction } from "./WriteTransaction"
+import { validateAndIndexDocument } from "./validateAndIndexDocument"
 
 export const commit = (txn: WriteTransaction, isChangeSetApply = false) => {
     const finalizedMutation = txn.finalizedMutation(isChangeSetApply)
@@ -14,8 +15,8 @@ export const commit = (txn: WriteTransaction, isChangeSetApply = false) => {
     // if (isChangeSetInit) return
     const { docsToCreate, docsToUpdate, refsToDelete } = convertLog(txn.log)
     return txn.adapter.functions.commit(txn, finalizedMutation, {
-        created: docsToCreate,
-        updated: docsToUpdate,
+        created: docsToCreate.map(doc => validateAndIndexDocument(txn, doc)),
+        updated: docsToUpdate.map(doc => validateAndIndexDocument(txn, doc)),
         deleted: refsToDelete,
     })
     // if (txn.adapter.async) {

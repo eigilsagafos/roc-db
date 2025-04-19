@@ -65,6 +65,9 @@ export const createAdapter = <
 
     // const operations = [...adapterOptions.operations, undo, redo]
     adapterOptions.operations = allOperations
+    adapterOptions.models = Object.fromEntries(
+        adapterOptions.entities.map(model => [model.name, model]),
+    )
 
     const operationsMap: FunctionMap = Object.fromEntries(
         allOperations.map(

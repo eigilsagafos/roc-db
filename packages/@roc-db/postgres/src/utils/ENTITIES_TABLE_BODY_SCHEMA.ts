@@ -6,7 +6,6 @@ export const ENTITIES_TABLE_BODY_SCHEMA = `
     created_mutation_id  text NOT NULL,
     updated_mutation_id  text NOT NULL,
     data                 jsonb,
-    indexed_data         jsonb,
     children             jsonb,
     children_ids         text[],
     children_refs        text[],
@@ -15,5 +14,10 @@ export const ENTITIES_TABLE_BODY_SCHEMA = `
     parent_refs          text[],
     ancestors            jsonb,
     ancestor_ids         text[],
-    ancestor_refs        text[]
+    ancestor_refs        text[],
+    index_entries        text[],
+    unique_constraint_0  text,
+    unique_constraint_1  text,
+    UNIQUE(kind, unique_constraint_0),
+    UNIQUE(kind, unique_constraint_1)
 `

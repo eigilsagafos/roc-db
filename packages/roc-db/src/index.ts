@@ -1,10 +1,13 @@
 export { createAdapter } from "./createAdapter"
 export { readOperation } from "./readOperation"
 export { writeOperation } from "./writeOperation"
+export { Entity } from "./Entity"
 
 // errors
 export { BadRequestError } from "./errors/BadRequestError"
+export { ConflictError } from "./errors/ConflictError"
 export { NotFoundError } from "./errors/NotFoundError"
+export { createUniqueConstraintConflictError } from "./errors/createUniqueConstraintConflictError"
 
 // schemas
 export { MutationRefSchema } from "./schemas/MutationRefSchema"
@@ -24,7 +27,7 @@ export type {
     CreateEntityFunction,
     EndFunction,
 } from "./types/AdapterFunctions"
-export type { Entity } from "./types/Entity"
+// export type { Entity } from "./types/Entity"
 export type { Mutation } from "./types/Mutation"
 export type { MutationRef } from "./types/MutationRef"
 export type { Operation } from "./types/Operation"

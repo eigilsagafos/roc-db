@@ -15,7 +15,8 @@ export const readEntity = (
             if (throwIfMissing) throw new NotFoundError(ref)
             return undefined
         }
-        return entity
+        const { __, ...document } = entity
+        return document
     }
     if (txn.adapter.async) {
         return readEntityAsync(txn, ref, throwIfMissing)
@@ -46,5 +47,10 @@ const handleReadResponse = (
 ) => {
     if (!entity && throwIfMissing) throw new NotFoundError(ref)
     txn.changeSet.entities.set(ref, entity)
-    return entity
+    if (entity) {
+        const { __, ...document } = entity
+        return document
+    } else {
+        return entity
+    }
 }

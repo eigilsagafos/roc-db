@@ -1,5 +1,5 @@
 export * from "./schemas"
-
+export { entities } from "./entities"
 export { operations } from "./operations"
 export { testAdapterImplementation } from "./testAdapterImplementation"
 export { inMemoryAdapter } from "./inMemoryAdapter"

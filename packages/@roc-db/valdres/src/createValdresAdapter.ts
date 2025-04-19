@@ -5,6 +5,7 @@ import {
     type Mutation,
     Snowflake,
     type Operation,
+    type Ref,
 } from "roc-db"
 import * as functions from "./functions"
 import {
@@ -23,8 +24,10 @@ export const createValdresAdapter = <Session>({
     txn,
     session,
     entityAtom, // = atomFamily<string, Entity | null>(null),
+    entityUniqueAtom,
+    entityIndexAtom,
     mutationAtom, // = atomFamily<string, Mutation | null>(null),
-    mutationListAtom,
+    changeSetRef,
     optimistic = true,
 }: {
     operations: readonly Operation[]
@@ -33,7 +36,7 @@ export const createValdresAdapter = <Session>({
     txn?: TransactionInterface
     entityAtom?: AtomFamily<string, Entity | null>
     mutationAtom?: AtomFamily<string, Mutation | null>
-    mutationListAtom?: Atom<string[]>
+    changeSetRef?: Ref
     session: Session
     optimistic: boolean
 }) => {
@@ -46,6 +49,7 @@ export const createValdresAdapter = <Session>({
             optimistic,
             session,
             snowflake: new Snowflake(1, 1),
+            changeSetRef,
             // initChangeSetOnce: true,
         },
         {
@@ -53,7 +57,8 @@ export const createValdresAdapter = <Session>({
             store,
             entityAtom,
             mutationAtom,
-            mutationListAtom,
+            entityUniqueAtom,
+            entityIndexAtom,
             // entityRefListAtom = atomFamily<string, string[]>([]),
             // mutationActions,
         },

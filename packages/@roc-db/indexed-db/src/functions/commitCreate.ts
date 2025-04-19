@@ -1,4 +1,7 @@
-import type { CreateEntityFunction } from "roc-db"
+import {
+    createUniqueConstraintConflictError,
+    type CreateEntityFunction,
+} from "roc-db"
 import type { IndexedDBEngine } from "../types/IndexedDBEngine"
 
 export const commitCreate: CreateEntityFunction<IndexedDBEngine> = (
@@ -12,12 +15,16 @@ export const commitCreate: CreateEntityFunction<IndexedDBEngine> = (
             resolve(document)
         }
         request.onerror = event => {
-            console.error(
-                "Error creating entity:",
-                document,
-                event?.target?.error,
-            )
-            reject(event?.target?.error)
+            if (event?.target?.error?.name === "ConstraintError") {
+                reject(createUniqueConstraintConflictError(document.entity))
+            } else {
+                console.error(
+                    "Error creating entity:",
+                    document,
+                    event?.target?.error,
+                )
+                reject(event?.target?.error)
+            }
         }
     })
 }

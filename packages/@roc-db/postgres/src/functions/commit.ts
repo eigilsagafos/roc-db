@@ -1,3 +1,4 @@
+import { createUniqueConstraintConflictError } from "roc-db"
 import { commitCreate } from "./commitCreate"
 import { commitDelete } from "./commitDelete"
 import { commitUpdate } from "./commitUpdate"
@@ -24,7 +25,19 @@ export const commit = async (txn, mutation, { created, updated, deleted }) => {
 
     if (txn.request.changeSetRef) return mutation
     for (const doc of created) {
-        await commitCreate(txn, doc)
+        await commitCreate(txn, doc).catch(err => {
+            if (err.code === "23505") {
+                const [, entity, constraint] = err.detail.match(
+                    /\)=\((.+), (.+)\) already exists/,
+                )
+                const field = constraint.substring(0, constraint.indexOf(":"))
+                const value = JSON.parse(
+                    constraint.substring(constraint.indexOf(":") + 1),
+                )
+                throw createUniqueConstraintConflictError(entity, field, value)
+            }
+            throw err
+        })
     }
     for (const doc of updated) {
         await commitUpdate(txn, doc)

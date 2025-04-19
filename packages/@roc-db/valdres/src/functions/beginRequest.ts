@@ -7,18 +7,30 @@ export const beginRequest = (
     callback,
 ) => {
     if (request.changeSetRef) {
-        const scopedStoreAlreadyAttachedBeforeBegin =
-            !!engineOpts.store.data.scopes[request.changeSetRef]
-        const scopedStore = engineOpts.store.scope(request.changeSetRef)
-        return engineOpts.rootTxn.scope(request.changeSetRef, scopedTxn => {
+        if (engineOpts.store) {
+            const scopedStoreAlreadyAttachedBeforeBegin =
+                !!engineOpts.store.data.scopes[request.changeSetRef]
+            const scopedStore = engineOpts.store.scope(request.changeSetRef)
+            return engineOpts.rootTxn.scope(request.changeSetRef, scopedTxn => {
+                return callback({
+                    ...engineOpts,
+                    txn: scopedTxn,
+                    rootTxn: engineOpts.rootTxn,
+                    scopedStoreAlreadyAttachedBeforeBegin,
+                    scopedStore,
+                })
+            })
+        } else {
+            let scopedTxn
+            engineOpts.txn.scope(request.changeSetRef, txn => {
+                scopedTxn = txn
+            })
             return callback({
                 ...engineOpts,
                 txn: scopedTxn,
-                rootTxn: engineOpts.rootTxn,
-                scopedStoreAlreadyAttachedBeforeBegin,
-                scopedStore,
+                rootTxn: engineOpts.txn,
             })
-        })
+        }
     } else {
         return callback(engineOpts)
     }

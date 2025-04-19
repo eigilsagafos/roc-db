@@ -1,10 +1,8 @@
 import { BlockImageSchema } from "./BlockImageSchema"
 import { BlockParagraphSchema } from "./BlockParagraphSchema"
-import { BlockRowSchema } from "./BlockRowSchema"
 import { BlockTitleSchema } from "./BlockTitleSchema"
 import { DraftSchema } from "./DraftSchema"
 import { PostSchema } from "./PostSchema"
-import { PostVersionSchema } from "./PostVersionSchema"
 export {
     BlockImageSchema,
     BlockParagraphSchema,
@@ -12,16 +10,6 @@ export {
     DraftSchema,
     PostSchema,
 }
-
-export const entities = [
-    BlockRowSchema,
-    BlockImageSchema,
-    BlockParagraphSchema,
-    BlockTitleSchema,
-    DraftSchema,
-    PostSchema,
-    PostVersionSchema,
-]
 
 // Ref Schemas
 export { DraftRefSchema } from "./DraftRefSchema"

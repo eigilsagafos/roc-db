@@ -1,4 +1,5 @@
 import {
+    createUniqueConstraintConflictError,
     entityFromRef,
     type Entity,
     type Mutation,
@@ -6,6 +7,16 @@ import {
     type WriteTransaction,
 } from "roc-db"
 import { saveMutation } from "./saveMutation"
+
+const findAddedAndRemovedEntries = (oldArr, newArr) => {
+    const removed = newArr?.filter(
+        ([k1, v1]) => !oldArr.some(([k2, v2]) => k1 === k2 && v1 === v2),
+    )
+    const added = oldArr?.filter(
+        ([k1, v1]) => !newArr.some(([k2, v2]) => k1 === k2 && v1 === v2),
+    )
+    return [added, removed]
+}
 
 export const commit = (
     txn: WriteTransaction,
@@ -16,7 +27,7 @@ export const commit = (
         deleted,
     }: { created: Entity[]; updated: Entity[]; deleted: Ref[] },
 ) => {
-    const { mutationAtom, mutationListAtom } = txn.engineOpts
+    const { mutationAtom } = txn.engineOpts
     const atom = mutationAtom(txn.mutation.ref)
     const currentMutation = txn.engineOpts.rootTxn.get(atom)
     if (currentMutation) {
@@ -34,19 +45,75 @@ export const commit = (
         saveMutation(txn, mutation)
     }
 
-    const { entityAtom, entityRefListAtom, txn: valdresTxn } = txn.engineOpts
+    const {
+        entityAtom,
+        entityUniqueAtom,
+        entityIndexAtom,
+        txn: valdresTxn,
+    } = txn.engineOpts
     for (const doc of created) {
+        // const { __, ...document } = doc
+        if (doc.__.unique?.length) {
+            doc.__.unique.forEach(([key, value]) => {
+                const atom = entityUniqueAtom(doc.entity, key, value)
+                if (valdresTxn.get(atom))
+                    throw createUniqueConstraintConflictError(doc.entity)
+                valdresTxn.set(atom, doc.ref)
+            })
+        }
+        if (doc.__.index?.length) {
+            doc.__.index.forEach(([key, value]) => {
+                const atom = entityIndexAtom(doc.entity, key, value)
+                valdresTxn.set(atom, curr => [...curr, doc.ref])
+            })
+        }
         valdresTxn.set(entityAtom(doc.ref), doc)
     }
-    if (created.length && entityRefListAtom) {
-        const entity = created[0].entity
-        valdresTxn.set(entityRefListAtom(entity), (curr: string[]) => [
-            ...curr,
-            created.map(doc => doc.ref),
-        ])
-    }
-    for (const doc of updated) {
-        valdresTxn.set(entityAtom(doc.ref), doc)
+    for (const updatedDocument of updated) {
+        const existingDocument = valdresTxn.get(entityAtom(updatedDocument.ref))
+        if (
+            updatedDocument.__.unique?.length ||
+            existingDocument.__.unique?.length
+        ) {
+            const { ref, entity } = updatedDocument
+            const [added, removed] = findAddedAndRemovedEntries(
+                updatedDocument.__.unique,
+                existingDocument.__.unique,
+            )
+            removed.forEach(([k, v]) => {
+                const atom = entityUniqueAtom(entity, k, v)
+                valdresTxn.del(atom)
+            })
+
+            added.forEach(([k, v]) => {
+                const atom = entityUniqueAtom(entity, k, v)
+                if (valdresTxn.get(atom)) {
+                    throw createUniqueConstraintConflictError(entity)
+                } else {
+                    valdresTxn.set(atom, ref)
+                }
+            })
+        }
+        if (
+            updatedDocument.__.index?.length ||
+            existingDocument.__.index?.length
+        ) {
+            const { ref, entity } = updatedDocument
+            const [added, removed] = findAddedAndRemovedEntries(
+                updatedDocument.__.index,
+                existingDocument.__.index,
+            )
+            removed.forEach(([k, v]) => {
+                const atom = entityIndexAtom(entity, k, v)
+                valdresTxn.set(atom, curr => curr.filter(r => r !== ref))
+            })
+
+            added.forEach(([k, v]) => {
+                const atom = entityIndexAtom(entity, k, v)
+                valdresTxn.set(atom, curr => [...curr, ref])
+            })
+        }
+        valdresTxn.set(entityAtom(updatedDocument.ref), updatedDocument)
     }
     for (const ref of deleted) {
         const entity = entityFromRef(ref)
@@ -54,9 +121,6 @@ export const commit = (
             txn.engineOpts.txn.del(mutationAtom(ref))
         } else {
             txn.engineOpts.txn.del(entityAtom(ref))
-            if (entityRefListAtom) {
-                throw new Error("TODO support entityRefListAtom")
-            }
         }
     }
     return mutation

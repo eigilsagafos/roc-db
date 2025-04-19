@@ -15,10 +15,15 @@ export const applyDraft = writeOperation("applyDraft", DraftRefSchema, txn => {
         Query((childRefs, draft) =>
             txn.batchReadEntities([draft.parents.post, ...childRefs]),
         ),
-        Query(childEntities =>
+
+        Query((childEntities, _, draft) =>
             txn.createEntity(versionRef, {
                 data: {
+                    version: 1,
                     snapshot: childEntities,
+                },
+                parents: {
+                    post: draft.parents.post,
                 },
             }),
         ),

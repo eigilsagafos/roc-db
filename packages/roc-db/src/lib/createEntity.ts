@@ -1,5 +1,4 @@
 import { BadRequestError } from "../errors/BadRequestError"
-import type { Entity } from "../types/Entity"
 import type { Ref } from "../types/Ref"
 import { entityFromRef } from "../utils/entityFromRef"
 import { cleanAndVerifyDocumentBody } from "./cleanAndVerifyDocumentBody"
@@ -7,9 +6,10 @@ import type { WriteTransaction } from "./WriteTransaction"
 
 const generateCreateDocument = (txn: WriteTransaction, ref: Ref, body: any) => {
     const bodyClean = cleanAndVerifyDocumentBody(body)
+    const entity = entityFromRef(ref)
     return {
         ref,
-        entity: entityFromRef(ref),
+        entity,
         created: {
             mutationRef: txn.mutation.ref,
             timestamp: txn.mutation.timestamp,
@@ -22,7 +22,7 @@ const generateCreateDocument = (txn: WriteTransaction, ref: Ref, body: any) => {
         children: bodyClean.children || {},
         parents: bodyClean.parents || {},
         ancestors: bodyClean.ancestors || {},
-    } as Entity
+    }
 }
 
 export const createEntity = (txn: WriteTransaction, ref: Ref, body: any) => {

@@ -11,6 +11,20 @@ export const begin = async (engineOpts, callback) => {
                 "mutations",
                 { keyPath: "ref" },
             )
+
+            entitiesObjectStore.createIndex(
+                "unique_constraint_0",
+                ["entity", "unique_constraint_0"],
+                { unique: true },
+            )
+            entitiesObjectStore.createIndex(
+                "unique_constraint_1",
+                ["entity", "unique_constraint_1"],
+                { unique: true },
+            )
+            entitiesObjectStore.createIndex("byIndexEntry", "index_entries", {
+                multiEntry: true,
+            })
             mutationsObjectStore.createIndex("timestamp", "timestamp", {
                 unique: false,
             })
@@ -18,6 +32,7 @@ export const begin = async (engineOpts, callback) => {
                 unique: false,
             })
         }
+
         idbRequest.onsuccess = event => {
             db = idbRequest.result
 

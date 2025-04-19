@@ -15,6 +15,8 @@ describe("createValdresAdapter", () => {
             store: store(),
             entityAtom: atomFamily<Ref, Entity | null>(null),
             mutationAtom: atomFamily<MutationRef, Mutation | null>(null),
+            entityUniqueAtom: atomFamily<Ref, Entity | null>(null),
+            entityIndexAtom: atomFamily<Ref[], [string, string, any]>([]),
         }
     })
 })

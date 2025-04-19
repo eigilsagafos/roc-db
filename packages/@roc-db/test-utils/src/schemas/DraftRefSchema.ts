@@ -1,3 +1,3 @@
-import { refSchemaGenerator } from "roc-db"
+import { Draft } from "../entities/Draft"
 
-export const DraftRefSchema = refSchemaGenerator("Draft")
+export const DraftRefSchema = Draft.refSchema

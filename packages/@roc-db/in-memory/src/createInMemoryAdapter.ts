@@ -42,6 +42,8 @@ export const createInMemoryAdapter = <
         {
             entities: new Map(),
             mutations: new Map(),
+            entitiesUnique: new Map(),
+            entitiesIndex: new Map(),
         },
     ) as Adapter
 }
