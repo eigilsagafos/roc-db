@@ -34,12 +34,18 @@ export const createValdresAdapter = <Session>({
     entities: readonly Entity[]
     store?: Store
     txn?: TransactionInterface
-    entityAtom?: AtomFamily<string, Entity | null>
-    mutationAtom?: AtomFamily<string, Mutation | null>
+    entityAtom: AtomFamily<string, Entity | null>
+    mutationAtom: AtomFamily<string, Mutation | null>
+    entityUniqueAtom: AtomFamily<Ref, [string]>
+    entityIndexAtom: AtomFamily<Ref, [string, string, string]>
     changeSetRef?: Ref
     session: Session
     optimistic: boolean
 }) => {
+    if (!entityAtom) throw new Error("entityAtom is required")
+    if (!mutationAtom) throw new Error("mutationAtom is required")
+    if (!entityUniqueAtom) throw new Error("entityUniqueAtom is required")
+    if (!entityIndexAtom) throw new Error("entityIndexAtom is required")
     return createAdapter(
         {
             name: "valdres",

@@ -1,5 +1,5 @@
 export const pageEntities = (txn, args) => {
-    const { size, skip, changeSetRef, include, exclude } = args
+    const { size, skip, changeSetRef, entities, childrenOf } = args
     const { entityAtom } = txn.engineOpts
     const atoms = txn.engineOpts.txn.get(entityAtom)
 
@@ -7,8 +7,12 @@ export const pageEntities = (txn, args) => {
     for (const atom of atoms) {
         const entity = txn.engineOpts.txn.get(atom)
         if (!entity) continue
-        if (include && include[0] !== "*" && !include.includes(entity.entity))
+        if (entities && entities !== "*" && !entities.includes(entity.entity))
             continue
+        if (childrenOf && childrenOf.length > 0) {
+            if (!entity.__.parentRefs?.some(ref => childrenOf.includes(ref)))
+                continue
+        }
         res.push(entity)
         if (res.length >= size) break
     }

@@ -270,6 +270,69 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
         })
     })
 
+    describe("paging", () => {
+        let adapter
+        let post1ref
+        beforeAll(async () => {
+            adapter = await createAdapter()
+            const [post1] = await adapter.createPost({ title: "Post 1" })
+            post1ref = post1.ref
+            const [user] = await adapter.createUser({ email: "foo@bar.com" })
+            const [draft1] = await adapter.createDraft({
+                postRef: post1.ref,
+            })
+            const [post2] = await adapter.createPost({ title: "Post 2" })
+            const [draft2] = await adapter.createDraft({
+                postRef: post2.ref,
+            })
+            const draft1adapter = adapter.changeSet(draft1.ref)
+            await draft1adapter.createBlockImage({
+                parentRef: post1.ref,
+                url: "https://example.com/image.png",
+            })
+            await draft1adapter.createBlockParagraph({
+                parentRef: post1.ref,
+            })
+            await adapter.applyDraft(draft1.ref)
+            const draft2adapter = adapter.changeSet(draft2.ref)
+            await draft2adapter.createBlockImage({
+                parentRef: post2.ref,
+                url: "https://example.com/image.png",
+            })
+            await draft2adapter.createBlockParagraph({
+                parentRef: post2.ref,
+            })
+            await adapter.applyDraft(draft2.ref)
+        })
+        test("limited to given collection", async () => {
+            const res = await adapter.pagePosts()
+            expect(res).toHaveLength(2)
+        })
+        test("limit", async () => {
+            const res = await adapter.pagePosts({ size: 1 })
+            expect(res).toHaveLength(1)
+        })
+
+        test("pageSplat", async () => {
+            const res = await adapter.pageSplat({})
+            expect(res).toHaveLength(11)
+        })
+        test("pageEmptyEntitiesArray", async () => {
+            const res = await adapter.pageEmptyEntitiesArray({})
+            expect(res).toHaveLength(0)
+        })
+        test("pageBlocks", async () => {
+            const res = await adapter.pageBlocks({})
+            expect(res).toHaveLength(4)
+        })
+        test("pageBlocks with parent ref", async () => {
+            const res = await adapter.pageBlocks({ parentRef: post1ref })
+            expect(res).toHaveLength(2)
+            expect(res[0].parents.parent).toBe(post1ref)
+            expect(res[1].parents.parent).toBe(post1ref)
+        })
+    })
+
     describe("changeSet", () => {
         let postRef: string,
             draftRef: string,

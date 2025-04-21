@@ -6,6 +6,7 @@ export const createUser = writeOperation(
     z.object({ email: z.string() }),
     txn => {
         const ref = txn.createRef("User")
-        return Query(() => txn.createEntity(ref, { data: { name: "Foo" } }))
+        const { email } = txn.payload
+        return Query(() => txn.createEntity(ref, { data: { email: email } }))
     },
 )

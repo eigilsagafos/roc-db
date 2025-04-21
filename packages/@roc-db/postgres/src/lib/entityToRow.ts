@@ -1,5 +1,4 @@
 import { entityFromRef, idFromRef } from "roc-db"
-import { idsFromRelations } from "./idsFromRelations"
 import { refsFromRelations } from "./refsFromRelations"
 
 const stringifyIndexEntry = ([k, v]) => `${k}:${JSON.stringify(v)}`
@@ -20,12 +19,9 @@ export const entityToRow = entity => {
         children: entity.children,
         parents: entity.parents,
         ancestors: entity.ancestors,
-        children_ids: idsFromRelations(entity.children),
-        children_refs: refsFromRelations(entity.children),
-        parent_ids: idsFromRelations(entity.parents),
-        parent_refs: refsFromRelations(entity.parents),
-        ancestor_ids: idsFromRelations(entity.ancestors),
-        ancestor_refs: refsFromRelations(entity.ancestors),
+        children_refs: entity.__.childRefs ?? [],
+        parent_refs: entity.__.parentRefs ?? [],
+        ancestor_refs: entity.__.ancestorRefs ?? [],
         index_entries: entity.__.index
             ? stringifyIndexEntries(entity.__.index)
             : [],

@@ -66,6 +66,8 @@ test("data is stored in the scoped store", () => {
         store: rootStore,
         entityAtom: entityFamily,
         mutationAtom: atomFamily(null),
+        entityUniqueAtom: atomFamily(null),
+        entityIndexAtom: atomFamily([]),
         session: { identityRef: "User/42" },
     })
     const [post] = adapter.createPost({ title: "Foo" })
@@ -114,6 +116,8 @@ test("mutation stored in root store", () => {
         store: rootStore,
         entityAtom: entityFamily,
         mutationAtom: mutationFamily,
+        entityUniqueAtom: atomFamily(null),
+        entityIndexAtom: atomFamily([]),
         operations,
         session: { identityRef: "User/42" },
         entities,

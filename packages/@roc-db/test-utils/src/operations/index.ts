@@ -5,10 +5,15 @@ import { createBlockRow } from "./createBlockRow"
 import { createBlockTitle } from "./createBlockTitle"
 import { createDraft } from "./createDraft"
 import { createPost } from "./createPost"
+import { createUser } from "./createUser"
 import { deleteBlocks } from "./deleteBlocks"
 import { deleteDraft } from "./deleteDraft"
 import { deletePost } from "./deletePost"
 import { moveBlocks } from "./moveBlocks"
+import { pageBlocks } from "./pageBlocks"
+import { pageEmptyEntitiesArray } from "./pageEmptyEntitiesArray"
+import { pagePosts } from "./pagePosts"
+import { pageSplat } from "./pageSplat"
 import { pagePostsByTag } from "./pagePostsByTag"
 import { readEntity } from "./readEntity"
 import { readMutation } from "./readMutation"
@@ -30,15 +35,20 @@ export const operations = [
     createBlockRow,
     createDraft,
     createPost,
+    createUser,
     deleteBlocks,
     deleteDraft,
     deletePost,
     readPostBySlug,
     moveBlocks,
     pagePostsByTag,
+    pageBlocks,
     readEntity,
     readMutation,
     readPost,
+    pageEmptyEntitiesArray,
+    pagePosts,
+    pageSplat,
     testTransactionalEdits,
     updateBlockParagraph,
     updatePost,

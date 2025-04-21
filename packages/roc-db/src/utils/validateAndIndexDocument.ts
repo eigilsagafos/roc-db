@@ -1,4 +1,5 @@
 import { BadRequestError } from "../errors/BadRequestError"
+import { refsFromRelations } from "./refsFromRelations"
 
 export const validateAndIndexDocument = (model, { __, ...document }) => {
     const entity = document.entity
@@ -44,6 +45,15 @@ export const validateAndIndexDocument = (model, { __, ...document }) => {
             }
         })
         document.__.unique = uniqueEntries
+    }
+    if (Object.keys(document.parents).length > 0) {
+        document.__.parentRefs = refsFromRelations(document.parents)
+    }
+    if (Object.keys(document.children).length > 0) {
+        document.__.childRefs = refsFromRelations(document.children)
+    }
+    if (Object.keys(document.ancestors).length > 0) {
+        document.__.ancestorRefs = refsFromRelations(document.ancestors)
     }
 
     return document
