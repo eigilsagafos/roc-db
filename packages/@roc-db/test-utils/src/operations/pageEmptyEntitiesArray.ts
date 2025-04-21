@@ -1,7 +1,7 @@
 import { Query, readOperation } from "roc-db"
 import { z } from "zod"
 
-export const pageEmptyEntitiesArray = readOperation(
+export const pageEmptyEntitiesArray: any = readOperation(
     "pageEmptyEntitiesArray",
     z.object({ size: z.number().default(100) }),
     txn => {

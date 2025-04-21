@@ -27,7 +27,7 @@ import { updatePostSlug } from "./updatePostSlug"
 import { updatePostTags } from "./updatePostTags"
 import { updatePostTitle } from "./updatePostTitle"
 
-export const operations = [
+export const operations: any[] = [
     applyDraft,
     createBlockImage,
     createBlockTitle,

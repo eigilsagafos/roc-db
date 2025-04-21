@@ -1,7 +1,7 @@
 import { Query, readOperation } from "roc-db"
 import { z } from "zod"
 
-export const pageSplat = readOperation(
+export const pageSplat: any = readOperation(
     "pageSplat",
     z.object({ size: z.number().default(100) }),
     txn => {
