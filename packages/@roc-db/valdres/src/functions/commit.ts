@@ -120,6 +120,21 @@ export const commit = (
         if (entity === "Mutation") {
             txn.engineOpts.txn.del(mutationAtom(ref))
         } else {
+            const existingDocument = valdresTxn.get(entityAtom(ref))
+            if (existingDocument.__.unique?.length) {
+                existingDocument.__.unique.forEach(([k, v]) => {
+                    const atom = entityUniqueAtom(existingDocument.entity, k, v)
+                    valdresTxn.del(atom)
+                })
+            }
+            if (existingDocument.__.index?.length) {
+                existingDocument.__.index.forEach(([k, v]) => {
+                    const atom = entityIndexAtom(existingDocument.entity, k, v)
+                    valdresTxn.set(atom, curr =>
+                        curr.filter(r => r !== existingDocument.ref),
+                    )
+                })
+            }
             txn.engineOpts.txn.del(entityAtom(ref))
         }
     }

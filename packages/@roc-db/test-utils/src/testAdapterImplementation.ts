@@ -181,8 +181,11 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
             })
             const pageTagFoo2 = await adapter1.pagePostsByTag("foo")
             expect(pageTagFoo2.length).toBe(0)
-            const pageTagBar = await adapter1.pagePostsByTag("bar")
-            expect(pageTagBar.length).toBe(1)
+            const pageTagBar1 = await adapter1.pagePostsByTag("bar")
+            expect(pageTagBar1.length).toBe(1)
+            await adapter1.deletePost(post.ref)
+            const pageTagBar2 = await adapter1.pagePostsByTag("bar")
+            expect(pageTagBar2.length).toBe(0)
         })
 
         test("read not found (readEntity function)", async () => {

@@ -122,6 +122,23 @@ export const commit = (
         if (ref.startsWith("Mutation/")) {
             txn.engineOpts.mutations.delete(ref)
         } else {
+            const existingDocument = txn.engineOpts.entities.get(ref)
+            if (existingDocument.__.unique?.length) {
+                existingDocument.__.unique.forEach(([key, value]) => {
+                    const uniqueKey = `${existingDocument.entity}:${key}:${JSON.stringify(value)}`
+                    txn.engineOpts.entitiesUnique.delete(uniqueKey)
+                })
+            }
+            if (existingDocument.__.index?.length) {
+                existingDocument.__.index.forEach(([key, value]) => {
+                    const indexKey = `${existingDocument.entity}:${key}:${JSON.stringify(value)}`
+                    const arr = txn.engineOpts.entitiesIndex.get(indexKey) ?? []
+                    txn.engineOpts.entitiesIndex.set(
+                        indexKey,
+                        arr.filter(ref => ref !== existingDocument.ref),
+                    )
+                })
+            }
             txn.engineOpts.entities.delete(ref)
         }
     }
