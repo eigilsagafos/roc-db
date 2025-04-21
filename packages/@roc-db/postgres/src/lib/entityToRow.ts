@@ -1,5 +1,4 @@
 import { entityFromRef, idFromRef } from "roc-db"
-import { refsFromRelations } from "./refsFromRelations"
 
 const stringifyIndexEntry = ([k, v]) => `${k}:${JSON.stringify(v)}`
 
