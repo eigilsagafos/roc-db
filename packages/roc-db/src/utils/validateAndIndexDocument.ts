@@ -1,8 +1,7 @@
 import { BadRequestError } from "../errors/BadRequestError"
 
-export const validateAndIndexDocument = (txn, { __, ...document }) => {
+export const validateAndIndexDocument = (model, { __, ...document }) => {
     const entity = document.entity
-    const model = txn.adapter.models[entity]
     if (!model) {
         throw new BadRequestError(`Unknown entity ${entity}`)
     }
@@ -16,8 +15,7 @@ export const validateAndIndexDocument = (txn, { __, ...document }) => {
             )}`,
         )
     }
-    document.__ = document.__ || {}
-    // console.log("parseRes", parseRes)
+    document.__ = {}
     if (model.indexedDataKeys.length > 0) {
         const indexEntries = []
         model.indexedDataKeys.forEach(key => {
@@ -30,14 +28,6 @@ export const validateAndIndexDocument = (txn, { __, ...document }) => {
             } else {
                 indexEntries.push(validatedIndexEntry(key, value))
             }
-            // if (type === "string") {
-            //     indexEntries.push(`${key}:${JSON.stringify(value)}`)
-            // } else if (type === "number") {
-            //     indexEntries.push(`${key}:${JSON.stringify(value)}`)
-            // } else {
-            //     console.log("TODO", key, type, JSON.stringify(value))
-            //     throw new Error("TODO")
-            // }
         })
         document.__.index = indexEntries
     }
@@ -52,23 +42,10 @@ export const validateAndIndexDocument = (txn, { __, ...document }) => {
             } else {
                 throw new Error("Invalid type for unique key")
             }
-            // if (type === "string") {
-            //     uniqueEntries.push(`${key}:${JSON.stringify(value)}`)
-            // } else if (type === "number") {
-            //     uniqueEntries.push(`${key}:${JSON.stringify(value)}`)
-            // } else {
-            //     console.log("TODO", key, type, JSON.stringify(value))
-            //     throw new Error("TODO")
-            // }
         })
         document.__.unique = uniqueEntries
     }
 
-    // if (request.operation.outputSchema) {
-    //     validateOutput(res, request)
-    // }
-    // console.log(txn.adapter.entities[0].shape.entity.value)
-    // const schema = txn.adapter.entities
     return document
 }
 

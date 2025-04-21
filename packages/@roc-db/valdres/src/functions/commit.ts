@@ -52,7 +52,6 @@ export const commit = (
         txn: valdresTxn,
     } = txn.engineOpts
     for (const doc of created) {
-        // const { __, ...document } = doc
         if (doc.__.unique?.length) {
             doc.__.unique.forEach(([key, value]) => {
                 const atom = entityUniqueAtom(doc.entity, key, value)
