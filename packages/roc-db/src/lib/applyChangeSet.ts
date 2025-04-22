@@ -4,6 +4,7 @@ import { findOperation } from "./findOperation"
 import { parseRequestPayload } from "./parseRequestPayload"
 import { runAsyncFunctionChain } from "./runAsyncFunctionChain"
 import { runSyncFunctionChain } from "./runSyncFunctionChain"
+import { sortMutations } from "./sortMutations"
 import { WriteTransaction } from "./WriteTransaction"
 
 export const applyChangeSet = (txn: WriteTransaction, ref) => {
@@ -15,9 +16,10 @@ export const applyChangeSet = (txn: WriteTransaction, ref) => {
 }
 
 const applyChangeSetSync = (txn: WriteTransaction, ref: Ref) => {
-    const res = txn.adapter.functions.getChangeSetMutations(txn, ref)
-    if (res.length) {
-        for (const mutation of res) {
+    const mutations = txn.adapter.functions.getChangeSetMutations(txn, ref)
+    if (mutations.length) {
+        const sortedMutations = sortMutations(mutations)
+        for (const mutation of sortedMutations) {
             const applyTxn = prepareTransaction(txn, mutation)
             runSyncFunctionChain(applyTxn.request.operation.callback(applyTxn))
             applyTxn.commit(true)
@@ -25,9 +27,13 @@ const applyChangeSetSync = (txn: WriteTransaction, ref: Ref) => {
     }
 }
 const applyChangeSetAsync = async (txn: WriteTransaction, ref: Ref) => {
-    const res = await txn.adapter.functions.getChangeSetMutations(txn, ref)
-    if (res.length) {
-        for (const mutation of res) {
+    const mutations = await txn.adapter.functions.getChangeSetMutations(
+        txn,
+        ref,
+    )
+    if (mutations.length) {
+        const sortedMutations = sortMutations(mutations)
+        for (const mutation of sortedMutations) {
             const applyTxn = prepareTransaction(txn, mutation)
             await runAsyncFunctionChain(
                 applyTxn.request.operation.callback(applyTxn),
