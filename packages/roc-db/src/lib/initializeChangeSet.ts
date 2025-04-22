@@ -6,6 +6,7 @@ import { findOperation } from "./findOperation"
 import { parseRequestPayload } from "./parseRequestPayload"
 import { runAsyncFunctionChain } from "./runAsyncFunctionChain"
 import { runSyncFunctionChain } from "./runSyncFunctionChain"
+import { sortMutations } from "./sortMutations"
 import { WriteTransaction } from "./WriteTransaction"
 
 export const initializeChangeSet = (txn: Transaction) => {
@@ -43,8 +44,9 @@ const initializeChangeSetAsync = async (txn: Transaction) => {
         txn,
         txn.changeSetRef as Ref,
     )
+    const sorted = sortMutations(mutations)
     if (mutations.length) {
-        for (const mutation of mutations) {
+        for (const mutation of sorted) {
             const initTxn = prepareInitTransaction(txn, mutation)
             await runAsyncFunctionChain(
                 initTxn.request.operation.callback(initTxn),
@@ -53,6 +55,7 @@ const initializeChangeSetAsync = async (txn: Transaction) => {
     }
     txn.changeSetInitialized = true
 }
+
 const initializeChangeSetSync = (txn: Transaction) => {
     const changeSetDoc = txn.readEntity(txn.changeSetRef, false)
     verifyChangeSet(changeSetDoc)
@@ -60,8 +63,9 @@ const initializeChangeSetSync = (txn: Transaction) => {
         txn,
         txn.changeSetRef as Ref,
     )
+    const sorted = sortMutations(mutations)
     if (mutations.length) {
-        for (const mutation of mutations) {
+        for (const mutation of sorted) {
             const initTxn = prepareInitTransaction(txn, mutation)
             runSyncFunctionChain(initTxn.request.operation.callback(initTxn))
         }

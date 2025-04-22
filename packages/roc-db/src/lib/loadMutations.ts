@@ -6,6 +6,7 @@ import { defaultBeginTransaction } from "./defaultBeginTransaction"
 import { executeWriteRequestAsyncInternal } from "./executeWriteRequestAsync"
 import { executeWriteRequestSyncInternal } from "./executeWriteRequestSync"
 import { findOperation } from "./findOperation"
+import { sortMutations } from "./sortMutations"
 
 const shouldSkipMutationImport = (mutation: Mutation, existing: Mutation) => {
     if (mutation.debounceCount > existing.debounceCount) return false
@@ -124,7 +125,7 @@ export const loadMutations = (
     mutations: Mutation[],
     operations: any[],
 ) => {
-    const sorted = mutations.sort((a, b) => (a.ref > b.ref ? 1 : -1))
+    const sorted = sortMutations(mutations)
     const groups = sorted.reduce(
         (acc, mutation) => {
             const key = mutation.changeSetRef ?? "root"
