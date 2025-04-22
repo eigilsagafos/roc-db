@@ -21,6 +21,7 @@ export const createPostgresAdapter = ({
     afterTransactionEnd,
     onTransactionStart,
     onTransactionEnd,
+    snowflake = new Snowflake(1, 1),
 }: {
     operations: readonly Operation[]
     entities: readonly Entity[]
@@ -34,7 +35,7 @@ export const createPostgresAdapter = ({
             functions,
             optimistic,
             session,
-            snowflake: new Snowflake(1, 1),
+            snowflake,
             async: true,
         },
         {

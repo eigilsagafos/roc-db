@@ -27,7 +27,6 @@ const createDescendantsOfClause = (descendantsOf, sqlTxn) => {
 }
 
 export const pageEntities = async (txn, args) => {
-    console.log("roc pageEntities", args)
     const { entitiesTableName, sqlTxn } = txn.engineOpts
     const { descendantsOf, childrenOf, entities, size = null } = args
 
