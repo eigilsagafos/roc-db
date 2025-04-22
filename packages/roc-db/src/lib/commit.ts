@@ -15,14 +15,8 @@ export const commit = (txn: WriteTransaction, isChangeSetApply = false) => {
     // if (isChangeSetInit) return
     const { docsToCreate, docsToUpdate, refsToDelete } = convertLog(txn.log)
     return txn.adapter.functions.commit(txn, finalizedMutation, {
-        created: docsToCreate.map(doc => {
-            const model = txn.adapter.models[doc.entity]
-            return validateAndIndexDocument(model, doc)
-        }),
-        updated: docsToUpdate.map(doc => {
-            const model = txn.adapter.models[doc.entity]
-            return validateAndIndexDocument(model, doc)
-        }),
+        created: docsToCreate,
+        updated: docsToUpdate,
         deleted: refsToDelete,
     })
 }

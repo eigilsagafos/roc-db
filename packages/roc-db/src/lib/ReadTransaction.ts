@@ -22,6 +22,8 @@ export class ReadTransaction<EngineOpts extends any = any> {
         } = {
             mutations: new Map(),
             entities: new Map(),
+            entitiesUnique: new Map(),
+            entitiesIndex: new Map(),
         },
     ) {
         this.request = request

@@ -1,5 +1,6 @@
 import type { Ref } from "../types/Ref"
 import { DELETED_IN_CHANGE_SET_SYMBOL } from "../utils/DELETED_IN_CHANGE_SET_SYMBOL"
+import { validateAndIndexDocument } from "../utils/validateAndIndexDocument"
 import type { WriteTransaction } from "./WriteTransaction"
 
 export const deleteEntity = (
@@ -14,8 +15,33 @@ export const deleteEntity = (
     }
 }
 
+const removeIndexEntriesFromMap = (document, indexMap) => {
+    for (const [key, value] of document.__.index) {
+        const entry = `${document.entity}:${key}:${JSON.stringify(value)}`
+        const arr = (indexMap.get(entry) || []).filter(
+            ref => ref !== document.ref,
+        )
+        indexMap.set(entry, arr)
+    }
+}
+const removeUniqueEntriesFromMap = (document, uniqueMap) => {
+    for (const [key, value] of document.__.unique) {
+        const entry = `${document.entity}:${key}:${JSON.stringify(value)}`
+        console.log("removing unique entry", entry)
+        uniqueMap.set(entry, DELETED_IN_CHANGE_SET_SYMBOL)
+    }
+}
+
 const applyInLog = (txn: WriteTransaction, ref: Ref, currentDocument) => {
     txn.changeSet.entities.set(ref, DELETED_IN_CHANGE_SET_SYMBOL)
+    const model = txn.adapter.models[currentDocument.entity]
+    const validated = validateAndIndexDocument(model, currentDocument)
+    if (validated.__.index?.length) {
+        removeIndexEntriesFromMap(validated, txn.changeSet.entitiesIndex)
+    }
+    if (validated.__.unique?.length > 0) {
+        removeUniqueEntriesFromMap(validated, txn.changeSet.entitiesUnique)
+    }
     if (txn.changeSetInitialized) {
         if (txn.log.has(ref)) {
             const event = txn.log.get(ref)

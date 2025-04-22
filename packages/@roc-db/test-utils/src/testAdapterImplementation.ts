@@ -166,6 +166,20 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
             expect(readPostRes2.data.slug).toStrictEqual(slug2)
         })
 
+        test("update and delete post by slug", async () => {
+            const slug1 = faker.lorem.slug(5)
+            const slug2 = faker.lorem.slug(5)
+            const [post] = await adapter1.createPost({
+                title: "Title 1",
+                slug: slug1,
+            })
+            const [res] = await adapter1.crudBySlug({
+                slug: slug1,
+                newSlug: slug2,
+            })
+            expect(res).toStrictEqual([null, null])
+        })
+
         test("update index entries", async () => {
             const [post] = await adapter1.createPost({
                 title: "Title 1",

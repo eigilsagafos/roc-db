@@ -42,7 +42,7 @@ const readEntitySync = (txn: Transaction, ref: Ref, throwIfMissing = true) => {
 const handleReadResponse = (
     txn: Transaction,
     ref: Ref,
-    entity: Entity | undefined,
+    entity: Entity | null = null,
     throwIfMissing: boolean,
 ) => {
     if (!entity && throwIfMissing) throw new NotFoundError(ref)

@@ -26,6 +26,7 @@ import { updatePostDescription } from "./updatePostDescription"
 import { updatePostSlug } from "./updatePostSlug"
 import { updatePostTags } from "./updatePostTags"
 import { updatePostTitle } from "./updatePostTitle"
+import { crudBySlug } from "./crudBySlug"
 
 export const operations: any[] = [
     applyDraft,
@@ -36,6 +37,7 @@ export const operations: any[] = [
     createDraft,
     createPost,
     createUser,
+    crudBySlug,
     deleteBlocks,
     deleteDraft,
     deletePost,

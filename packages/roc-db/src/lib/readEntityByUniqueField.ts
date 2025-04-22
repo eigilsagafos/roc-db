@@ -1,5 +1,6 @@
 import { NotFoundError } from "../errors/NotFoundError"
 import type { Transaction } from "../types/Transaction"
+import { DELETED_IN_CHANGE_SET_SYMBOL } from "../utils/DELETED_IN_CHANGE_SET_SYMBOL"
 
 export const readEntityByUniqueField = (
     txn: Transaction,
@@ -8,19 +9,6 @@ export const readEntityByUniqueField = (
     value: any,
     throwIfMissing = true,
 ) => {
-    // if (txn.operation)
-    // if (txn.changeSet.entities.has(ref)) {
-    //     const entity = txn.changeSet.entities.get(ref)
-    //     if (entity === DELETED_IN_CHANGE_SET_SYMBOL) {
-    //         if (throwIfMissing) throw new NotFoundError(ref)
-    //         return undefined
-    //     }
-    //     return entity
-    // }
-    if (txn.request.operation.type === "write")
-        throw new Error(
-            "readEntityByUniqueField not yet supported in a write operation",
-        )
     const model = txn.adapter.models[entity]
     if (!model) {
         throw new Error(
@@ -34,6 +22,19 @@ export const readEntityByUniqueField = (
         throw new Error(
             `Field ${field} is not a unique field for entity ${entity}. Available unique fields: ${model.uniqueDataKeys}`,
         )
+    }
+
+    const key = `${entity}:${field}:${JSON.stringify(value)}`
+
+    if (txn.changeSet.entitiesUnique.has(key)) {
+        const ref = txn.changeSet.entitiesUnique.get(key)
+        if (ref === DELETED_IN_CHANGE_SET_SYMBOL) {
+            if (throwIfMissing) {
+                return handleReadResponse(txn, null, entity, field, value, true)
+            }
+            return null
+        }
+        return txn.readEntity(ref)
     }
 
     if (txn.adapter.async) {
@@ -72,7 +73,7 @@ const readEntityByUniqueFieldAsync = async (
         fieldIndex,
         value,
     )
-    const document = ref ? await txn.readEntity(ref) : undefined
+    const document = ref ? await txn.readEntity(ref, false) : undefined
     return handleReadResponse(
         txn,
         document,
@@ -98,7 +99,7 @@ const readEntityByUniqueFieldSync = (
         fieldIndex,
         value,
     )
-    const document = ref ? txn.readEntity(ref) : undefined
+    const document = ref ? txn.readEntity(ref, false) : undefined
     return handleReadResponse(
         txn,
         document,
@@ -111,7 +112,7 @@ const readEntityByUniqueFieldSync = (
 
 const handleReadResponse = (
     txn: Transaction,
-    document,
+    document = null,
     entity,
     field,
     value,
