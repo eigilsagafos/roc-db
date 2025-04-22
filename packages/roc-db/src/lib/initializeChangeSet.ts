@@ -72,7 +72,7 @@ const initializeChangeSetSync = (txn: Transaction) => {
 const verifyChangeSet = changeSetDoc => {
     if (!changeSetDoc)
         throw new BadRequestError("The provided changeSetRef does not exist")
-    if (changeSetDoc.data.appliedAt)
+    if (changeSetDoc?.data?.appliedAt)
         throw new BadRequestError(
             "The provided changeSetRef has already been applied",
         )
