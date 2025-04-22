@@ -27,6 +27,7 @@ const createDescendantsOfClause = (descendantsOf, sqlTxn) => {
 }
 
 export const pageEntities = async (txn, args) => {
+    console.log("roc pageEntities", args)
     const { entitiesTableName, sqlTxn } = txn.engineOpts
     const { descendantsOf, childrenOf, entities, size = null } = args
 
@@ -37,7 +38,7 @@ export const pageEntities = async (txn, args) => {
             ${createChildrenOfClause(childrenOf, sqlTxn)} AND
             ${createDescendantsOfClause(descendantsOf, sqlTxn)}
         ORDER BY created_at DESC
-        LIMIT ${size ?? "NULL"};
+        LIMIT ${size};
         `
     return rows.values().toArray().map(postgresRowToEntity)
 }
