@@ -37,9 +37,8 @@ const prepareInitTransaction = (txn: Transaction, mutation: Mutation) => {
 }
 
 const initializeChangeSetAsync = async (txn: Transaction) => {
-    const changeSetEntity = await txn.readEntity(txn.changeSetRef, false)
-    if (!changeSetEntity)
-        throw new BadRequestError("The provided changeSetRef does not exist")
+    const changeSetDoc = await txn.readEntity(txn.changeSetRef, false)
+    verifyChangeSet(changeSetDoc)
     const mutations = await txn.adapter.functions.getChangeSetMutations(
         txn,
         txn.changeSetRef as Ref,
@@ -55,9 +54,8 @@ const initializeChangeSetAsync = async (txn: Transaction) => {
     txn.changeSetInitialized = true
 }
 const initializeChangeSetSync = (txn: Transaction) => {
-    const changeSetEntity = txn.readEntity(txn.changeSetRef, false)
-    if (!changeSetEntity)
-        throw new BadRequestError("The provided changeSetRef does not exist")
+    const changeSetDoc = txn.readEntity(txn.changeSetRef, false)
+    verifyChangeSet(changeSetDoc)
     const mutations = txn.adapter.functions.getChangeSetMutations(
         txn,
         txn.changeSetRef as Ref,
@@ -69,4 +67,13 @@ const initializeChangeSetSync = (txn: Transaction) => {
         }
     }
     txn.changeSetInitialized = true
+}
+
+const verifyChangeSet = changeSetDoc => {
+    if (!changeSetDoc)
+        throw new BadRequestError("The provided changeSetRef does not exist")
+    if (changeSetDoc.data.appliedAt)
+        throw new BadRequestError(
+            "The provided changeSetRef has already been applied",
+        )
 }

@@ -476,8 +476,16 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
         })
 
         test("applyDraft", async () => {
-            const { draftRef } = await prepareChangeSetTest(adapter1)
+            const { draftRef, post, changeSetAdapter } =
+                await prepareChangeSetTest(adapter1)
             const [version, mutation] = await adapter1.applyDraft(draftRef)
+            // console.log(version)
+            expect(() =>
+                changeSetAdapter.createBlockImage({
+                    parentRef: post.ref,
+                    url: "https://example.com/image.png",
+                }),
+            ).toThrowError("The provided changeSetRef has already been applied")
         })
 
         test("deleteDraft", async () => {
