@@ -2,7 +2,7 @@
     "name": "roc-db-monorepo",
     "type": "module",
     "private": true,
-    "version": "0.2.0-pre.58",
+    "version": "0.2.0-pre.59",
     "author": {
         "name": "Eigil Sagafos"
     },
