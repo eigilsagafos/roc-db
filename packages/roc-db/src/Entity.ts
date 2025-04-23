@@ -2,6 +2,24 @@ import { z, ZodSchema, type ZodObject } from "zod"
 import { refSchemaGenerator } from "./schemas/generators/refSchemaGenerator"
 import { TimestampWithMutationRefSchema } from "./schemas/TimestampWithMutationRefSchema"
 
+const hasNoUndefined = (value: any): boolean => {
+    if (value === null || typeof value !== "object") {
+        return value !== undefined
+    }
+
+    if (Array.isArray(value)) {
+        return value.every(item => hasNoUndefined(item))
+    }
+
+    return Object.values(value).every(val => hasNoUndefined(val))
+}
+
+const addUndefinedCheck = schema => {
+    return schema.refine(hasNoUndefined, {
+        message: "Object cannot contain undefined values",
+    })
+}
+
 export class Entity<
     const Name extends string,
     const Data extends ZodObject<any> = ZodObject<{}>,
@@ -35,11 +53,18 @@ export class Entity<
                 entity: z.literal(name),
                 created: TimestampWithMutationRefSchema.required().strict(),
                 updated: TimestampWithMutationRefSchema.required().strict(),
-                data: (args.data ?? z.object({}).strict()) as Data,
-                children: (args.children ?? z.object({}).strict()) as Children,
-                parents: (args.parents ?? z.object({}).strict()) as Parents,
-                ancestors: (args.ancestors ??
-                    z.object({}).strict()) as Ancestors,
+                data: addUndefinedCheck(
+                    args.data ?? z.object({}).strict(),
+                ) as Data,
+                children: addUndefinedCheck(
+                    args.children ?? z.object({}).strict(),
+                ) as Children,
+                parents: addUndefinedCheck(
+                    args.parents ?? z.object({}).strict(),
+                ) as Parents,
+                ancestors: addUndefinedCheck(
+                    args.ancestors ?? z.object({}).strict(),
+                ) as Ancestors,
             })
             .strict()
             .required()

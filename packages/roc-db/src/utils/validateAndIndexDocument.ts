@@ -8,8 +8,6 @@ export const validateAndIndexDocument = (model, { __, ...document }) => {
     }
     const parseRes = model.schema.safeParse(document)
     if (parseRes.success === false) {
-        console.log("parseRes", parseRes.error, document)
-        console.log("model", model.name)
         throw new BadRequestError(
             `Invalid document for entity ${entity}: ${JSON.stringify(
                 parseRes.error.format(),
