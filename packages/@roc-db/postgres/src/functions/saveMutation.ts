@@ -47,9 +47,13 @@ export const saveMutation = async (
             console.error("Error updating mutation")
             throw err
         })
-        return postgresRowToMutation(row)
-    } else {
-        const [row] = await sqlTxn`
+        // If the row is not found, it means that the mutation was never created. This can
+        // happen when a optimistic mutation is not synced until it has debounced a few times
+        if (row) {
+            return postgresRowToMutation(row)
+        }
+    }
+    const [row] = await sqlTxn`
             INSERT INTO ${sqlTxn(mutationsTableName)} (
                 id,
                 timestamp,
@@ -80,10 +84,9 @@ export const saveMutation = async (
                 ${sessionRef || null}
             ) RETURNING *;
         `.catch(err => {
-            console.error("Error creating mutation", finalizedMutation)
-            console.log(finalizedMutation)
-            throw err
-        })
-        return postgresRowToMutation(row)
-    }
+        console.error("Error creating mutation", finalizedMutation)
+        console.log(finalizedMutation)
+        throw err
+    })
+    return postgresRowToMutation(row)
 }

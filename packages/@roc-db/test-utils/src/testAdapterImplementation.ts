@@ -261,6 +261,28 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
             expect(mutation).toStrictEqual(createPostMutation)
         })
 
+        test("sync mutation with debounce > 0", async () => {
+            const [post, createPostMutation] = await adapter1.createPost({
+                title: "Foo",
+            })
+            const [{ persistedAt, ...mutation }] =
+                await adapter2.persistOptimisticMutations([createPostMutation])
+            expect(mutation).toStrictEqual(createPostMutation)
+            const res = await adapter1.updatePostTitle({
+                ref: post.ref,
+                title: "A",
+            })
+            const [, debounceMutation] = await adapter1.updatePostTitle({
+                ref: post.ref,
+                title: "A",
+            })
+            expect(debounceMutation.debounceCount).toBe(1)
+            const [debounceMutationPersist] =
+                await adapter2.persistOptimisticMutations([debounceMutation])
+            expect(debounceMutationPersist.debounceCount).toBe(1)
+            expect(debounceMutationPersist.persistedAt).toBeDefined()
+        })
+
         test("create, patch and delete the same item within the same transaction", async () => {
             const [post1] = await adapter1.createPost({ title: "Post 1" })
             const [post2] = await adapter1.createPost({ title: "Post 1" })
