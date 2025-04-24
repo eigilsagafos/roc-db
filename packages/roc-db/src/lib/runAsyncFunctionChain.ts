@@ -50,7 +50,7 @@ export const runAsyncFunctionChain = async (query, args = []) => {
             return res
         }
     } else if (query instanceof QueryObjectClass) {
-        const resultObj = []
+        const resultObj = {}
         for (const [key, q] of Object.entries(query.map)) {
             const result = await runAsyncFunctionChain(q)
             resultObj[key] = result
