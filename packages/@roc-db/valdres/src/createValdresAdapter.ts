@@ -30,6 +30,9 @@ export const createValdresAdapter = <Session>({
     changeSetRef,
     optimistic = true,
     snowflake = new Snowflake(1, 1),
+    validateCreate,
+    validateUpdate,
+    validateDelete,
 }: {
     operations: readonly Operation[]
     entities: readonly Entity[]
@@ -43,6 +46,9 @@ export const createValdresAdapter = <Session>({
     session: Session
     optimistic: boolean
     snowflake?: Snowflake
+    validateCreate?: () => void
+    validateUpdate?: () => void
+    validateDelete?: () => void
 }) => {
     if (!entityAtom) throw new Error("entityAtom is required")
     if (!mutationAtom) throw new Error("mutationAtom is required")
@@ -58,6 +64,9 @@ export const createValdresAdapter = <Session>({
             session,
             snowflake,
             changeSetRef,
+            validateCreate,
+            validateUpdate,
+            validateDelete,
             // initChangeSetOnce: true,
         },
         {

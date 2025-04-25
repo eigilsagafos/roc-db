@@ -79,7 +79,6 @@ const handlePatch = (
         ...patchSet,
     }
     const [updatedDocument, reversePatch] = deepPatch(currentEntity, patch)
-
     const model = txn.adapter.models[updatedDocument.entity]
     const validatedDocument = validateAndIndexDocument(model, updatedDocument)
     const existingDocument = txn.readEntity(ref)
@@ -88,8 +87,7 @@ const handlePatch = (
         validateAndIndexDocument(model, existingDocument),
         validatedDocument,
     )
-
-    txn.changeSet.entities.set(ref, updatedDocument)
+    txn.changeSet.entities.set(ref, validatedDocument)
     if (txn.changeSetInitialized) {
         if (txn.log.has(ref)) {
             const [prevAction] = txn.log.get(ref)

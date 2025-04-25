@@ -1,5 +1,4 @@
 import type { WriteTransaction } from "./WriteTransaction"
-import { validateAndIndexDocument } from "../utils/validateAndIndexDocument"
 
 export const commit = (txn: WriteTransaction, isChangeSetApply = false) => {
     const finalizedMutation = txn.finalizedMutation(isChangeSetApply)
@@ -14,6 +13,25 @@ export const commit = (txn: WriteTransaction, isChangeSetApply = false) => {
     // txn.adapter.undoStack.push(finalizedMutation)
     // if (isChangeSetInit) return
     const { docsToCreate, docsToUpdate, refsToDelete } = convertLog(txn.log)
+
+    if (txn.adapter.validateCreate) {
+        docsToCreate.forEach(doc => {
+            txn.adapter.validateCreate(txn, doc)
+        })
+    }
+    if (txn.adapter.validateUpdate) {
+        docsToUpdate.forEach(doc => {
+            const [, , , , originalDoc] = txn.log.get(doc.ref)
+            txn.adapter.validateUpdate(txn, doc, originalDoc)
+        })
+    }
+    if (txn.adapter.validateDelete) {
+        refsToDelete.forEach(ref => {
+            const [, doc] = txn.log.get(ref)
+            txn.adapter.validateDelete(txn, doc)
+        })
+    }
+
     return txn.adapter.functions.commit(txn, finalizedMutation, {
         created: docsToCreate,
         updated: docsToUpdate,
