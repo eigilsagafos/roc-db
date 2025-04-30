@@ -63,5 +63,7 @@ export const runAsyncFunctionChain = async (query, args = []) => {
             resultArray.push(result)
         }
         return resultArray
+    } else {
+        return query
     }
 }

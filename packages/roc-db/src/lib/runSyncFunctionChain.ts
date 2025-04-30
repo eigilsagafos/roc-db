@@ -36,5 +36,7 @@ export const runSyncFunctionChain = (query, args = []) => {
         )
     } else if (query instanceof QueryArrayClass) {
         return query.array.map(q => runSyncFunctionChain(q))
+    } else {
+        return query
     }
 }
