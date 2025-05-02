@@ -16,6 +16,7 @@ export const createRef = (txn: WriteTransaction, entity: string): Ref => {
                     nextRefEntity,
             )
         }
+        txn.log.set(nextRef, ["ref"])
         return nextRef as Ref
     }
 
@@ -24,5 +25,6 @@ export const createRef = (txn: WriteTransaction, entity: string): Ref => {
         txn.adapter.snowflake,
         txn.mutation.timestamp,
     )
+    txn.log.set(ref, ["ref"])
     return ref as Ref
 }

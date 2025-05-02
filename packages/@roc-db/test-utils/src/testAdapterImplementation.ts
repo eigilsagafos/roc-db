@@ -44,7 +44,7 @@ const prepareChangeSetTest = async (adapter, adapter2) => {
     expect(updatedPost.children.blocks).toStrictEqual([blockParagraph1.ref])
     expect(updatedPost.children.blocks).toHaveLength(1)
     expect(
-        createBlockParagraphMutation.log[0][2].children.blocks,
+        createBlockParagraphMutation.log[1][2].children.blocks,
     ).toStrictEqual([])
 
     const readPost1 = await changeSetAdapter.readEntity(post.ref)

@@ -3,20 +3,25 @@ import { Query, QueryChain, writeOperation } from "roc-db"
 import { z } from "zod"
 import { PostRefSchema } from "../schemas"
 
-const TestCreatePatchDeleteInSameTransaction = (txn, name) => {
+const TestCreatePatchDeleteInSameTransaction = (txn, title) => {
     const postRef = txn.createRef("Post")
-    QueryChain(
-        Query(() => txn.createEntity(postRef, { data: { name: name } })),
+    return QueryChain(
+        Query(() =>
+            txn.createEntity(postRef, {
+                data: { title, tags: [] },
+                children: { blocks: [] },
+            }),
+        ),
         Query(() => txn.patchEntity(postRef, { data: { foo: "bar" } })),
         Query(post => {
-            expect(post.data.name).toBe(name)
+            expect(post.data.title).toBe(title)
             expect(post.data.foo).toBe("bar")
         }),
         Query(() =>
             txn.patchEntity(postRef, { data: { foo: null, bar: "foo" } }),
         ),
         Query(post => {
-            expect(post.data.name).toBe(name)
+            expect(post.data.title).toBe(title)
             expect(post.data.foo).toBeUndefined()
             expect(post.data.bar).toBe("foo")
             expect(txn.log).toHaveLength(1)
@@ -75,9 +80,6 @@ export const testTransactionalEdits = writeOperation(
         if (name) return TestCreatePatchDeleteInSameTransaction(txn, name)
         if (post1ref) return TestUpdateAndDeleteInSameTransaction(txn, post1ref)
         if (post2ref) return TestCreateOnExistingRef(txn)
-        // return
     },
     {},
 )
-
-// PostSchema,

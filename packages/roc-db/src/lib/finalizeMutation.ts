@@ -10,8 +10,12 @@ export const finalizeMutation = (txn: WriteTransaction, isChangeSetApply) => {
                     return [ref, "update", reverse]
                 case "delete":
                     return [ref, "delete", document]
-                default:
+                case "ref":
+                    throw new Error(`A ref '${ref}' was created but not used`)
+                default: {
+                    console.log("Unknown action", txn.log)
                     throw new Error("Not implemented " + action)
+                }
             }
         },
     )
