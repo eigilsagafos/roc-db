@@ -1,5 +1,6 @@
 import type { Mutation } from "../types/Mutation"
 import type { Ref } from "../types/Ref"
+import type { WriteRequest } from "../types/WriteRequest"
 import { findOperation } from "./findOperation"
 import { parseRequestPayload } from "./parseRequestPayload"
 import { runAsyncFunctionChain } from "./runAsyncFunctionChain"
@@ -47,9 +48,12 @@ const prepareTransaction = (txn: WriteTransaction, mutation: Mutation) => {
     const operation = findOperation(txn.adapter.operations, mutation)
     const { changeSetRef, ...rest } = mutation
     const request = {
+        type: "write",
         operation,
         payload: mutation.payload,
-    }
+        isApplyChangeSet: true,
+    } as WriteRequest
+
     const payload = parseRequestPayload(request)
     return new WriteTransaction(
         request,

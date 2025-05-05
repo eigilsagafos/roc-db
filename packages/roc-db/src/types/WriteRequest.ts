@@ -9,4 +9,5 @@ export type WriteRequest<PayloadSchema extends ZodSchema = ZodSchema> = {
     payload: any
     changeSetRef: Ref | null
     optimisticMutation?: Mutation
+    isApplyChangeSet?: boolean
 }
