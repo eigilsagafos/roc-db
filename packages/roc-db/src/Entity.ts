@@ -30,7 +30,30 @@ export class Entity<
     name: Name
     indexedDataKeys: string[]
     uniqueDataKeys: string[]
-    schema: ZodSchema
+    schema: ZodObject<{
+        ref: z.ZodType<`${Name}/${string}`, z.ZodTypeDef, `${Name}/${string}`>
+        entity: z.ZodLiteral<Name>
+        created: z.ZodObject<{
+            timestamp: z.ZodDate
+            mutationRef: z.ZodType<
+                `${Name}/${string}`,
+                z.ZodTypeDef,
+                `${Name}/${string}`
+            >
+        }>
+        updated: z.ZodObject<{
+            timestamp: z.ZodDate
+            mutationRef: z.ZodType<
+                `${Name}/${string}`,
+                z.ZodTypeDef,
+                `${Name}/${string}`
+            >
+        }>
+        data: Data
+        children: Children
+        parents: Parents
+        ancestors: Ancestors
+    }>
     refSchema: z.ZodType<`${Name}/${string}`, z.ZodTypeDef, `${Name}/${string}`>
     constructor(
         name: Name,
