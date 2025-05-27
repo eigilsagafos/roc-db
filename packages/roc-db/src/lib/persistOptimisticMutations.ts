@@ -1,6 +1,8 @@
+import { BadRequestError } from "../errors/BadRequestError"
 import type { AdapterOptions } from "../types/AdapterOptions"
 import type { Mutation } from "../types/Mutation"
 import type { WriteOperation } from "../types/WriteOperation"
+import { deepEqual } from "../utils/deepPatch"
 import { defaultBeginRequest } from "./defaultBeginRequest"
 import { defaultBeginTransaction } from "./defaultBeginTransaction"
 import { executeWriteRequestAsyncInternal } from "./executeWriteRequestAsync"
@@ -42,6 +44,7 @@ const persistOptimisticMutationsSync = (
                 }
             }
             const operation = findOperation(operations, mutation)
+            validatePayload(operation, mutation)
             const request = {
                 operation,
                 payload: mutation.payload,
@@ -68,6 +71,17 @@ const persistOptimisticMutationsSync = (
         endTransaction(engineOptsTxn)
     }
     return results
+}
+
+const validatePayload = (operation: WriteOperation, mutation: Mutation) => {
+    const payloadParsed = operation.payloadSchema.safeParse(mutation.payload)
+    if (!payloadParsed.success) {
+        throw new BadRequestError("Payload validation failed")
+    } else {
+        if (!deepEqual(payloadParsed.data, mutation.payload)) {
+            throw new BadRequestError("Payload validation failed")
+        }
+    }
 }
 
 const persistOptimisticMutationsAsync = async (
@@ -97,6 +111,7 @@ const persistOptimisticMutationsAsync = async (
                 }
             }
             const operation = findOperation(operations, mutation)
+            validatePayload(operation, mutation)
             const request = {
                 operation,
                 payload: mutation.payload,
