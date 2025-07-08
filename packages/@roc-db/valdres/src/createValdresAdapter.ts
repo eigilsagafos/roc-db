@@ -30,6 +30,7 @@ export const createValdresAdapter = <Session>({
     changeSetRef,
     optimistic = true,
     snowflake = new Snowflake(1, 1),
+    async = false,
     validateCreate,
     validateUpdate,
     validateDelete,
@@ -46,6 +47,7 @@ export const createValdresAdapter = <Session>({
     session: Session
     optimistic: boolean
     snowflake?: Snowflake
+    async?: boolean
     validateCreate?: () => void
     validateUpdate?: () => void
     validateDelete?: () => void
@@ -67,6 +69,7 @@ export const createValdresAdapter = <Session>({
             validateCreate,
             validateUpdate,
             validateDelete,
+            async,
             // initChangeSetOnce: true,
         },
         {
