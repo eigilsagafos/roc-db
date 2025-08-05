@@ -18,8 +18,8 @@
     "devDependencies": {
         "@faker-js/faker": "9.3.0",
         "@roc-db/test-utils": "0.2.0-pre.71",
-        "@types/bun": "1.2.5",
-        "bun": "1.2.5",
+        "@types/bun": "1.2.19",
+        "bun": "1.2.19",
         "roc-db": "0.2.0-pre.71",
         "expect-type": "1.1.0",
         "prettier": "3.4.1",
@@ -28,7 +28,7 @@
     "peerDependencies": {
         "roc-db": "0.2.0-pre.71",
         "valdres": "0.2.0-pre.2",
-        "zod": "3.24.2"
+        "zod": "^4.0.0"
     },
     "keywords": [],
     "repository": {

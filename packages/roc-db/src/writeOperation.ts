@@ -21,7 +21,7 @@ export const writeOperation = <
         mutationLogSchema = z.any(),
     } = settings
     if (debounce) {
-        if (!payloadSchema._def.shape().ref) {
+        if (!payloadSchema._def.shape.ref) {
             throw new Error(
                 `Invalid operation '${name}'. Debounce is only supported for payloads with a ref`,
             )

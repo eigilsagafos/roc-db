@@ -23,16 +23,15 @@ export const entitySchemaGenerator = <
     },
 ) => {
     return z
-        .object({
+        .strictObject({
             ref: refSchemaGenerator(entity),
             entity: z.literal(entity),
             created: TimestampWithMutationRefSchema.required().strict(),
             updated: TimestampWithMutationRefSchema.required().strict(),
-            data: (args.data ?? z.object({}).strict()) as Data,
-            children: (args.children ?? z.object({}).strict()) as Children,
-            parents: (args.parents ?? z.object({}).strict()) as Parents,
-            ancestors: (args.ancestors ?? z.object({}).strict()) as Ancestors,
+            data: (args.data ?? z.strictObject({})) as Data,
+            children: (args.children ?? z.strictObject({})) as Children,
+            parents: (args.parents ?? z.strictObject({})) as Parents,
+            ancestors: (args.ancestors ?? z.strictObject({})) as Ancestors,
         })
-        .strict()
         .required()
 }

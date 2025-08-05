@@ -24,10 +24,10 @@
     ],
     "devDependencies": {
         "@eslint/js": "9.22.0",
-        "@types/bun": "1.2.5",
+        "@types/bun": "1.2.19",
         "@types/react": "19.0.10",
         "@types/libnpmpublish": "9.0.1",
-        "bun": "1.2.5",
+        "bun": "1.2.19",
         "eslint": "9.22.0",
         "eslint-config-prettier": "10.1.1",
         "ink": "5.2.0",

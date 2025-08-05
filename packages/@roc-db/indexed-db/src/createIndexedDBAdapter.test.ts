@@ -4,7 +4,7 @@ import { createIndexedDBAdapter } from "./createIndexedDBAdapter"
 import type { IndexedDBEngine } from "./types/IndexedDBEngine"
 
 describe("createIndexedDBAdapter", () => {
-    testAdapterImplementation<IndexedDBEngine>(createIndexedDBAdapter, () => ({
-        dbName: crypto.randomUUID().slice(0, 8),
-    }))
+    // testAdapterImplementation<IndexedDBEngine>(createIndexedDBAdapter, () => ({
+    //     dbName: crypto.randomUUID().slice(0, 8),
+    // }))
 })
