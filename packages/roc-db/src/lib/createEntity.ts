@@ -6,7 +6,7 @@ import { cleanAndVerifyDocumentBody } from "./cleanAndVerifyDocumentBody"
 import type { WriteTransaction } from "./WriteTransaction"
 
 const generateCreateDocument = (txn: WriteTransaction, ref: Ref, body: any) => {
-    const bodyClean = cleanAndVerifyDocumentBody(body)
+    const bodyClean = cleanAndVerifyDocumentBody(body, txn.adapter.optimistic)
     const entity = entityFromRef(ref)
     return {
         ref,

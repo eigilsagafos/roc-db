@@ -1,4 +1,7 @@
-export const cleanAndVerifyDocumentBody = (obj: any): any => {
+export const cleanAndVerifyDocumentBody = (
+    obj: any,
+    allowFile = false,
+): any => {
     // Crash on non-JSON-serializable types
     if (
         obj instanceof Set ||
@@ -17,16 +20,17 @@ export const cleanAndVerifyDocumentBody = (obj: any): any => {
     // Handle arrays
     if (Array.isArray(obj)) {
         return obj
-            .map(item => cleanAndVerifyDocumentBody(item))
+            .map(item => cleanAndVerifyDocumentBody(item, allowFile))
             .filter(item => item !== undefined)
     }
 
+    if (allowFile && obj instanceof File) return obj
     // Handle plain objects
     if (obj && typeof obj === "object") {
         const result: { [key: string]: any } = {}
         for (const [key, value] of Object.entries(obj)) {
             if (!(value === undefined || value === null)) {
-                result[key] = cleanAndVerifyDocumentBody(value)
+                result[key] = cleanAndVerifyDocumentBody(value, allowFile)
             }
         }
         return result
