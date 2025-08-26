@@ -25,7 +25,7 @@
     },
     "peerDependencies": {
         "roc-db": "0.2.0-pre.74",
-        "zod": "~4.0.14"
+        "zod": "^4.0.0"
     },
     "keywords": [],
     "author": "Eigil Sagafos",
