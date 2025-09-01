@@ -44,12 +44,11 @@ export const executeReadRequestAsync = async <
                 )
 
                 const res = runAsyncFunctionChain(functions)
+
                 return res
             },
         )
-        if (adapter.functions.end) {
-            await adapter.functions.end(engineOptsTxn)
-        }
+
         return result
     })
 }

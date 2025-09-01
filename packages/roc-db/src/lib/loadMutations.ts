@@ -59,10 +59,7 @@ const loadMutationsSync = (
             results.push(result)
         }
     }
-    const endTransaction = adapterOptions.functions.end
-    if (endTransaction) {
-        endTransaction(engineOptsTxn)
-    }
+
     return results
 }
 
@@ -112,10 +109,7 @@ const loadMutationsAsync = async (
             results.push(result)
         }
     }
-    const endTransaction = adapterOptions.functions.end
-    if (endTransaction) {
-        await endTransaction(engineOptsTxn)
-    }
+
     return results
 }
 

@@ -40,9 +40,7 @@ export const executeReadRequestSync = <
             )
             return res
         })
-        if (adapter.functions.end) {
-            adapter.functions.end(engineOptsTx)
-        }
+
         return res
     })
 }

@@ -68,9 +68,7 @@ export const executeWriteRequestAsync = async <
                 )
             },
         )
-        if (adapter.functions.end) {
-            await adapter.functions.end(engineOptsTxn)
-        }
+
         return result
     })
 }
