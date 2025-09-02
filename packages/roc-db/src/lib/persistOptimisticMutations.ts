@@ -66,10 +66,7 @@ const persistOptimisticMutationsSync = (
             results.push(persistedMutation)
         }
     }
-    const endTransaction = adapterOptions.functions.end
-    if (endTransaction) {
-        endTransaction(engineOptsTxn)
-    }
+
     return results
 }
 
@@ -132,10 +129,7 @@ const persistOptimisticMutationsAsync = async (
             results.push(persistedMutation)
         }
     }
-    const endTransaction = adapterOptions.functions.end
-    if (endTransaction) {
-        await endTransaction(engineOptsTxn)
-    }
+
     return results
 }
 

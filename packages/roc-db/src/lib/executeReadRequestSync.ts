@@ -8,7 +8,9 @@ import { ReadTransaction } from "./ReadTransaction"
 import { runSyncFunctionChain } from "./runSyncFunctionChain"
 
 const parseAndValidatePayload = (request: WriteRequest) => {
-    return request.operation.payloadSchema.parse(request.payload)
+    return request.operation.payloadSchema.parse(request.payload, {
+        reportInput: process.env.NODE_ENV !== "production",
+    })
 }
 
 export const executeReadRequestSync = <
@@ -40,9 +42,7 @@ export const executeReadRequestSync = <
             )
             return res
         })
-        if (adapter.functions.end) {
-            adapter.functions.end(engineOptsTx)
-        }
+
         return res
     })
 }

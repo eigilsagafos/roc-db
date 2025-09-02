@@ -7,7 +7,9 @@ import { ReadTransaction } from "./ReadTransaction"
 import { runAsyncFunctionChain } from "./runAsyncFunctionChain"
 
 const parseAndValidatePayload = (request: ReadRequest) => {
-    return request.operation.payloadSchema.parse(request.payload)
+    return request.operation.payloadSchema.parse(request.payload, {
+        reportInput: process.env.NODE_ENV !== "production",
+    })
 }
 
 export const executeReadRequestAsync = async <
@@ -44,12 +46,11 @@ export const executeReadRequestAsync = async <
                 )
 
                 const res = runAsyncFunctionChain(functions)
+
                 return res
             },
         )
-        if (adapter.functions.end) {
-            await adapter.functions.end(engineOptsTxn)
-        }
+
         return result
     })
 }
