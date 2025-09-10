@@ -26,3 +26,22 @@ test("createMutationSchema", () => {
         CreatePostMutationSchema["ref"]
     >()
 })
+
+test("changeSetRef works", () => {
+    const name = "createPost"
+    const payloadSchema = z.object({ title: z.string() })
+    const createPost = mutationSchemaGenerator(name, payloadSchema)
+
+    createPost.parse({
+        ref: "Mutation/12",
+        operation: {
+            name: "createPost",
+        },
+        identityRef: "Person/1",
+        timestamp: new Date().toISOString(),
+        changeSetRef: "Foo/123",
+        payload: { title: "Foo" },
+        debounceCount: 0,
+        log: [],
+    })
+})
