@@ -27,6 +27,7 @@ const applyChangeSetSync = (txn: WriteTransaction, ref: Ref) => {
         }
     }
 }
+
 const applyChangeSetAsync = async (txn: WriteTransaction, ref: Ref) => {
     const mutations = await txn.adapter.functions.getChangeSetMutations(
         txn,
@@ -62,5 +63,6 @@ const prepareTransaction = (txn: WriteTransaction, mutation: Mutation) => {
         payload,
         rest,
         mutation.log,
+        txn.changeSet,
     )
 }

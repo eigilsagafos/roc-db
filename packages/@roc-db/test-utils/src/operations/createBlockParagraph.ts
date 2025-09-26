@@ -6,11 +6,14 @@ import { PostRefSchema } from "../schemas/PostRefSchema"
 export const createBlockParagrah = writeOperation(
     "createBlockParagraph",
     z
-        .object({ parentRef: z.union([PostRefSchema, BlockRowRefSchema]) })
+        .object({
+            parentRef: z.union([PostRefSchema, BlockRowRefSchema]),
+            content: z.string().optional(),
+        })
         .strict(),
     txn => {
         const ref = txn.createRef("BlockParagraph")
-        const { parentRef } = txn.payload
+        const { parentRef, content } = txn.payload
         return QueryChain(
             Query(() => txn.readEntity(parentRef, true)),
             Query(parent =>
@@ -19,7 +22,10 @@ export const createBlockParagrah = writeOperation(
                 }),
             ),
             Query(() =>
-                txn.createEntity(ref, { parents: { parent: parentRef } }),
+                txn.createEntity(ref, {
+                    parents: { parent: parentRef },
+                    data: { content },
+                }),
             ),
             Query((block, updatedParent) => ({ block, updatedParent })),
         )
