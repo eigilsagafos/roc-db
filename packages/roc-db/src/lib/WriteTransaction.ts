@@ -39,13 +39,14 @@ export class WriteTransaction<
         public mutation: Mutation,
         public optimisticRefs: [string, string, string][] = [],
         changeSet: any = undefined,
+        log = new Map([]),
     ) {
         super(request, engineOpts, adapter, payload, changeSet)
         this.mutation = mutation
         this.optimisticCreateRefs = optimisticRefs
             .filter(([_, action]) => action === "create")
             .map(([ref]) => ref)
-        this.log = new Map([])
+        this.log = log
         this.mutationFinalized = false
         this.timestamp = this.mutation.timestamp
     }

@@ -23,7 +23,6 @@ const applyChangeSetSync = (txn: WriteTransaction, ref: Ref) => {
         for (const mutation of sortedMutations) {
             const applyTxn = prepareTransaction(txn, mutation)
             runSyncFunctionChain(applyTxn.request.operation.callback(applyTxn))
-            applyTxn.commit(true)
         }
     }
 }
@@ -40,7 +39,6 @@ const applyChangeSetAsync = async (txn: WriteTransaction, ref: Ref) => {
             await runAsyncFunctionChain(
                 applyTxn.request.operation.callback(applyTxn),
             )
-            await applyTxn.commit(true)
         }
     }
 }
@@ -56,6 +54,8 @@ const prepareTransaction = (txn: WriteTransaction, mutation: Mutation) => {
     } as WriteRequest
 
     const payload = parseRequestPayload(request)
+    // TODO: Should we rather create a different transaction object?
+    // To make it more clear that we re-use the changeSet and log?
     return new WriteTransaction(
         request,
         txn.engineOpts,
@@ -64,5 +64,6 @@ const prepareTransaction = (txn: WriteTransaction, mutation: Mutation) => {
         rest,
         mutation.log,
         txn.changeSet,
+        txn.log,
     )
 }
