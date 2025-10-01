@@ -1,6 +1,6 @@
 {
     "name": "roc-db",
-    "version": "0.2.0-pre.80",
+    "version": "0.2.0-pre.81",
     "type": "module",
     "exports": {
         ".": "./src/index.ts"
@@ -18,9 +18,9 @@
     },
     "devDependencies": {
         "@types/bun": "1.2.19",
-        "@roc-db/test-utils": "0.2.0-pre.80",
-        "@roc-db/in-memory": "0.2.0-pre.80",
-        "@roc-db/indexed-db": "0.2.0-pre.80",
+        "@roc-db/test-utils": "0.2.0-pre.81",
+        "@roc-db/in-memory": "0.2.0-pre.81",
+        "@roc-db/indexed-db": "0.2.0-pre.81",
         "bun": "1.2.19",
         "expect-type": "1.1.0",
         "fake-indexeddb": "6.0.0",

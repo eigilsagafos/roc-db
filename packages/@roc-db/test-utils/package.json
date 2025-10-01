@@ -1,6 +1,6 @@
 {
     "name": "@roc-db/test-utils",
-    "version": "0.2.0-pre.80",
+    "version": "0.2.0-pre.81",
     "type": "module",
     "exports": {
         ".": "./src/index.ts",
@@ -21,10 +21,10 @@
         "@types/sanitize-html": "2.13.0",
         "bun": "1.2.19",
         "expect-type": "1.2.0",
-        "roc-db": "0.2.0-pre.80"
+        "roc-db": "0.2.0-pre.81"
     },
     "peerDependencies": {
-        "roc-db": "0.2.0-pre.80",
+        "roc-db": "0.2.0-pre.81",
         "zod": "^4.0.0"
     },
     "keywords": [],
