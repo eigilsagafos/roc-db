@@ -107,7 +107,7 @@ export const createAdapter = <
         get _operations() {
             return adapterOptions.operations
         },
-        get _entites() {
+        get _entities() {
             return adapterOptions.entities
         },
         clone: (overrides: Partial<EngineOptions> = {}) => {
