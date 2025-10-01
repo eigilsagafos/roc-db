@@ -39,6 +39,12 @@ const prepareInitTransaction = (txn: Transaction, mutation: Mutation) => {
 
 const initializeChangeSetAsync = async (txn: Transaction) => {
     const changeSetDoc = await txn.readEntity(txn.changeSetRef, false)
+    const versionDoc = await txn.readEntity(changeSetDoc.parents.version, false)
+    if (versionDoc?.data?.snapshot) {
+        for (const doc of versionDoc.data.snapshot) {
+            txn.changeSet.entities.set(doc.ref, doc)
+        }
+    }
     verifyChangeSet(changeSetDoc)
     const mutations = await txn.adapter.functions.getChangeSetMutations(
         txn,
@@ -58,6 +64,12 @@ const initializeChangeSetAsync = async (txn: Transaction) => {
 
 const initializeChangeSetSync = (txn: Transaction) => {
     const changeSetDoc = txn.readEntity(txn.changeSetRef, false)
+    const versionDoc = txn.readEntity(changeSetDoc.parents.version, false)
+    if (versionDoc?.data?.snapshot) {
+        for (const doc of versionDoc.data.snapshot) {
+            txn.changeSet.entities.set(doc.ref, doc)
+        }
+    }
     verifyChangeSet(changeSetDoc)
     const mutations = txn.adapter.functions.getChangeSetMutations(
         txn,
