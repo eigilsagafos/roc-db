@@ -26,23 +26,19 @@ export const deepEqual = (a: any, b: any): boolean => {
     return false
 }
 
-export const deepMergePatchSet = (target, source) => {
+export const deepMergePatchSet = (current, patch) => {
     // Handle null or undefined
-    if (source == null) return source
-    if (target == null) return source
-    // Handle non-object source
-    if (typeof source !== "object") return source
-    // Handle array source
-    if (Array.isArray(source)) return source
+    if (patch == null) return patch
+    if (current == null) return patch
+    // Handle non-object patch
+    if (typeof patch !== "object") return patch
+    // Handle array patch
+    if (Array.isArray(patch)) return patch
 
-    if (typeof target !== "object") return source
-    const result = { ...target }
-    Object.keys(source).forEach(key => {
-        if (source[key] === null) {
-            delete result[key]
-        } else {
-            result[key] = deepMergePatchSet(result[key], source[key])
-        }
+    if (typeof current !== "object") return patch
+    const result = { ...current }
+    Object.keys(patch).forEach(key => {
+        result[key] = deepMergePatchSet(result[key], patch[key])
     })
     return result
 }
