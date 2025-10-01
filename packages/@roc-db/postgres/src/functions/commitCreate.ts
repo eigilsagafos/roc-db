@@ -42,5 +42,8 @@ export const commitCreate = async (
             ${row.index_entries},
             ${row.unique_constraint_0},
             ${row.unique_constraint_1}
-        ) RETURNING *;`
+        ) RETURNING *;`.catch(err => {
+        console.error("commitCreate failed")
+        throw err
+    })
 }

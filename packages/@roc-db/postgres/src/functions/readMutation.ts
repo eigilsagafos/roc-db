@@ -6,7 +6,10 @@ export const readMutation = async (engineOpts, ref) => {
     const id = idFromRef(ref)
     const [row] = await sqlTxn`
         SELECT * FROM ${sqlTxn(mutationsTableName)} WHERE id = ${id};
-    `
+    `.catch(err => {
+        console.error("readMutation failed")
+        throw err
+    })
     if (!row) return
     return postgresRowToMutation(row)
 }

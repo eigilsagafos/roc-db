@@ -19,7 +19,10 @@ export const findDebounceMutation = async (
             timestamp > ${thresholdTime} AND
             log_refs = ARRAY[${request.payload.ref}]
         LIMIT 2
-    `
+    `.catch(err => {
+        console.error("findDebounceMutation failed")
+        throw err
+    })
     if (res.length === 0) {
         return
     }

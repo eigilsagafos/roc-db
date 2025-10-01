@@ -7,7 +7,10 @@ export const readEntity = async (txn: PostgresTransaction, ref: Ref) => {
     const { entitiesTableName, sqlTxn } = txn.engineOpts
     const [row] = await sqlTxn`
         SELECT * FROM ${sqlTxn(entitiesTableName)} WHERE id = ${id};
-    `
+    `.catch(err => {
+        console.error("readEntity failed")
+        throw err
+    })
     if (!row) return undefined
     return postgresRowToEntity(row)
 }

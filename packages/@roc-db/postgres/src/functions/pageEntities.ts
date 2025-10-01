@@ -38,6 +38,9 @@ export const pageEntities = async (txn, args) => {
             ${createDescendantsOfClause(descendantsOf, sqlTxn)}
         ORDER BY created_at DESC
         LIMIT ${size};
-        `
+    `.catch(err => {
+        console.error("pageEntities failed")
+        throw err
+    })
     return rows.values().toArray().map(postgresRowToEntity)
 }

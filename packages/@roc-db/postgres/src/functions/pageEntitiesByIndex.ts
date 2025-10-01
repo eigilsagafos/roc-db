@@ -10,6 +10,9 @@ export const pageEntitiesByIndex = async (txn, entity, field, value) => {
         WHERE
         kind = ${entity} AND
         index_entries @> ARRAY[${entry}];
-    `
+    `.catch(err => {
+        console.error("pageEntitiesByIndex failed")
+        throw err
+    })
     return rows.values().toArray().map(postgresRowToEntity)
 }

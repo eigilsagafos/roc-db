@@ -15,7 +15,10 @@ export const pageMutations = async (txn, args = {}) => {
         ${changeSetKind ? sqlTxn`AND change_set_kind = ${changeSetKind}` : sqlTxn``}
         ORDER BY timestamp DESC
         LIMIT ${size};
-        `
+    `.catch(err => {
+        console.error("pageMutations failed")
+        throw err
+    })
 
     return rows.values().toArray().map(postgresRowToMutation)
 }

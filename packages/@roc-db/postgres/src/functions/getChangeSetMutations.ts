@@ -14,6 +14,9 @@ export const getChangeSetMutations = async (
             change_set_id = ${id} AND 
             change_set_kind = ${entity}
         ORDER BY id ASC;
-    `
+    `.catch(err => {
+        console.error("getChangeSetMutations failed")
+        throw err
+    })
     return res.values().toArray().map(postgresRowToMutation)
 }
