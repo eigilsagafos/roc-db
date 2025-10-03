@@ -72,7 +72,7 @@ export const commit = (
         const existingDocument = valdresTxn.get(entityAtom(updatedDocument.ref))
         if (
             updatedDocument.__.unique?.length ||
-            existingDocument.__.unique?.length
+            existingDocument?.__.unique?.length
         ) {
             const { ref, entity } = updatedDocument
             const [added, removed] = findAddedAndRemovedEntries(
@@ -95,7 +95,7 @@ export const commit = (
         }
         if (
             updatedDocument.__.index?.length ||
-            existingDocument.__.index?.length
+            existingDocument?.__.index?.length
         ) {
             const { ref, entity } = updatedDocument
             const [added, removed] = findAddedAndRemovedEntries(
