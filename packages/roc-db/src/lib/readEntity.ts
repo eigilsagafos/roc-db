@@ -46,8 +46,8 @@ const handleReadResponse = (
     throwIfMissing: boolean,
 ) => {
     if (!entity && throwIfMissing) throw new NotFoundError(ref)
-    txn.changeSet.entities.set(ref, entity)
     if (entity) {
+        txn.changeSet.entities.set(ref, entity)
         const { __, ...document } = entity
         return document
     } else {
