@@ -14,6 +14,7 @@ export const executeWriteRequestSyncInternal = (
     engineOpts: any,
     adapter: AdapterOptions,
     payload: any,
+    batchRequestChangeSet: any,
 ) => {
     const [mutation, optimisticRefs] = createMutationSync(
         request,
@@ -28,8 +29,15 @@ export const executeWriteRequestSyncInternal = (
         payload,
         mutation,
         optimisticRefs,
+        batchRequestChangeSet,
     )
-    initializeChangeSet(txn)
+
+    if (batchRequestChangeSet) {
+        txn.changeSetInitialized = true
+    } else {
+        initializeChangeSet(txn)
+    }
+
     const res = runSyncFunctionChain(
         request.operation.callback(txn, adapter.session),
     )
@@ -37,7 +45,6 @@ export const executeWriteRequestSyncInternal = (
         validateOutput(res, request)
     }
     const savedMutation = txn.commit()
-
     return [res, savedMutation]
 }
 
