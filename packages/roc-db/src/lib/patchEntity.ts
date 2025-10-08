@@ -88,7 +88,7 @@ const handlePatch = (
         validatedDocument,
     )
     txn.changeSet.entities.set(ref, validatedDocument)
-    if (txn.changeSetInitialized) {
+    if (txn.changeSet.initialized) {
         if (txn.log.has(ref)) {
             const [prevAction] = txn.log.get(ref)
             if (prevAction === "create") {

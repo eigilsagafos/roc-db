@@ -55,12 +55,13 @@ const persistOptimisticMutationsSync = (
             const [, persistedMutation] = beginRequest(
                 request,
                 engineOptsTxn,
-                engineOptsReq =>
+                (engineOptsReq, txnCache) =>
                     executeWriteRequestSyncInternal(
                         request,
                         engineOptsReq,
                         adapterOptions,
                         mutation.payload,
+                        txnCache,
                     ),
             )
             results.push(persistedMutation)
@@ -118,12 +119,13 @@ const persistOptimisticMutationsAsync = async (
             const [, persistedMutation] = await beginRequest(
                 request,
                 engineOptsTxn,
-                engineOptsReq =>
+                (engineOptsReq, txnCache) =>
                     executeWriteRequestAsyncInternal(
                         request,
                         engineOptsReq,
                         adapterOptions,
                         mutation.payload,
+                        txnCache,
                     ),
             )
             results.push(persistedMutation)

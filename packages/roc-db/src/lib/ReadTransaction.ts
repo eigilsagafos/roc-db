@@ -7,32 +7,39 @@ import { batchReadEntities } from "./batchReadEntities"
 import { readEntity } from "./readEntity"
 import { readEntityByUniqueField } from "./readEntityByUniqueField"
 import { readMutation } from "./readMutation"
+import { generateTransactionCache } from "../lib/generateTransactionCache"
+
+type ChangeSetCache = {
+    mutations: Map<any, any>
+    entities: Map<any, any>
+    entitiesUnique: Map<any, any>
+    entitiesIndex: Map<any, any>
+    initialized: boolean
+}
 
 export class ReadTransaction<EngineOpts extends any = any> {
     changeSetRef: Ref | null
-    changeSetInitialized: boolean
     constructor(
         public request: RocDBRequest,
         public engineOpts: EngineOpts,
         public adapter: AdapterOptions<EngineOpts>,
         public payload: any,
-        public changeSet: {
-            mutations: Map<any, any>
-            entities: Map<any, any>
-        } = {
-            mutations: new Map(),
-            entities: new Map(),
-            entitiesUnique: new Map(),
-            entitiesIndex: new Map(),
-        },
+        public changeSet: ChangeSetCache,
     ) {
         this.request = request
         this.adapter = adapter
         this.engineOpts = engineOpts
         this.payload = payload
         this.changeSetRef = request.changeSetRef
-        this.changeSet = changeSet
-        this.changeSetInitialized = this.changeSetRef ? false : true
+        if (changeSet) {
+            this.changeSet = changeSet
+        } else {
+            if (this.changeSetRef) {
+                this.changeSet = generateTransactionCache(false)
+            } else {
+                this.changeSet = generateTransactionCache(true)
+            }
+        }
     }
 
     batchReadEntities = (refs: Ref[]) => batchReadEntities(this, refs)

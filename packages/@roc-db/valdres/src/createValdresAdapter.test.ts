@@ -3,11 +3,12 @@ import {
     operations,
     testAdapterImplementation,
 } from "@roc-db/test-utils"
-import { describe, expect, test } from "bun:test"
+import { describe, expect, spyOn, test } from "bun:test"
 import type { Entity, Mutation, MutationRef, Ref } from "roc-db"
 import { atomFamily, store } from "valdres"
 import { createValdresAdapter } from "./createValdresAdapter"
 import type { ValdresEngine } from "./types/ValdresEngine"
+import * as initializeChangeSetModule from "../../../roc-db/src/lib/initializeChangeSet"
 
 describe("createValdresAdapter", () => {
     testAdapterImplementation<ValdresEngine>(createValdresAdapter, () => {
@@ -134,4 +135,67 @@ test("mutation stored in root store", () => {
         parentRef: post.ref,
     })
     expect(rootStore.get(mutationFamily)).toHaveLength(3)
+})
+
+const prepareChangeSetTest = () => {
+    const rootStore = store()
+    const entityFamily = atomFamily(null)
+    const mutationFamily = atomFamily(null)
+    const adapter = createValdresAdapter({
+        store: rootStore,
+        entityAtom: entityFamily,
+        mutationAtom: mutationFamily,
+        entityUniqueAtom: atomFamily(null),
+        entityIndexAtom: atomFamily([]),
+        operations,
+        session: { identityRef: "User/42" },
+        entities,
+    })
+    expect(rootStore.get(mutationFamily)).toHaveLength(0)
+    const [post] = adapter.createPost({ title: "Foo" })
+    expect(rootStore.get(mutationFamily)).toHaveLength(1)
+    const [draft] = adapter.createDraft({
+        postRef: post.ref,
+    })
+    const changeSetAdapter = adapter.changeSet(draft.ref)
+    return {
+        adapter,
+        post,
+        draft,
+        changeSetAdapter,
+    }
+}
+
+test("initChangeSet not called on operations in changeSet", () => {
+    const { changeSetAdapter, post } = prepareChangeSetTest()
+    const initializeChangeSetSpy = spyOn(
+        initializeChangeSetModule,
+        "initializeChangeSet",
+    )
+    const initializeChangeSetSyncSpy = spyOn(
+        initializeChangeSetModule,
+        "initializeChangeSetSync",
+    )
+    expect(initializeChangeSetSpy).toHaveBeenCalledTimes(0)
+    expect(initializeChangeSetSyncSpy).toHaveBeenCalledTimes(0)
+    changeSetAdapter.createBlockParagraph({
+        parentRef: post.ref,
+    })
+    expect(initializeChangeSetSpy).toHaveBeenCalledTimes(1)
+    expect(initializeChangeSetSyncSpy).toHaveBeenCalledTimes(1)
+    changeSetAdapter.createBlockParagraph({
+        parentRef: post.ref,
+    })
+    expect(initializeChangeSetSpy).toHaveBeenCalledTimes(2)
+    expect(initializeChangeSetSyncSpy).toHaveBeenCalledTimes(1)
+    changeSetAdapter.createBlockParagraph({
+        parentRef: post.ref,
+    })
+    expect(initializeChangeSetSpy).toHaveBeenCalledTimes(3)
+    expect(initializeChangeSetSyncSpy).toHaveBeenCalledTimes(1)
+    changeSetAdapter.createBlockParagraph({
+        parentRef: post.ref,
+    })
+    expect(initializeChangeSetSpy).toHaveBeenCalledTimes(4)
+    expect(initializeChangeSetSyncSpy).toHaveBeenCalledTimes(1)
 })

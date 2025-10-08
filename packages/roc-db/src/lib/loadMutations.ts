@@ -27,12 +27,6 @@ const loadMutationsSync = (
         adapterOptions.functions.beginRequest || defaultBeginRequest
 
     // The txnMap was implemented as a quick fix to speed up loadMutations with the valdres adapter.
-    const txnMap = {
-        mutations: new Map(),
-        entities: new Map(),
-        entitiesUnique: new Map(),
-        entitiesIndex: new Map(),
-    }
     for (const groupKey in groups) {
         const mutations = groups[groupKey]
         for (const mutation of mutations) {
@@ -57,14 +51,18 @@ const loadMutationsSync = (
                 isBatch: true,
             }
 
-            const result = beginRequest(request, engineOptsTxn, engineOptsReq =>
-                executeWriteRequestSyncInternal(
-                    request,
-                    engineOptsReq,
-                    adapterOptions,
-                    mutation.payload,
-                    txnMap,
-                ),
+            const result = beginRequest(
+                request,
+                engineOptsTxn,
+                (engineOptsReq, scopedTxn) => {
+                    return executeWriteRequestSyncInternal(
+                        request,
+                        engineOptsReq,
+                        adapterOptions,
+                        mutation.payload,
+                        scopedTxn,
+                    )
+                },
             )
             results.push(result)
         }
@@ -109,12 +107,13 @@ const loadMutationsAsync = async (
             const result = await beginRequest(
                 request,
                 engineOptsTxn,
-                engineOptsReq =>
+                (engineOptsReq, cacheMap) =>
                     executeWriteRequestAsyncInternal(
                         request,
                         engineOptsReq,
                         adapterOptions,
                         mutation.payload,
+                        cacheMap,
                     ),
             )
             results.push(result)

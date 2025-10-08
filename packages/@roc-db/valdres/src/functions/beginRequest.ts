@@ -1,5 +1,6 @@
 import type { WriteRequest } from "roc-db"
 import type { ValdresEngine } from "../types/ValdresEngine"
+import { generateTransactionCache } from "../../../../roc-db/src/lib/generateTransactionCache"
 
 export const beginRequest = (
     request: WriteRequest,
@@ -12,13 +13,19 @@ export const beginRequest = (
                 !!engineOpts.store.data.scopes[request.changeSetRef]
             const scopedStore = engineOpts.store.scope(request.changeSetRef)
             return engineOpts.rootTxn.scope(request.changeSetRef, scopedTxn => {
-                return callback({
-                    ...engineOpts,
-                    txn: scopedTxn,
-                    rootTxn: engineOpts.rootTxn,
-                    scopedStoreAlreadyAttachedBeforeBegin,
-                    scopedStore,
-                })
+                if (scopedStoreAlreadyAttachedBeforeBegin) {
+                    scopedTxn.data.txnCache ||= generateTransactionCache(false)
+                }
+                return callback(
+                    {
+                        ...engineOpts,
+                        txn: scopedTxn,
+                        rootTxn: engineOpts.rootTxn,
+                        scopedStoreAlreadyAttachedBeforeBegin,
+                        scopedStore,
+                    },
+                    scopedTxn.data.txnCache,
+                )
             })
         } else {
             let scopedTxn

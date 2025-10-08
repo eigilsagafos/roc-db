@@ -26,7 +26,7 @@ const deleteChangeSetSync = (txn: WriteTransaction, ref: Ref) => {
 
 const applyInLog = (txn: WriteTransaction, ref: Ref) => {
     txn.changeSet.mutations.set(ref, DELETED_IN_CHANGE_SET_SYMBOL)
-    if (txn.changeSetInitialized) {
+    if (txn.changeSet.initialized) {
         // throw new Error("TODO - Should not happen")
         if (txn.log.has(ref)) {
             throw new Error("TODO")

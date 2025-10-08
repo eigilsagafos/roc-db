@@ -23,11 +23,9 @@ const updateEntityAsync = async (
     const currentDoc = await txn.readEntity(ref)
     const [updatedEntity, reversePatch] = patch(txn, currentEntity, patchSet)
     txn.changeSet.entities.set(ref, updatedEntity)
-    if (txn.changeSetInitialized) {
+    if (txn.changeSet.initialized) {
         if (txn.log.has(ref)) throw new Error("TODO")
         txn.log.set(ref, ["update", updatedEntity, reversePatch])
     }
     return updatedEntity
-    throw new Error("TOOO")
-    // return updateEntity(txn, ref, currentDoc, updateBody)
 }

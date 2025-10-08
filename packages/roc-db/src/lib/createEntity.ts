@@ -52,7 +52,7 @@ export const createEntity = (txn: WriteTransaction, ref: Ref, body: any) => {
     if (validatedDocument.__.unique?.length) {
         addUniqueEntriesToMap(validatedDocument, txn.changeSet.entitiesUnique)
     }
-    if (txn.changeSetInitialized) {
+    if (txn.changeSet.initialized) {
         const logItem = txn.log.get(ref)
         if (logItem && logItem[0] !== "ref") {
             throw new BadRequestError(`Entity ${ref} already exists`)

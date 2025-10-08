@@ -11,7 +11,6 @@ export const commit = (txn: WriteTransaction, isChangeSetApply = false) => {
         txn.adapter.undoStack.push(finalizedMutation)
     }
     // txn.adapter.undoStack.push(finalizedMutation)
-    // if (isChangeSetInit) return
     const { docsToCreate, docsToUpdate, refsToDelete } = convertLog(txn.log)
 
     if (txn.adapter.validateCreate) {

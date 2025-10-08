@@ -30,12 +30,13 @@ export const executeReadRequestAsync = async <
         const result = beginRequest(
             request,
             engineOptsTxn,
-            async engineOptsReq => {
+            async (engineOptsReq, txnCache) => {
                 const txn = new ReadTransaction(
                     request,
                     engineOptsReq,
                     adapter,
                     payload,
+                    txnCache,
                 )
 
                 await initializeChangeSet(txn)

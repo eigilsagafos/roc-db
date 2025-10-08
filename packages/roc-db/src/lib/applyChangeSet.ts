@@ -25,6 +25,9 @@ const applyChangeSetSync = (txn: WriteTransaction, ref: Ref) => {
             runSyncFunctionChain(applyTxn.request.operation.callback(applyTxn))
         }
     }
+    if (txn.adapter.functions.onChangeSetApplied) {
+        txn.adapter.functions.onChangeSetApplied(txn, ref)
+    }
 }
 
 const applyChangeSetAsync = async (txn: WriteTransaction, ref: Ref) => {
@@ -40,6 +43,9 @@ const applyChangeSetAsync = async (txn: WriteTransaction, ref: Ref) => {
                 applyTxn.request.operation.callback(applyTxn),
             )
         }
+    }
+    if (txn.adapter.functions.onChangeSetApplied) {
+        await txn.adapter.functions.onChangeSetApplied(txn, ref)
     }
 }
 

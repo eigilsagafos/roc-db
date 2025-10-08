@@ -15,6 +15,7 @@ export const executeWriteRequestAsyncInternal = async (
     engineOpts: any,
     adapter: AdapterOptions,
     payload: any,
+    cacheMap?: any,
 ) => {
     const [mutation, optimisticRefs] = await createMutationAsync(
         request,
@@ -29,6 +30,7 @@ export const executeWriteRequestAsyncInternal = async (
         payload,
         mutation,
         optimisticRefs,
+        cacheMap,
     )
     await initializeChangeSet(txn)
     const functions = request.operation.callback(txn, adapter.session)
@@ -59,12 +61,13 @@ export const executeWriteRequestAsync = async <
         const result = await beginRequest(
             request,
             engineOptsTxn,
-            async engineOptsReq => {
+            async (engineOptsReq, cacheMap) => {
                 return executeWriteRequestAsyncInternal(
                     request,
                     engineOptsReq,
                     adapter,
                     payload,
+                    cacheMap,
                 )
             },
         )

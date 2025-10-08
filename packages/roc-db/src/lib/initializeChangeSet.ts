@@ -10,7 +10,7 @@ import { sortMutations } from "./sortMutations"
 import { WriteTransaction } from "./WriteTransaction"
 
 export const initializeChangeSet = (txn: Transaction) => {
-    if (!txn.changeSetRef) return
+    if (!txn.changeSetRef || txn.changeSet.initialized) return
     if (txn.adapter.async) {
         return initializeChangeSetAsync(txn)
     } else {
@@ -64,10 +64,10 @@ const initializeChangeSetAsync = async (txn: Transaction) => {
             )
         }
     }
-    txn.changeSetInitialized = true
+    txn.changeSet.initialized = true
 }
 
-const initializeChangeSetSync = (txn: Transaction) => {
+export const initializeChangeSetSync = (txn: Transaction) => {
     const changeSetDoc = txn.readEntity(txn.changeSetRef, false)
     verifyChangeSet(changeSetDoc)
     if (changeSetDoc.parents.version) {
@@ -89,7 +89,7 @@ const initializeChangeSetSync = (txn: Transaction) => {
             runSyncFunctionChain(initTxn.request.operation.callback(initTxn))
         }
     }
-    txn.changeSetInitialized = true
+    txn.changeSet.initialized = true
 }
 
 const verifyChangeSet = changeSetDoc => {

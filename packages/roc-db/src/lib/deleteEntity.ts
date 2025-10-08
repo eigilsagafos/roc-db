@@ -42,7 +42,7 @@ const applyInLog = (txn: WriteTransaction, ref: Ref, currentDocument) => {
     if (validated.__.unique?.length > 0) {
         removeUniqueEntriesFromMap(validated, txn.changeSet.entitiesUnique)
     }
-    if (txn.changeSetInitialized) {
+    if (txn.changeSet.initialized) {
         if (txn.log.has(ref)) {
             const event = txn.log.get(ref)
             if (event[0] === "create") {

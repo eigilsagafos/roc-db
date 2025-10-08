@@ -28,20 +28,25 @@ export const executeReadRequestSync = <
     return begin(engineOpts, engineOptsTx => {
         const beginRequest =
             adapter.functions.beginRequest || defaultBeginRequest
-        const res = beginRequest(request, engineOptsTx, engineOptsReq => {
-            const txn = new ReadTransaction(
-                request,
-                engineOptsReq,
-                adapter,
-                payload,
-            )
+        const res = beginRequest(
+            request,
+            engineOptsTx,
+            (engineOptsReq, txnCache) => {
+                const txn = new ReadTransaction(
+                    request,
+                    engineOptsReq,
+                    adapter,
+                    payload,
+                    txnCache,
+                )
 
-            initializeChangeSet(txn)
-            const res = runSyncFunctionChain(
-                request.operation.callback(txn, adapter.session),
-            )
-            return res
-        })
+                initializeChangeSet(txn)
+                const res = runSyncFunctionChain(
+                    request.operation.callback(txn, adapter.session),
+                )
+                return res
+            },
+        )
 
         return res
     })
