@@ -6,7 +6,7 @@ import { findOperation } from "./findOperation"
 import { parseRequestPayload } from "./parseRequestPayload"
 import { runAsyncFunctionChain } from "./runAsyncFunctionChain"
 import { runSyncFunctionChain } from "./runSyncFunctionChain"
-import { sortMutations } from "./sortMutations"
+import { sortMutations } from "../utils/sortMutations"
 import { WriteTransaction } from "./WriteTransaction"
 
 export const initializeChangeSet = (txn: Transaction) => {

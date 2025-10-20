@@ -6,7 +6,7 @@ import { defaultBeginTransaction } from "./defaultBeginTransaction"
 import { executeWriteRequestAsyncInternal } from "./executeWriteRequestAsync"
 import { executeWriteRequestSyncInternal } from "./executeWriteRequestSync"
 import { findOperation } from "./findOperation"
-import { sortMutations } from "./sortMutations"
+import { sortMutations } from "../utils/sortMutations"
 
 const shouldSkipMutationImport = (mutation: Mutation, existing: Mutation) => {
     if (mutation.debounceCount > existing.debounceCount) return false

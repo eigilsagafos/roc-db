@@ -127,7 +127,11 @@ export const createAdapter = <
             return createAdapter(
                 { ...adapterOptions, changeSetRef },
                 onChangeSetInit
-                    ? onChangeSetInit(engineOptions, changeSetRef)
+                    ? onChangeSetInit(
+                          engineOptions,
+                          adapterOptions,
+                          changeSetRef,
+                      )
                     : engineOptions,
             )
         },

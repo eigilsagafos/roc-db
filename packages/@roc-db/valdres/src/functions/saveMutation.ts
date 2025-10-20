@@ -5,6 +5,7 @@ export const saveMutation = (txn, finalizedMutation) => {
     // TODO: We should ensure that the mutations are saved on the root store when applying the change set
     // txn.engineOpts.rootTxn.set(atom, finalizedMutation)
 
+    txn.engineOpts.txn.set(atom, { ...finalizedMutation, initialized: true })
     txn.engineOpts.rootTxn.set(atom, finalizedMutation)
 
     return finalizedMutation

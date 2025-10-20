@@ -28,15 +28,19 @@ export const beginRequest = (
                 )
             })
         } else {
-            let scopedTxn
-            engineOpts.txn.scope(request.changeSetRef, txn => {
-                scopedTxn = txn
-            })
-            return callback({
-                ...engineOpts,
-                txn: scopedTxn,
-                rootTxn: engineOpts.txn,
-            })
+            if (engineOpts.txn && engineOpts.rootTxn) {
+                return callback(engineOpts)
+            } else {
+                let scopedTxn
+                engineOpts.txn.scope(request.changeSetRef, txn => {
+                    scopedTxn = txn
+                })
+                return callback({
+                    ...engineOpts,
+                    txn: scopedTxn,
+                    rootTxn: engineOpts.txn,
+                })
+            }
         }
     } else {
         return callback(engineOpts)

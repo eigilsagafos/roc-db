@@ -21,6 +21,7 @@ export const createValdresAdapter = <Session>({
     operations,
     entities,
     store, // = createStore(),
+    rootTxn,
     txn,
     session,
     entityAtom, // = atomFamily<string, Entity | null>(null),
@@ -38,6 +39,7 @@ export const createValdresAdapter = <Session>({
     operations: readonly Operation[]
     entities: readonly Entity[]
     store?: Store
+    rootTxn?: TransactionInterface
     txn?: TransactionInterface
     entityAtom: AtomFamily<string, Entity | null>
     mutationAtom: AtomFamily<string, Mutation | null>
@@ -74,6 +76,7 @@ export const createValdresAdapter = <Session>({
         },
         {
             txn,
+            rootTxn,
             store,
             entityAtom,
             mutationAtom,

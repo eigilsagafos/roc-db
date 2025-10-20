@@ -17,6 +17,7 @@
     },
     "devDependencies": {
         "@faker-js/faker": "9.7.0",
+        "@roc-db/in-memory": "0.2.0-pre.85",
         "@types/bun": "1.2.19",
         "@types/sanitize-html": "2.13.0",
         "bun": "1.2.19",
