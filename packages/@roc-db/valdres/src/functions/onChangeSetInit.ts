@@ -1,9 +1,12 @@
-import { sortMutations, validateAndIndexDocument } from "roc-db"
-import { findOperation } from "../../../../roc-db/src/lib/findOperation"
-import { parseRequestPayload } from "../../../../roc-db/src/lib/parseRequestPayload"
-import { WriteTransaction } from "../../../../roc-db/src/lib/WriteTransaction"
-import { runSyncFunctionChain } from "../../../../roc-db/src/lib/runSyncFunctionChain"
-import { generateTransactionCache } from "../../../../roc-db/src/lib/generateTransactionCache"
+import {
+    sortMutations,
+    validateAndIndexDocument,
+    findOperation,
+    parseRequestPayload,
+    WriteTransaction,
+    runSyncFunctionChain,
+    generateTransactionCache,
+} from "roc-db"
 
 const prepareInitTransaction = (
     adapterOptions,

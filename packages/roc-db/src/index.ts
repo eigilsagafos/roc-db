@@ -20,7 +20,7 @@ export { refSchemaGenerator } from "./schemas/generators/refSchemaGenerator"
 
 // types
 export type { ReadTransaction } from "./lib/ReadTransaction"
-export type { WriteTransaction } from "./lib/WriteTransaction"
+// export type { WriteTransaction } from "./lib/WriteTransaction"
 export type { Adapter } from "./types/Adapter"
 export type {
     AdapterFunctions,
@@ -56,3 +56,10 @@ export { validateAndIndexDocument } from "./utils/validateAndIndexDocument"
 export { mutationToFormData } from "./utils/mutationToFormData"
 export { formDataToMutation } from "./utils/formDataToMutation"
 export { sortMutations } from "./utils/sortMutations"
+
+// lib - temporarily exposed for valdres integration until a better solution is found
+export { findOperation } from "./lib/findOperation"
+export { parseRequestPayload } from "./lib/parseRequestPayload"
+export { WriteTransaction } from "./lib/WriteTransaction"
+export { runSyncFunctionChain } from "./lib/runSyncFunctionChain"
+export { generateTransactionCache } from "./lib/generateTransactionCache"
