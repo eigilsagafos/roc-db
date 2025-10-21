@@ -6,6 +6,7 @@ import {
     WriteTransaction,
     runSyncFunctionChain,
     generateTransactionCache,
+    DELETED_IN_CHANGE_SET_SYMBOL,
 } from "roc-db"
 
 const prepareInitTransaction = (
@@ -100,11 +101,15 @@ export const onChangeSetInit = (engineOpts, adapterOptions, changeSetRef) => {
                 }
             }
             for (const [ref, entity] of cache.entities) {
-                const indexd = validateAndIndexDocument(
-                    adapterOptions.models[entity.entity],
-                    entity,
-                )
-                scopedTxn.set(entityAtom(ref), indexd)
+                if (entity === DELETED_IN_CHANGE_SET_SYMBOL) {
+                    scopedTxn.reset(entityAtom(ref))
+                } else {
+                    const indexd = validateAndIndexDocument(
+                        adapterOptions.models[entity.entity],
+                        entity,
+                    )
+                    scopedTxn.set(entityAtom(ref), indexd)
+                }
             }
         })
     })

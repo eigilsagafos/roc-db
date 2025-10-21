@@ -4,7 +4,9 @@ import { refsFromRelations } from "./refsFromRelations"
 export const validateAndIndexDocument = (model, { __, ...document }) => {
     const entity = document.entity
     if (!model) {
-        throw new BadRequestError(`Unknown entity ${entity}`)
+        throw new BadRequestError(
+            `Missing model for entity '${entity}' in validateAndIndexDocument`,
+        )
     }
     const parseRes = model.schema.safeParse(document)
     if (parseRes.success === false) {
