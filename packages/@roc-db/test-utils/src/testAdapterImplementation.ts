@@ -515,7 +515,6 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
             const { draftRef, post, changeSetAdapter } =
                 await prepareChangeSetTest(adapter1)
             const [version, mutation] = await adapter1.applyDraft(draftRef)
-            // console.log(version)
             expect(() =>
                 changeSetAdapter.createBlockImage({
                     parentRef: post.ref,

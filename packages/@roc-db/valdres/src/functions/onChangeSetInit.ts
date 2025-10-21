@@ -91,7 +91,6 @@ export const onChangeSetInit = (engineOpts, adapterOptions, changeSetRef) => {
                     runSyncFunctionChain(
                         initTxn.request.operation.callback(initTxn),
                     )
-                    console.log(initTxn)
                     scopedTxn.set(mutationAtom(mutation.ref), curr => {
                         return {
                             ...curr,

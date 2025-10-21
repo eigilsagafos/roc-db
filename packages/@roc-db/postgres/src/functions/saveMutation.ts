@@ -85,7 +85,6 @@ export const saveMutation = async (
             ) RETURNING *;
         `.catch(err => {
         console.error("Error creating mutation", finalizedMutation)
-        console.log(finalizedMutation)
         throw err
     })
     return postgresRowToMutation(row)
