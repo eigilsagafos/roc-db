@@ -1,6 +1,6 @@
 {
     "name": "@roc-db/test-utils",
-    "version": "0.2.0-pre.87",
+    "version": "0.2.0-pre.88",
     "type": "module",
     "exports": {
         ".": "./src/index.ts",
@@ -17,15 +17,15 @@
     },
     "devDependencies": {
         "@faker-js/faker": "9.7.0",
-        "@roc-db/in-memory": "0.2.0-pre.87",
+        "@roc-db/in-memory": "0.2.0-pre.88",
         "@types/bun": "1.2.19",
         "@types/sanitize-html": "2.13.0",
         "bun": "1.2.19",
         "expect-type": "1.2.0",
-        "roc-db": "0.2.0-pre.87"
+        "roc-db": "0.2.0-pre.88"
     },
     "peerDependencies": {
-        "roc-db": "0.2.0-pre.87",
+        "roc-db": "0.2.0-pre.88",
         "zod": "^4.0.0"
     },
     "keywords": [],
