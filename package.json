@@ -2,7 +2,7 @@
     "name": "roc-db-monorepo",
     "type": "module",
     "private": true,
-    "version": "0.2.0-pre.88",
+    "version": "0.2.0-pre.89",
     "author": {
         "name": "Eigil Sagafos"
     },
@@ -39,7 +39,7 @@
         "semver": "7.7.1",
         "typescript": "5.8.2",
         "typescript-eslint": "8.26.1",
-        "valdres": "0.2.0-pre.16",
-        "valdres-react": "0.2.0-pre.16"
+        "valdres": "0.2.0-pre.17",
+        "valdres-react": "0.2.0-pre.17"
     }
 }
