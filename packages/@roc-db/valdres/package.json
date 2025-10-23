@@ -23,12 +23,12 @@
         "roc-db": "0.2.0-pre.90",
         "expect-type": "1.1.0",
         "prettier": "3.4.1",
-        "valdres": "0.2.0-pre.17"
+        "valdres": "0.2.0-pre.18"
     },
     "peerDependencies": {
         "roc-db": "0.2.0-pre.90",
-        "valdres": "0.2.0-pre.17",
-        "zod": "^4.0.0"
+        "valdres": "0.2.0-pre.18",
+        "zod": ">=4.0.0"
     },
     "keywords": [],
     "repository": {
