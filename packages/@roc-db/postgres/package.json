@@ -1,6 +1,6 @@
 {
     "name": "@roc-db/postgres",
-    "version": "0.2.0-pre.90",
+    "version": "0.2.0-pre.91",
     "type": "module",
     "exports": {
         ".": "./src/index.ts"
@@ -19,12 +19,12 @@
         "postgres": "3.4.5"
     },
     "devDependencies": {
-        "@roc-db/test-utils": "0.2.0-pre.90",
-        "roc-db": "0.2.0-pre.90",
+        "@roc-db/test-utils": "0.2.0-pre.91",
+        "roc-db": "0.2.0-pre.91",
         "zod": "4.0.14"
     },
     "peerDependencies": {
-        "roc-db": "0.2.0-pre.90",
+        "roc-db": "0.2.0-pre.91",
         "zod": ">=4.0.0"
     },
     "keywords": [],
