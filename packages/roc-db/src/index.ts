@@ -31,6 +31,7 @@ export type {
 export type { Mutation } from "./types/Mutation"
 export type { MutationRef } from "./types/MutationRef"
 export type { Operation } from "./types/Operation"
+export type { ReadOperation } from "./types/ReadOperation"
 export type { ReadRequest } from "./types/ReadRequest"
 export type { Ref } from "./types/Ref"
 export type { Session } from "./types/Session"
