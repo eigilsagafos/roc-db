@@ -40,5 +40,6 @@ export const generateMutationDoc = (
         debounceCount: 0,
         sessionRef: adapter.session.ref ?? null,
         identityRef: adapter.session.identityRef,
+        persistedAt: adapter.optimistic ? null : timestamp,
     }
 }

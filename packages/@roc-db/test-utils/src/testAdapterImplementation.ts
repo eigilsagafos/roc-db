@@ -255,10 +255,14 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
         })
 
         test("sync mutation", async () => {
+            const {
+                persistedAt: ignore,
+                ...createPostMutationWithoutPersistedAt
+            } = createPostMutation
             const [{ persistedAt, ...mutation }] =
                 await adapter2.persistOptimisticMutations([createPostMutation])
             // expect(res[0]).toStrictEqual(post)
-            expect(mutation).toStrictEqual(createPostMutation)
+            expect(mutation).toStrictEqual(createPostMutationWithoutPersistedAt)
         })
 
         test("sync mutation with debounce > 0", async () => {
@@ -267,7 +271,11 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
             })
             const [{ persistedAt, ...mutation }] =
                 await adapter2.persistOptimisticMutations([createPostMutation])
-            expect(mutation).toStrictEqual(createPostMutation)
+            const {
+                persistedAt: ignore,
+                ...createPostMutationWithoutPersistedAt
+            } = createPostMutation
+            expect(mutation).toStrictEqual(createPostMutationWithoutPersistedAt)
             const res = await adapter1.updatePostTitle({
                 ref: post.ref,
                 title: "A",
@@ -557,6 +565,25 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
             const res2 = await adapterB.loadMutations(allMutationsAdapter1)
         })
 
+        test("persisted at", async () => {
+            const adapterA = await createAdapter({ optimistic: false })
+            const adapterB = await createAdapter({ optimistic: true })
+            const [, mutationNonOptimistic] = await adapterA.createPost({
+                title: "Foo",
+            })
+            expect(mutationNonOptimistic.persistedAt).toBeDefined()
+            expect(mutationNonOptimistic.persistedAt).toBe(
+                mutationNonOptimistic.timestamp,
+            )
+            const [, mutationOptimistic] = await adapterB.createPost({
+                title: "Foo",
+            })
+            expect(mutationOptimistic.persistedAt).toBeNull()
+            const [mutationOptimisticPersisted] =
+                await adapterA.persistOptimisticMutations([mutationOptimistic])
+            expect(mutationOptimisticPersisted.persistedAt).toBeString()
+        })
+
         test("persistOptimisticMutations", async () => {
             const persistedAdapter = await createAdapter({ optimistic: false })
             const optimisticAdapter = await createAdapter({ optimistic: true })
@@ -582,7 +609,7 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
             )
             expect(readMutation).toStrictEqual(persistCratePostMutation)
 
-            const [draft, createDraftMutation] =
+            const [draft, { persistedAt: ignore, ...createDraftMutation }] =
                 await optimisticAdapter.createDraft({
                     postRef: post.ref,
                 })
