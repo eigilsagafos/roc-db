@@ -1,9 +1,9 @@
-import type { ZodSchema } from "zod"
+import type { ZodType } from "zod"
 
 export type ReadOperation<
     Name extends string = string,
-    PayloadSchema extends ZodSchema = ZodSchema,
-    OutputSchema extends ZodSchema = ZodSchema,
+    PayloadSchema extends ZodType = ZodType,
+    OutputSchema extends ZodType = ZodType,
 > = {
     readonly type: "read"
     readonly name: Name

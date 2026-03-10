@@ -1,9 +1,9 @@
-import type { ZodSchema } from "zod"
+import type { ZodType } from "zod"
 
 export type WriteOperationSettings = {
     version?: number
     debounce?: number
     changeSetOnly?: boolean
-    outputSchema?: ZodSchema
-    mutationLogSchema?: ZodSchema
+    outputSchema?: ZodType
+    mutationLogSchema?: ZodType
 }

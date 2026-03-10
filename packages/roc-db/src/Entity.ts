@@ -1,4 +1,4 @@
-import { z, ZodSchema, type ZodObject } from "zod"
+import { z, type ZodObject } from "zod"
 import { refSchemaGenerator } from "./schemas/generators/refSchemaGenerator"
 import { TimestampWithMutationRefSchema } from "./schemas/TimestampWithMutationRefSchema"
 

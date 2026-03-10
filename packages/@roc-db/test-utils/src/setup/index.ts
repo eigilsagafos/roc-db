@@ -1,16 +1,16 @@
 import { expect } from "bun:test"
-import type { ZodSchema } from "zod"
+import type { ZodType } from "zod"
 
-const toMatchZodSchema = (received: any, schema: ZodSchema) => {
+const toMatchZodType = (received: any, schema: ZodType) => {
     const res = schema.safeParse(received)
     return { pass: res.success, message: () => res.error?.message }
 }
 
 // @ts-ignore
-expect.extend({ toMatchZodSchema })
+expect.extend({ toMatchZodType })
 
 interface CustomMatchers {
-    toMatchZodSchema(schema: ZodSchema): any
+    toMatchZodType(schema: ZodType): any
 }
 
 declare module "bun:test" {

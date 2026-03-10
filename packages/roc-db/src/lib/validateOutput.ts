@@ -1,9 +1,9 @@
-import type { ZodSchema } from "zod"
+import type { ZodType } from "zod"
 import type { WriteRequest } from "../types/WriteRequest"
 
 export const validateOutput = (
     output: any,
-    request: WriteRequest & { operation: { outputSchema: ZodSchema } },
+    request: WriteRequest & { operation: { outputSchema: ZodType } },
 ) => {
     const parseRes = request.operation.outputSchema.safeParse(output)
     if (!parseRes.success) {

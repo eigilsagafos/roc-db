@@ -1,4 +1,4 @@
-import { z, ZodSchema } from "zod"
+import { z, ZodType } from "zod"
 import { WriteTransaction } from "./lib/WriteTransaction"
 import { mutationSchemaGenerator } from "./schemas/generators/mutationSchemaGenerator"
 import type { WriteOperation } from "./types/WriteOperation"
@@ -6,7 +6,7 @@ import type { WriteOperationSettings } from "./types/WriteOperationSettings"
 
 export const writeOperation = <
     const Name extends string = string,
-    PayloadSchema extends ZodSchema = ZodSchema,
+    PayloadSchema extends ZodType = ZodType,
 >(
     name: Name,
     payloadSchema: PayloadSchema,
