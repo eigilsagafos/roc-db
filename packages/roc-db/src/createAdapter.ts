@@ -6,6 +6,7 @@ import { createPageEntitiesOperation } from "./operations/createPageEntitiesOper
 import { pageMutations } from "./operations/pageMutations"
 import { redo } from "./operations/redo"
 import { undo } from "./operations/undo"
+import type { Adapter } from "./types/Adapter"
 import type { AdapterFunctions } from "./types/AdapterFunctions"
 import type { Mutation } from "./types/Mutation"
 import type { Operation } from "./types/Operation"
@@ -46,7 +47,7 @@ export const createAdapter = <
 >(
     adapterOptions: AdapterOptions<Operations, Entities, EngineOptions>,
     engineOptions: EngineOptions = {} as EngineOptions,
-) => {
+): Adapter<Operations, EngineOptions> => {
     const allOperations = [
         pageMutations,
         createPageEntitiesOperation(adapterOptions.entities),
@@ -86,7 +87,7 @@ export const createAdapter = <
         ),
     )
 
-    const adapter = {
+    const adapter: Record<string, any> = {
         get _name() {
             return adapterOptions.name
         },
@@ -155,5 +156,5 @@ export const createAdapter = <
             )
     }
 
-    return adapter
+    return adapter as Adapter<Operations, EngineOptions>
 }
