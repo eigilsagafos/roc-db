@@ -1,10 +1,9 @@
 import {
     createAdapter,
     type Adapter,
-    type Entity,
+    type CreateAdapterOptions,
     Snowflake,
     type Operation,
-    type Ref,
 } from "roc-db"
 import * as functions from "./functions"
 import {
@@ -28,18 +27,7 @@ export type ValdresEngineOptions = {
 
 export type ValdresAdapterOptions<
     Operations extends readonly Operation[] = readonly Operation[],
-> = {
-    operations: Operations
-    entities: readonly Entity[]
-    changeSetRef?: Ref
-    session: any
-    optimistic?: boolean
-    snowflake?: Snowflake
-    async?: boolean
-    validateCreate?: (...args: any[]) => void
-    validateUpdate?: (...args: any[]) => void
-    validateDelete?: (...args: any[]) => void
-} & ValdresEngineOptions
+> = CreateAdapterOptions<Operations> & ValdresEngineOptions
 
 export const createValdresAdapter = <
     const Operations extends readonly Operation[],

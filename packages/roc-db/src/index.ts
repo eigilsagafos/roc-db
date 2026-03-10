@@ -1,4 +1,5 @@
 export { createAdapter } from "./createAdapter"
+export type { CreateAdapterOptions, EntityN } from "./createAdapter"
 export { readOperation } from "./readOperation"
 export { writeOperation } from "./writeOperation"
 export { Entity } from "./Entity"

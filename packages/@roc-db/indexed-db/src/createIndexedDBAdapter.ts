@@ -1,4 +1,9 @@
-import { createAdapter, Snowflake, type Operation } from "roc-db"
+import {
+    createAdapter,
+    type CreateAdapterOptions,
+    Snowflake,
+    type Operation,
+} from "roc-db"
 import * as functions from "./functions"
 
 export const createIndexedDBAdapter = <
@@ -9,13 +14,7 @@ export const createIndexedDBAdapter = <
     session,
     dbName = "roc-db",
     optimistic = false,
-}: {
-    operations: Operations
-    entities: readonly any[]
-    session: any
-    dbName?: string
-    optimistic?: boolean
-}) => {
+}: CreateAdapterOptions<Operations> & { dbName?: string }) => {
     return createAdapter(
         {
             name: "indexed-db",
