@@ -37,21 +37,16 @@ export type CreateAdapterOptions<
     validateDelete?: (...args: any[]) => void
 }
 
-type InternalAdapterOptions<
-    Operations extends readonly Operation[] = [],
-    Entities extends readonly EntityN[] = [],
-    EngineOptions extends {} = {},
-> = CreateAdapterOptions<Operations, Entities> & {
-    name: string
-    snowflake: Snowflake
-    functions: AdapterFunctions<EngineOptions>
-}
 export const createAdapter = <
     const Operations extends readonly Operation[],
     const Entities extends readonly EntityN[],
     const EngineOptions extends {} = {},
 >(
-    adapterOptions: InternalAdapterOptions<Operations, Entities, EngineOptions>,
+    adapterOptions: CreateAdapterOptions<Operations, Entities> & {
+        name: string
+        snowflake: Snowflake
+        functions: AdapterFunctions<EngineOptions>
+    },
     engineOptions: EngineOptions = {} as EngineOptions,
 ): Adapter<Operations, EngineOptions> => {
     const allOperations = [

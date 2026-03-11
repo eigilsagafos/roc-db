@@ -20,96 +20,96 @@
         "semver": "7.7.1",
         "typescript": "5.8.2",
         "typescript-eslint": "8.26.1",
-        "valdres": "0.2.0-pre.18",
-        "valdres-react": "0.2.0-pre.18",
+        "valdres": "0.2.0-pre.24",
+        "valdres-react": "0.2.0-pre.24",
       },
     },
     "packages/@roc-db/in-memory": {
       "name": "@roc-db/in-memory",
-      "version": "0.2.0-pre.90",
+      "version": "0.2.0-pre.94",
       "devDependencies": {
-        "@roc-db/test-utils": "0.2.0-pre.90",
-        "roc-db": "0.2.0-pre.90",
+        "@roc-db/test-utils": "0.2.0-pre.94",
+        "roc-db": "0.2.0-pre.94",
         "zod": "4.0.14",
       },
       "peerDependencies": {
-        "roc-db": "0.2.0-pre.90",
+        "roc-db": "0.2.0-pre.94",
         "zod": ">=4.0.0",
       },
     },
     "packages/@roc-db/indexed-db": {
       "name": "@roc-db/indexed-db",
-      "version": "0.2.0-pre.90",
+      "version": "0.2.0-pre.94",
       "devDependencies": {
-        "@roc-db/test-utils": "0.2.0-pre.90",
+        "@roc-db/test-utils": "0.2.0-pre.94",
         "fake-indexeddb": "6.0.1",
-        "roc-db": "0.2.0-pre.90",
+        "roc-db": "0.2.0-pre.94",
         "zod": "4.0.14",
       },
       "peerDependencies": {
-        "roc-db": "0.2.0-pre.90",
+        "roc-db": "0.2.0-pre.94",
         "zod": ">=4.0.0",
       },
     },
     "packages/@roc-db/postgres": {
       "name": "@roc-db/postgres",
-      "version": "0.2.0-pre.90",
+      "version": "0.2.0-pre.94",
       "dependencies": {
         "postgres": "3.4.5",
       },
       "devDependencies": {
-        "@roc-db/test-utils": "0.2.0-pre.90",
-        "roc-db": "0.2.0-pre.90",
+        "@roc-db/test-utils": "0.2.0-pre.94",
+        "roc-db": "0.2.0-pre.94",
         "zod": "4.0.14",
       },
       "peerDependencies": {
-        "roc-db": "0.2.0-pre.90",
+        "roc-db": "0.2.0-pre.94",
         "zod": ">=4.0.0",
       },
     },
     "packages/@roc-db/test-utils": {
       "name": "@roc-db/test-utils",
-      "version": "0.2.0-pre.90",
+      "version": "0.2.0-pre.94",
       "devDependencies": {
         "@faker-js/faker": "9.7.0",
-        "@roc-db/in-memory": "0.2.0-pre.90",
+        "@roc-db/in-memory": "0.2.0-pre.94",
         "@types/bun": "1.2.19",
         "@types/sanitize-html": "2.13.0",
         "bun": "1.2.19",
         "expect-type": "1.2.0",
-        "roc-db": "0.2.0-pre.90",
+        "roc-db": "0.2.0-pre.94",
       },
       "peerDependencies": {
-        "roc-db": "0.2.0-pre.90",
+        "roc-db": "0.2.0-pre.94",
         "zod": ">=4.0.0",
       },
     },
     "packages/@roc-db/valdres": {
       "name": "@roc-db/valdres",
-      "version": "0.2.0-pre.90",
+      "version": "0.2.0-pre.94",
       "devDependencies": {
         "@faker-js/faker": "9.3.0",
-        "@roc-db/test-utils": "0.2.0-pre.90",
+        "@roc-db/test-utils": "0.2.0-pre.94",
         "@types/bun": "1.2.19",
         "bun": "1.2.19",
         "expect-type": "1.1.0",
         "prettier": "3.4.1",
-        "roc-db": "0.2.0-pre.90",
-        "valdres": "0.2.0-pre.18",
+        "roc-db": "0.2.0-pre.94",
+        "valdres": "0.2.0-pre.24",
       },
       "peerDependencies": {
-        "roc-db": "0.2.0-pre.90",
-        "valdres": "0.2.0-pre.18",
+        "roc-db": "0.2.0-pre.94",
+        "valdres": "0.2.0-pre.24",
         "zod": ">=4.0.0",
       },
     },
     "packages/roc-db": {
       "name": "roc-db",
-      "version": "0.2.0-pre.90",
+      "version": "0.2.0-pre.94",
       "devDependencies": {
-        "@roc-db/in-memory": "0.2.0-pre.90",
-        "@roc-db/indexed-db": "0.2.0-pre.90",
-        "@roc-db/test-utils": "0.2.0-pre.90",
+        "@roc-db/in-memory": "0.2.0-pre.94",
+        "@roc-db/indexed-db": "0.2.0-pre.94",
+        "@roc-db/test-utils": "0.2.0-pre.94",
         "@types/bun": "1.2.19",
         "bun": "1.2.19",
         "expect-type": "1.1.0",
@@ -690,7 +690,7 @@
 
     "valdres": ["valdres@0.2.0-pre.18", "", {}, "sha512-dqA778sE6WR/HQfgmuzEfkFUisLnzK1H9XrENmAXA3Mn8B6WjpALc2i8fvStTear4aD9CuqvjZU2CV0gIXMmPQ=="],
 
-    "valdres-react": ["valdres-react@0.2.0-pre.18", "", { "dependencies": { "valdres": "0.2.0-pre.18" }, "peerDependencies": { "react": ">=18" } }, "sha512-JU80wl1w999B5ysrFZ59yB6UNecrgUzKUYjX+PgM9iOvzC0TNxo+qj3edDZTx+LXR7amAVcbOZR9ZF720jMYpQ=="],
+    "valdres-react": ["valdres-react@0.2.0-pre.18", "", { "dependencies": { "valdres": "0.2.0-pre.24" }, "peerDependencies": { "react": ">=18" } }, "sha512-JU80wl1w999B5ysrFZ59yB6UNecrgUzKUYjX+PgM9iOvzC0TNxo+qj3edDZTx+LXR7amAVcbOZR9ZF720jMYpQ=="],
 
     "validate-npm-package-license": ["validate-npm-package-license@3.0.4", "", { "dependencies": { "spdx-correct": "^3.0.0", "spdx-expression-parse": "^3.0.0" } }, "sha512-DpKm2Ui/xN7/HQKCtpZxoRWBhZ9Z0kqtygG8XCgNQ8ZlDnxuQmWhj566j8fN4Cu3/JmbhsDo7fcAJq4s9h27Ew=="],
 
@@ -731,6 +731,8 @@
     "@roc-db/valdres/expect-type": ["expect-type@1.1.0", "", {}, "sha512-bFi65yM+xZgk+u/KRIpekdSYkTB5W1pEf0Lt8Q8Msh7b+eQ7LXVtIB1Bkm4fvclDEL1b2CZkMhv2mOeF8tMdkA=="],
 
     "@roc-db/valdres/prettier": ["prettier@3.4.1", "", { "bin": { "prettier": "bin/prettier.cjs" } }, "sha512-G+YdqtITVZmOJje6QkXQWzl3fSfMxFwm1tjTyo9exhkmWSqC4Yhd1+lug++IlR2mvRVAxEDDWYkQdeSztajqgg=="],
+
+    "@roc-db/valdres/valdres": ["valdres@0.2.0-pre.24", "", {}, "sha512-C3babmwNXSTa08nx9Mu1/zZo36wQpFBpUQ/k5QYqxih34EhClSMJJv2C04e8zdGdbwo1yGO/N4c+Vo1d0pbqsA=="],
 
     "@tufjs/models/minimatch": ["minimatch@9.0.5", "", { "dependencies": { "brace-expansion": "^2.0.1" } }, "sha512-G6T0ZX48xgozx7587koeX9Ys2NYy6Gmv//P89sEte9V9whIapMNF4idKxnW2QtCcLiTWlb/wfCabAtAFWhhBow=="],
 
