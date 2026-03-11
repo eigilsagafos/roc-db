@@ -1,37 +1,25 @@
 import {
     createAdapter,
+    type CreateAdapterOptions,
+    type EntityN,
     Snowflake,
-    type Adapter,
     type Operation,
-    type Session,
 } from "roc-db"
 import * as functions from "./functions"
-import type { z } from "zod"
-
-type Entity = z.ZodObject<{
-    entity: z.ZodLiteral<string>
-}>
 
 export const createInMemoryAdapter = <
-    const Name extends string,
     const Operations extends readonly Operation[],
-    const Entities extends readonly Entity[],
+    const Entities extends readonly EntityN[],
 >({
     operations,
     entities,
     snowflake = new Snowflake(1, 1),
     optimistic = true,
     session,
-}: {
-    operations: Operations
-    entities: Entities
-    snowflake?: Snowflake
-    optimistic?: boolean
-    session: Session
-}) => {
+}: CreateAdapterOptions<Operations, Entities>) => {
     return createAdapter(
         {
-            name: "in-memory" as Name,
+            name: "in-memory",
             operations,
             entities,
             functions,
@@ -45,5 +33,5 @@ export const createInMemoryAdapter = <
             entitiesUnique: new Map(),
             entitiesIndex: new Map(),
         },
-    ) as Adapter
+    )
 }

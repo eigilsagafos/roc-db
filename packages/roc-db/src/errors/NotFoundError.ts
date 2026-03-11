@@ -1,4 +1,4 @@
-import { Ref } from "../types/Ref"
+import { type Ref } from "../types/Ref"
 
 export class NotFoundError extends Error {
     constructor(ref: Ref) {

@@ -6,10 +6,12 @@ import { createPageEntitiesOperation } from "./operations/createPageEntitiesOper
 import { pageMutations } from "./operations/pageMutations"
 import { redo } from "./operations/redo"
 import { undo } from "./operations/undo"
+import type { Adapter } from "./types/Adapter"
 import type { AdapterFunctions } from "./types/AdapterFunctions"
 import type { Mutation } from "./types/Mutation"
 import type { Operation } from "./types/Operation"
 import type { Ref } from "./types/Ref"
+import type { Session } from "./types/Session"
 import { Snowflake } from "./utils/Snowflake"
 import { generateRef } from "./utils/generateRef"
 
@@ -19,34 +21,34 @@ export type EntityN = z.ZodObject<{
     // payload: z.ZodTypeAny
 }>
 
-type AdapterOptions<
+export type CreateAdapterOptions<
     Operations extends readonly Operation[] = [],
     Entities extends readonly EntityN[] = [],
-    EngineOptions extends {} = {},
 > = {
-    name: string
-    functions: AdapterFunctions<EngineOptions>
     operations: Operations
     entities: Entities
-    changeSetRefs: Ref[]
-    snowflake: Snowflake
-    session: {
-        identityRef: string
-        sessionRef?: string
-        [key: string]: any
-    }
+    snowflake?: Snowflake
+    session: Session
     async?: boolean
     changeSetRef?: Ref
     optimistic?: boolean
+    validateCreate?: (...args: any[]) => void
+    validateUpdate?: (...args: any[]) => void
+    validateDelete?: (...args: any[]) => void
 }
+
 export const createAdapter = <
     const Operations extends readonly Operation[],
     const Entities extends readonly EntityN[],
     const EngineOptions extends {} = {},
 >(
-    adapterOptions: AdapterOptions<Operations, Entities, EngineOptions>,
+    adapterOptions: CreateAdapterOptions<Operations, Entities> & {
+        name: string
+        snowflake: Snowflake
+        functions: AdapterFunctions<EngineOptions>
+    },
     engineOptions: EngineOptions = {} as EngineOptions,
-) => {
+): Adapter<Operations, EngineOptions> => {
     const allOperations = [
         pageMutations,
         createPageEntitiesOperation(adapterOptions.entities),
@@ -136,24 +138,26 @@ export const createAdapter = <
             )
         },
         ...operationsMap,
-    }
-    if (adapterOptions.optimistic) {
-        adapter.loadMutations = (mutations: Mutation[]) =>
-            loadMutations(
-                adapterOptions,
-                engineOptions,
-                mutations,
-                allOperations,
-            )
-    } else {
-        adapter.persistOptimisticMutations = (mutations: Mutation[]) =>
-            persistOptimisticMutations(
-                adapterOptions,
-                engineOptions,
-                mutations,
-                allOperations,
-            )
-    }
+        ...(adapterOptions.optimistic
+            ? {
+                  loadMutations: (mutations: Mutation[]) =>
+                      loadMutations(
+                          adapterOptions,
+                          engineOptions,
+                          mutations,
+                          allOperations,
+                      ),
+              }
+            : {
+                  persistOptimisticMutations: (mutations: Mutation[]) =>
+                      persistOptimisticMutations(
+                          adapterOptions,
+                          engineOptions,
+                          mutations,
+                          allOperations,
+                      ),
+              }),
+    } as unknown as Adapter<Operations, EngineOptions>
 
     return adapter
 }

@@ -1,11 +1,11 @@
-import { z, ZodSchema, ZodType } from "zod"
+import { z, ZodType } from "zod"
 import { RefSchema } from "../RefSchema"
 import { MutationSchema } from "../MutationSchema"
 import { MutationLogSchema } from "../MutationLogSchema"
 
 export const mutationSchemaGenerator = <
     const Name extends string,
-    Payload extends ZodSchema,
+    Payload extends ZodType,
 >(
     name: Name,
     payloadSchema: Payload,

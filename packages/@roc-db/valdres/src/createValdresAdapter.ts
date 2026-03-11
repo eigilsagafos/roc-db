@@ -1,11 +1,9 @@
 import {
     createAdapter,
     type Adapter,
-    type Entity,
-    type Mutation,
+    type CreateAdapterOptions,
     Snowflake,
     type Operation,
-    type Ref,
 } from "roc-db"
 import * as functions from "./functions"
 import {
@@ -14,10 +12,26 @@ import {
     type Store,
     type AtomFamily,
     type TransactionInterface,
-    type Atom,
 } from "valdres"
 
-export const createValdresAdapter = <Session>({
+export type ValdresEngineOptions = {
+    txn?: TransactionInterface
+    rootTxn?: TransactionInterface
+    store?: Store
+    scopedStore?: Store
+    entityAtom: AtomFamily<any, any>
+    mutationAtom: AtomFamily<any, any>
+    entityUniqueAtom: AtomFamily<any, any>
+    entityIndexAtom: AtomFamily<any, any>
+}
+
+export type ValdresAdapterOptions<
+    Operations extends readonly Operation[] = readonly Operation[],
+> = CreateAdapterOptions<Operations> & ValdresEngineOptions
+
+export const createValdresAdapter = <
+    const Operations extends readonly Operation[],
+>({
     operations,
     entities,
     store, // = createStore(),
@@ -35,25 +49,10 @@ export const createValdresAdapter = <Session>({
     validateCreate,
     validateUpdate,
     validateDelete,
-}: {
-    operations: readonly Operation[]
-    entities: readonly Entity[]
-    store?: Store
-    rootTxn?: TransactionInterface
-    txn?: TransactionInterface
-    entityAtom: AtomFamily<string, Entity | null>
-    mutationAtom: AtomFamily<string, Mutation | null>
-    entityUniqueAtom: AtomFamily<Ref, [string]>
-    entityIndexAtom: AtomFamily<Ref, [string, string, string]>
-    changeSetRef?: Ref
-    session: Session
-    optimistic: boolean
-    snowflake?: Snowflake
-    async?: boolean
-    validateCreate?: () => void
-    validateUpdate?: () => void
-    validateDelete?: () => void
-}) => {
+}: ValdresAdapterOptions<Operations>): Adapter<
+    Operations,
+    ValdresEngineOptions
+> => {
     if (!entityAtom) throw new Error("entityAtom is required")
     if (!mutationAtom) throw new Error("mutationAtom is required")
     if (!entityUniqueAtom) throw new Error("entityUniqueAtom is required")
@@ -72,8 +71,7 @@ export const createValdresAdapter = <Session>({
             validateUpdate,
             validateDelete,
             async,
-            // initChangeSetOnce: true,
-        },
+        } as any,
         {
             txn,
             rootTxn,
@@ -85,5 +83,5 @@ export const createValdresAdapter = <Session>({
             // entityRefListAtom = atomFamily<string, string[]>([]),
             // mutationActions,
         },
-    ) as Adapter
+    )
 }

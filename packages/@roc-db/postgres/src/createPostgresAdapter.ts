@@ -1,14 +1,15 @@
 import {
     createAdapter,
+    type CreateAdapterOptions,
     Snowflake,
-    type Adapter,
-    type Entity,
     type Operation,
 } from "roc-db"
 import * as functions from "./functions"
 import type { PostgresEngineOpts } from "./types/PostgresEngineOpts"
 
-export const createPostgresAdapter = ({
+export const createPostgresAdapter = <
+    const Operations extends readonly Operation[],
+>({
     operations,
     entities,
     client,
@@ -20,11 +21,7 @@ export const createPostgresAdapter = ({
     onTransactionStart,
     onTransactionEnd,
     snowflake = new Snowflake(1, 1),
-}: {
-    operations: readonly Operation[]
-    entities: readonly Entity[]
-    getClient?: any
-} & PostgresEngineOpts) => {
+}: CreateAdapterOptions<Operations> & PostgresEngineOpts & { getClient?: any }) => {
     return createAdapter(
         {
             name: "postgres",
@@ -44,5 +41,5 @@ export const createPostgresAdapter = ({
             onTransactionStart,
             onTransactionEnd,
         },
-    ) as Adapter
+    )
 }

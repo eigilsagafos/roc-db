@@ -1,4 +1,4 @@
-import type { z, ZodSchema, ZodType } from "zod"
+import type { z, ZodType } from "zod"
 import type { ReadOperation } from "./types/ReadOperation"
 import type { ReadTransaction } from "./lib/ReadTransaction"
 import type { ReadRequest } from "./types/ReadRequest"
@@ -6,7 +6,7 @@ import type { Ref } from "./types/Ref"
 
 export const readOperation = <
     const Name extends string,
-    const PayloadSchema extends ZodSchema,
+    const PayloadSchema extends ZodType,
 >(
     name: Name,
     payloadSchema: PayloadSchema,
