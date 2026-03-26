@@ -1,6 +1,5 @@
-import { z } from "zod"
-import { MutationRef } from "./MutationRef"
-import { Ref } from "./Ref"
+import type { MutationRef } from "./MutationRef"
+import type { Ref } from "./Ref"
 
 export type Mutation = {
     ref: MutationRef
