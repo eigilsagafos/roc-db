@@ -31,8 +31,8 @@ type EntitySchemaOutput<
 > = {
     ref: `${Name}/${number}`
     entity: Name
-    created: { timestamp: Date; mutationRef: MutationRef }
-    updated: { timestamp: Date; mutationRef: MutationRef }
+    created: { timestamp: string; mutationRef: MutationRef }
+    updated: { timestamp: string; mutationRef: MutationRef }
     data: z.output<Data>
     children: z.output<Children>
     parents: z.output<Parents>
