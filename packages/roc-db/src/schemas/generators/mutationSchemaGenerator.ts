@@ -1,4 +1,4 @@
-import { z, ZodSchema, ZodType } from "zod"
+import { z, type ZodSchema, type ZodType } from "zod"
 import { RefSchema } from "../RefSchema"
 import { MutationSchema } from "../MutationSchema"
 import { MutationLogSchema } from "../MutationLogSchema"

@@ -1,4 +1,4 @@
-import { z, ZodSchema } from "zod"
+import { z, type ZodSchema } from "zod"
 import { WriteTransaction } from "./lib/WriteTransaction"
 import { mutationSchemaGenerator } from "./schemas/generators/mutationSchemaGenerator"
 import type { WriteOperation } from "./types/WriteOperation"
