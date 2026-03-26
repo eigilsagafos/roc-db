@@ -3,15 +3,18 @@ import { QueryChainClass } from "./QueryChainClass"
 import { QueryClass } from "./QueryClass"
 import type { QueryObjectClass } from "./QueryObjectClass"
 
-export const Query = <I extends any[], O>(
-    fn: (
-        ...args: I
-    ) =>
-        | O
-        | QueryClass<any[], O>
-        | QueryChainClass<O>
-        | QueryObjectClass<O & Record<string, unknown>>
-        | QueryArrayClass<O>,
-): QueryClass<I, O> => {
-    return new QueryClass(fn as (...args: I) => O | QueryChainClass<O>)
+type UnwrapReturnType<T> = T extends QueryClass<any[], infer O>
+    ? O
+    : T extends QueryChainClass<infer O>
+      ? O
+      : T extends QueryObjectClass<infer O>
+        ? O
+        : T extends QueryArrayClass<infer O>
+          ? O
+          : T
+
+export const Query = <I extends any[], R>(
+    fn: (...args: I) => R,
+): QueryClass<I, UnwrapReturnType<R>> => {
+    return new QueryClass(fn as (...args: I) => UnwrapReturnType<R> | QueryChainClass<UnwrapReturnType<R>>)
 }
