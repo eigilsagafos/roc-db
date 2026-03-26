@@ -1,4 +1,4 @@
-import { z, ZodObject } from "zod"
+import { z, type ZodObject } from "zod"
 import { EntitySchema } from "../EntitySchema"
 import { refSchemaGenerator } from "./refSchemaGenerator"
 

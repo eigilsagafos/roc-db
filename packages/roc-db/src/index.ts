@@ -21,6 +21,7 @@ export { refSchemaGenerator } from "./schemas/generators/refSchemaGenerator"
 // types
 export type { ReadTransaction } from "./lib/ReadTransaction"
 // export type { WriteTransaction } from "./lib/WriteTransaction"
+export type { ReadEntityResult } from "./types/ReadEntityResult"
 export type { Adapter } from "./types/Adapter"
 export type {
     AdapterFunctions,
@@ -49,6 +50,7 @@ export { parseRef } from "./utils/parseRef"
 export { Query } from "./utils/Query"
 export { QueryArray } from "./utils/QueryArray"
 export { QueryChain } from "./utils/QueryChain"
+export { QueryChainClass } from "./utils/QueryChainClass"
 export { QueryObject } from "./utils/QueryObject"
 export { refsFromRelations } from "./utils/refsFromRelations"
 export { Snowflake } from "./utils/Snowflake"

@@ -1,4 +1,4 @@
-import { z, ZodSchema } from "zod"
+import { z, type ZodSchema } from "zod"
 import { WriteTransaction } from "./lib/WriteTransaction"
 import { mutationSchemaGenerator } from "./schemas/generators/mutationSchemaGenerator"
 import type { WriteOperation } from "./types/WriteOperation"
@@ -10,7 +10,7 @@ export const writeOperation = <
 >(
     name: Name,
     payloadSchema: PayloadSchema,
-    callback: (txn: WriteTransaction) => any,
+    callback: (txn: WriteTransaction<any, z.output<PayloadSchema>>) => any,
     settings: WriteOperationSettings = {},
 ): WriteOperation<Name, PayloadSchema> => {
     const {

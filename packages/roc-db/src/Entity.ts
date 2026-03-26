@@ -1,4 +1,4 @@
-import { z, ZodSchema, type ZodObject } from "zod"
+import { z, type ZodObject } from "zod"
 import { refSchemaGenerator } from "./schemas/generators/refSchemaGenerator"
 import { TimestampWithMutationRefSchema } from "./schemas/TimestampWithMutationRefSchema"
 
@@ -20,6 +20,25 @@ const addUndefinedCheck = schema => {
     })
 }
 
+type MutationRef = `Mutation/${number}`
+
+type EntitySchemaOutput<
+    Name extends string,
+    Data extends ZodObject<any>,
+    Children extends ZodObject<any>,
+    Parents extends ZodObject<any>,
+    Ancestors extends ZodObject<any>,
+> = {
+    ref: `${Name}/${number}`
+    entity: Name
+    created: { timestamp: string; mutationRef: MutationRef }
+    updated: { timestamp: string; mutationRef: MutationRef }
+    data: z.output<Data>
+    children: z.output<Children>
+    parents: z.output<Parents>
+    ancestors: z.output<Ancestors>
+}
+
 export class Entity<
     const Name extends string,
     const Data extends ZodObject<any> = ZodObject<{}>,
@@ -30,31 +49,11 @@ export class Entity<
     name: Name
     indexedDataKeys: string[]
     uniqueDataKeys: string[]
-    schema: ZodObject<{
-        ref: z.ZodType<`${Name}/${string}`, z.ZodTypeDef, `${Name}/${string}`>
-        entity: z.ZodLiteral<Name>
-        created: z.ZodObject<{
-            timestamp: z.ZodDate
-            mutationRef: z.ZodType<
-                `${Name}/${string}`,
-                z.ZodTypeDef,
-                `${Name}/${string}`
-            >
-        }>
-        updated: z.ZodObject<{
-            timestamp: z.ZodDate
-            mutationRef: z.ZodType<
-                `${Name}/${string}`,
-                z.ZodTypeDef,
-                `${Name}/${string}`
-            >
-        }>
-        data: Data
-        children: Children
-        parents: Parents
-        ancestors: Ancestors
-    }>
-    refSchema: z.ZodType<`${Name}/${string}`, z.ZodTypeDef, `${Name}/${string}`>
+    schema: z.ZodType<
+        EntitySchemaOutput<Name, Data, Children, Parents, Ancestors>,
+        EntitySchemaOutput<Name, Data, Children, Parents, Ancestors>
+    >
+    refSchema: z.ZodType<`${Name}/${number}`, `${Name}/${number}`>
     constructor(
         name: Name,
         args: {
@@ -69,7 +68,7 @@ export class Entity<
         this.name = name
         this.indexedDataKeys = args.indexedDataKeys ?? []
         this.uniqueDataKeys = args.uniqueDataKeys ?? []
-        this.refSchema = refSchemaGenerator(name)
+        this.refSchema = refSchemaGenerator(name) as any
         this.schema = z
             .object({
                 ref: this.refSchema,
@@ -90,6 +89,6 @@ export class Entity<
                 ) as Ancestors,
             })
             .strict()
-            .required()
+            .required() as any
     }
 }

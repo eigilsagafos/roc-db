@@ -3,7 +3,7 @@ import { entityFromRef } from "../utils/entityFromRef"
 import { generateRef } from "../utils/generateRef"
 import type { WriteTransaction } from "./WriteTransaction"
 
-export const createRef = (txn: WriteTransaction, entity: string): Ref => {
+export const createRef = <E extends string>(txn: WriteTransaction, entity: E): `${E}/${number}` => {
     if (txn.optimisticRefs.length) {
         const nextRef = txn.optimisticCreateRefs.shift()
         if (!nextRef) throw new Error("No next ref")
@@ -17,7 +17,7 @@ export const createRef = (txn: WriteTransaction, entity: string): Ref => {
             )
         }
         txn.log.set(nextRef, ["ref"])
-        return nextRef as Ref
+        return nextRef as `${E}/${number}`
     }
 
     const ref = generateRef(
@@ -26,5 +26,5 @@ export const createRef = (txn: WriteTransaction, entity: string): Ref => {
         txn.mutation.timestamp,
     )
     txn.log.set(ref, ["ref"])
-    return ref as Ref
+    return ref as `${E}/${number}`
 }

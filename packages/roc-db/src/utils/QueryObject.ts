@@ -11,6 +11,20 @@ type JSON =
     | { [property in string]: JSON }
     | JSON[]
 
+type UnwrapQueryValue<T> = T extends QueryChainClass<infer O>
+    ? O
+    : T extends QueryClass<any, infer O>
+      ? O
+      : T extends QueryObjectClass<infer O>
+        ? O
+        : T extends QueryArrayClass<infer O>
+          ? O
+          : T
+
+type UnwrapQueryMap<T extends Record<string, unknown>> = {
+    [K in keyof T]: UnwrapQueryValue<T[K]>
+}
+
 type QueryMapObject = {
     [key: string]:
         | QueryChainClass<any>
@@ -18,10 +32,8 @@ type QueryMapObject = {
         | QueryArrayClass
         | QueryObjectClass
         | JSON
-    // | QueryArray<any>
-    // | JSON
 }
 
-export const QueryObject = (obj: QueryMapObject) => {
-    return new QueryObjectClass(obj)
+export const QueryObject = <T extends Record<string, unknown>>(obj: T) => {
+    return new QueryObjectClass<UnwrapQueryMap<T>>(obj as any)
 }
