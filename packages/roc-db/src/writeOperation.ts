@@ -10,7 +10,7 @@ export const writeOperation = <
 >(
     name: Name,
     payloadSchema: PayloadSchema,
-    callback: (txn: WriteTransaction) => any,
+    callback: (txn: WriteTransaction<any, z.output<PayloadSchema>>) => any,
     settings: WriteOperationSettings = {},
 ): WriteOperation<Name, PayloadSchema> => {
     const {

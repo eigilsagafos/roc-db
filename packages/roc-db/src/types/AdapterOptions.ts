@@ -5,4 +5,7 @@ export type AdapterOptions<EngineOpts extends any = any> = {
     functions: AdapterFunctions<EngineOpts>
     async: boolean
     operations: WriteOperation[]
+    session: any
+    snowflake: any
+    [key: string]: any
 }

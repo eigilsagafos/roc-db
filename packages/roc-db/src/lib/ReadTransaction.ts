@@ -1,5 +1,6 @@
 import { BadRequestError } from "../errors/BadRequestError"
 import type { AdapterOptions } from "../types/AdapterOptions"
+import type { ReadEntityResult } from "../types/ReadEntityResult"
 import type { Ref } from "../types/Ref"
 import type { RocDBRequest } from "../types/RocDBRequest"
 import { refsFromRelations } from "../utils/refsFromRelations"
@@ -17,13 +18,13 @@ type ChangeSetCache = {
     initialized: boolean
 }
 
-export class ReadTransaction<EngineOpts extends any = any> {
+export class ReadTransaction<EngineOpts extends any = any, Payload = any> {
     changeSetRef: Ref | null
     constructor(
         public request: RocDBRequest,
         public engineOpts: EngineOpts,
         public adapter: AdapterOptions<EngineOpts>,
-        public payload: any,
+        public payload: Payload,
         public changeSet: ChangeSetCache,
     ) {
         this.request = request
@@ -42,7 +43,8 @@ export class ReadTransaction<EngineOpts extends any = any> {
         }
     }
 
-    batchReadEntities = (refs: Ref[]) => batchReadEntities(this, refs)
+    batchReadEntities = <R extends Ref>(refs: R[]): ReadEntityResult<R>[] =>
+        batchReadEntities(this, refs) as ReadEntityResult<R>[]
 
     getChangeSetMutations = (ref: Ref) => {
         if (!ref)
@@ -52,8 +54,8 @@ export class ReadTransaction<EngineOpts extends any = any> {
         return this.adapter.functions.getChangeSetMutations(this, ref)
     }
 
-    readEntity = (ref: Ref, throwIfNotFound = true) =>
-        readEntity(this, ref, throwIfNotFound)
+    readEntity = <R extends Ref>(ref: R, throwIfNotFound = true): ReadEntityResult<R> =>
+        readEntity(this, ref, throwIfNotFound) as ReadEntityResult<R>
 
     readEntityByUniqueField = (entity, field, value, throwIfNotFound = true) =>
         readEntityByUniqueField(this, entity, field, value, throwIfNotFound)

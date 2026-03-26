@@ -2,6 +2,7 @@ import type { AdapterOptions } from "../types/AdapterOptions"
 import type { Entity } from "../types/Entity"
 import type { Mutation } from "../types/Mutation"
 import type { MutationRef } from "../types/MutationRef"
+import type { ReadEntityResult } from "../types/ReadEntityResult"
 import type { Ref } from "../types/Ref"
 import type { RocDBRequest } from "../types/RocDBRequest"
 import { ReadTransaction } from "./ReadTransaction"
@@ -26,7 +27,8 @@ type Log = Map<Ref, LogItem>
 
 export class WriteTransaction<
     EngineOpts extends any = any,
-> extends ReadTransaction<EngineOpts> {
+    Payload = any,
+> extends ReadTransaction<EngineOpts, Payload> {
     mutationFinalized: boolean
     optimisticCreateRefs: string[]
     log: Log
@@ -35,7 +37,7 @@ export class WriteTransaction<
         public request: RocDBRequest,
         public engineOpts: EngineOpts,
         public adapter: AdapterOptions<EngineOpts>,
-        public payload: RocDBRequest["payload"],
+        public payload: Payload,
         public mutation: Mutation,
         public optimisticRefs: [string, string, string][] = [],
         changeSet: any = undefined,
@@ -53,8 +55,9 @@ export class WriteTransaction<
 
     applyChangeSet = (ref: Ref) => applyChangeSet(this, ref)
     commit = (isChangeSetApply = false) => commit(this, isChangeSetApply)
-    createEntity = (ref: Ref, body: any) => createEntity(this, ref, body)
-    createRef = (entity: string) => createRef(this, entity)
+    createEntity = <R extends Ref>(ref: R, body: any): ReadEntityResult<R> =>
+        createEntity(this, ref, body) as ReadEntityResult<R>
+    createRef = <E extends string>(entity: E) => createRef(this, entity)
     deleteEntity = (ref: Ref, cascade = false) =>
         deleteEntity(this, ref, cascade)
     deleteChangeSet = (changeSetRef: Ref) => deleteChangeSet(this, changeSetRef)
@@ -66,8 +69,8 @@ export class WriteTransaction<
     }
     findDependents = (ref: Ref) => findDependents(this, ref)
     patchEntity = (ref: Ref, args: any) => patchEntity(this, ref, args)
-    readEntity = (ref: Ref, throwIfMissing = true) =>
-        readEntity(this, ref, throwIfMissing)
+    readEntity = <R extends Ref>(ref: R, throwIfMissing = true): ReadEntityResult<R> =>
+        readEntity(this, ref, throwIfMissing) as ReadEntityResult<R>
     undo = (mutationRef: MutationRef) => undo(this, mutationRef)
     updateEntity = (ref: Ref, body: any) => updateEntity(this, ref, body)
 }
