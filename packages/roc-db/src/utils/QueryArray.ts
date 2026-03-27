@@ -8,7 +8,7 @@ type UnwrapQueryResult<T> = T extends QueryChainClass<infer O>
       ? O
       : T extends QueryArrayClass<infer O>
         ? O
-        : unknown
+        : never
 
 export type QueryArrayType = (
     | QueryChainClass<any>

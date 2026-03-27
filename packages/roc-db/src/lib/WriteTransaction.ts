@@ -67,7 +67,7 @@ export class WriteTransaction<
         this.mutationFinalized = true
         return finalizeMutation(this, isChangeSetApply)
     }
-    findDependents = (ref: Ref) => findDependents(this, ref)
+    findDependents = (ref: Ref): Ref[] => findDependents(this, ref) as Ref[]
     patchEntity = (ref: Ref, args: any) => patchEntity(this, ref, args)
     readEntity = <R extends Ref>(ref: R, throwIfMissing = true): ReadEntityResult<R> =>
         readEntity(this, ref, throwIfMissing) as ReadEntityResult<R>

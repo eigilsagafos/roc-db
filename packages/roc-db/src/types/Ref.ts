@@ -1,4 +1,7 @@
-// z.infer<typeof RefSchema>
-export type Ref = keyof RocDBEntityRegistry extends never
+declare global {
+    interface RocDBEntityMap {}
+}
+
+export type Ref = keyof RocDBEntityMap extends never
     ? `${string}/${string}`
-    : `${keyof RocDBEntityRegistry & string}/${number}`
+    : `${keyof RocDBEntityMap & string}/${number}`
