@@ -24,6 +24,9 @@ export const createPostgresAdapter = ({
     operations: readonly Operation[]
     entities: readonly Entity[]
     getClient?: any
+    session?: any
+    optimistic?: boolean
+    snowflake?: Snowflake
 } & PostgresEngineOpts) => {
     return createAdapter(
         {

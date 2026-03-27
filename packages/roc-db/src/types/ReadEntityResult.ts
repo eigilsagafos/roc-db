@@ -15,6 +15,6 @@ type BaseEntity = {
 }
 
 export type ReadEntityResult<R extends Ref> =
-    EntityNameFromRef<R> extends keyof RocDBEntityRegistry
-        ? RocDBEntityRegistry[EntityNameFromRef<R>]
+    EntityNameFromRef<R> extends keyof RocDBEntityMap
+        ? RocDBEntityMap[EntityNameFromRef<R>]
         : BaseEntity

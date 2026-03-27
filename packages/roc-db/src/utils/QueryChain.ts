@@ -10,8 +10,16 @@ type AnyQuery<I extends any[], O> =
     | QueryArrayClass<O>
     | undefined
 
+type UnwrapInner<T> = T extends QueryObjectClass<infer O>
+    ? O
+    : T extends QueryArrayClass<infer O>
+      ? O
+      : T extends QueryChainClass<infer O>
+        ? O
+        : T
+
 type UnwrapOutput<O> = O extends QueryClass<any[], infer T>
-    ? T
+    ? UnwrapInner<T>
     : O extends QueryObjectClass<infer T>
       ? T
       : O extends QueryArrayClass<infer T>
@@ -184,6 +192,8 @@ type QueryChainFn = {
             O8
         >,
     ): QueryChainClass<UnwrapOutput<O8>>
+    // spread array fallback
+    (...queries: AnyQuery<any[], any>[]): QueryChainClass<any>
 }
 
 export const QueryChain: QueryChainFn = (
