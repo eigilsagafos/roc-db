@@ -32,6 +32,7 @@ export const createMutationSync = <
             engine,
             now,
             request.operation.name,
+            adapter.session.identityRef,
         )
         if (res) {
             return [

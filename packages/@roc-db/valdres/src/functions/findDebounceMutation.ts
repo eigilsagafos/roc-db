@@ -5,6 +5,7 @@ export const findDebounceMutation = (
     engine: InMemoryEngine,
     now: number,
     mutationName: string,
+    identityRef: string,
 ) => {
     const debounceTime = request.operation.debounce
     if (debounceTime === undefined) return
@@ -19,7 +20,8 @@ export const findDebounceMutation = (
             mutation &&
             mutation.operation.name === mutationName &&
             mutation.timestamp > thresholdTime &&
-            mutation.payload.ref === request.payload.ref
+            mutation.payload.ref === request.payload.ref &&
+            mutation.identityRef === identityRef
         ) {
             return true
         }

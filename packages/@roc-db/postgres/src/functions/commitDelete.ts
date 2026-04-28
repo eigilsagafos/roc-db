@@ -6,11 +6,11 @@ export const commitDelete = async (
     ref: Ref,
 ) => {
     const { sqlTxn, entitiesTableName, mutationsTableName } = txn.engineOpts
-    const id = idFromRef(ref)
     const entity = entityFromRef(ref)
+    const id = idFromRef(ref) ?? `_${entity}`
     if (entity === "Mutation") {
         return sqlTxn`
-                DELETE FROM ${sqlTxn(mutationsTableName)} 
+                DELETE FROM ${sqlTxn(mutationsTableName)}
                 WHERE id = ${id}
                 RETURNING id;
             `.catch(e => {
@@ -19,7 +19,7 @@ export const commitDelete = async (
         })
     } else {
         return sqlTxn`
-                DELETE FROM ${sqlTxn(entitiesTableName)} 
+                DELETE FROM ${sqlTxn(entitiesTableName)}
                 WHERE id = ${id}
                 RETURNING id;
             `.catch(e => {

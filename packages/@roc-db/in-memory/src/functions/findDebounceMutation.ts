@@ -6,6 +6,7 @@ export const findDebounceMutation = (
     engine: InMemoryEngine,
     now: number,
     mutationName: string,
+    identityRef: string,
 ) => {
     const debounceTime = request.operation.debounce
     // TODO: Make this more efficient. We could store a list of mutation refs pr operation seperatly if the operation supports debounce
@@ -15,7 +16,8 @@ export const findDebounceMutation = (
         if (
             mutation.operation.name === mutationName &&
             mutation.timestamp > thresholdTime &&
-            mutation.payload.ref === request.payload.ref
+            mutation.payload.ref === request.payload.ref &&
+            mutation.identityRef === identityRef
         ) {
             return true
         }

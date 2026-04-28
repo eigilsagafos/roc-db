@@ -7,9 +7,14 @@ const stringifyIndexEntries = arr => {
 }
 
 export const entityToRow = entity => {
+    const kind = entityFromRef(entity.ref)
     return {
-        id: idFromRef(entity.ref),
-        kind: entityFromRef(entity.ref),
+        // Singleton entities have no id segment in their ref (just the kind).
+        // We store them under the sentinel id `_<Kind>` so the global PRIMARY
+        // KEY on `id` still enforces uniqueness across kinds. Snowflake ids
+        // are numeric strings so they cannot collide with this sentinel.
+        id: idFromRef(entity.ref) ?? `_${kind}`,
+        kind,
         created_at: entity.created.timestamp,
         updated_at: entity.updated.timestamp,
         created_mutation_id: idFromRef(entity.created.mutationRef),

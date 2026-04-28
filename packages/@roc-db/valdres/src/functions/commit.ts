@@ -52,6 +52,12 @@ export const commit = (
         txn: valdresTxn,
     } = txn.engineOpts
     for (const doc of created) {
+        if (
+            txn.adapter.models?.[doc.entity]?.singleton &&
+            valdresTxn.get(entityAtom(doc.ref))
+        ) {
+            throw createUniqueConstraintConflictError(doc.entity)
+        }
         if (doc.__.unique?.length) {
             doc.__.unique.forEach(([key, value]) => {
                 const atom = entityUniqueAtom(doc.entity, key, value)

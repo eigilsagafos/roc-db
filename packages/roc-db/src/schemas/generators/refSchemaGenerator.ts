@@ -1,9 +1,15 @@
 import * as z from "zod"
 
-const GENERIC = z.templateLiteral([
-    z.string().min(1, "Entity kind cannot be empty"),
-    z.literal("/"),
-    z.number().int(),
+const GENERIC = z.union([
+    z.templateLiteral([
+        z.string().min(1, "Entity kind cannot be empty"),
+        z.literal("/"),
+        z.number().int(),
+    ]),
+    z
+        .string()
+        .min(1, "Entity kind cannot be empty")
+        .refine(s => s.indexOf("/") === -1, "Invalid input"),
 ])
 
 export const refSchemaGenerator = <const Entities extends string[]>(
