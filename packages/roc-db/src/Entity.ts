@@ -22,14 +22,18 @@ const addUndefinedCheck = schema => {
 
 type MutationRef = `Mutation/${number}`
 
+type EntityRef<Name extends string, Singleton extends boolean> =
+    Singleton extends true ? Name : `${Name}/${number}`
+
 type EntitySchemaOutput<
     Name extends string,
+    Singleton extends boolean,
     Data extends ZodObject<any>,
     Children extends ZodObject<any>,
     Parents extends ZodObject<any>,
     Ancestors extends ZodObject<any>,
 > = {
-    ref: `${Name}/${number}`
+    ref: EntityRef<Name, Singleton>
     entity: Name
     created: { timestamp: string; mutationRef: MutationRef }
     updated: { timestamp: string; mutationRef: MutationRef }
@@ -45,18 +49,21 @@ export class Entity<
     const Children extends ZodObject<any> = ZodObject<{}>,
     const Parents extends ZodObject<any> = ZodObject<{}>,
     const Ancestors extends ZodObject<any> = ZodObject<{}>,
+    const Singleton extends boolean = false,
 > {
     name: Name
+    singleton: Singleton
     indexedDataKeys: string[]
     uniqueDataKeys: string[]
     schema: z.ZodType<
-        EntitySchemaOutput<Name, Data, Children, Parents, Ancestors>,
-        EntitySchemaOutput<Name, Data, Children, Parents, Ancestors>
+        EntitySchemaOutput<Name, Singleton, Data, Children, Parents, Ancestors>,
+        EntitySchemaOutput<Name, Singleton, Data, Children, Parents, Ancestors>
     >
-    refSchema: z.ZodType<`${Name}/${number}`, `${Name}/${number}`>
+    refSchema: z.ZodType<EntityRef<Name, Singleton>, EntityRef<Name, Singleton>>
     constructor(
         name: Name,
         args: {
+            singleton?: Singleton
             data?: Data
             children?: Children
             parents?: Parents
@@ -66,9 +73,19 @@ export class Entity<
         },
     ) {
         this.name = name
+        this.singleton = (args.singleton ?? false) as Singleton
         this.indexedDataKeys = args.indexedDataKeys ?? []
         this.uniqueDataKeys = args.uniqueDataKeys ?? []
-        this.refSchema = refSchemaGenerator(name) as any
+        if (this.singleton) {
+            if (this.indexedDataKeys.length || this.uniqueDataKeys.length) {
+                throw new Error(
+                    `Entity "${name}" is a singleton; indexedDataKeys and uniqueDataKeys are not allowed`,
+                )
+            }
+        }
+        this.refSchema = (
+            this.singleton ? z.literal(name) : refSchemaGenerator(name)
+        ) as any
         this.schema = z
             .object({
                 ref: this.refSchema,

@@ -27,14 +27,26 @@ export const commit = async (txn, mutation, { created, updated, deleted }) => {
     for (const doc of created) {
         await commitCreate(txn, doc).catch(err => {
             if (err.code === "23505") {
-                const [, entity, constraint] = err.detail.match(
+                const match = err.detail?.match(
                     /\)=\((.+), (.+)\) already exists/,
                 )
-                const field = constraint.substring(0, constraint.indexOf(":"))
-                const value = JSON.parse(
-                    constraint.substring(constraint.indexOf(":") + 1),
-                )
-                throw createUniqueConstraintConflictError(entity, field, value)
+                const entity = match?.[1] ?? doc.entity
+                const constraint = match?.[2]
+                if (constraint && constraint.includes(":")) {
+                    const field = constraint.substring(
+                        0,
+                        constraint.indexOf(":"),
+                    )
+                    const value = JSON.parse(
+                        constraint.substring(constraint.indexOf(":") + 1),
+                    )
+                    throw createUniqueConstraintConflictError(
+                        entity,
+                        field,
+                        value,
+                    )
+                }
+                throw createUniqueConstraintConflictError(entity)
             }
             throw err
         })

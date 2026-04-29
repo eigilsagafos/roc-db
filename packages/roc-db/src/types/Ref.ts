@@ -2,6 +2,8 @@ declare global {
     interface RocDBEntityMap {}
 }
 
+type Kinds = keyof RocDBEntityMap & string
+
 export type Ref = keyof RocDBEntityMap extends never
-    ? `${string}/${string}`
-    : `${keyof RocDBEntityMap & string}/${number}`
+    ? string
+    : Kinds | `${Kinds}/${number}`

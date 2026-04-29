@@ -37,7 +37,7 @@ export const saveMutation = async (
             ) = (
                 ${new Date(timestamp)},
                 ${txn.mutation.debounceCount},
-                ${payload},
+                ${payload ?? null},
                 ${appliedAt ? appliedAt : null},
                 ${persistedAt ? persistedAt : null}
             )
@@ -73,7 +73,7 @@ export const saveMutation = async (
                 ${new Date(timestamp)},
                 ${operation.name},
                 ${operation.version ?? 1},
-                ${payload},
+                ${payload ?? null},
                 ${log},
                 ${log.map(logItem => logItem[0])},
                 ${changeSetId},

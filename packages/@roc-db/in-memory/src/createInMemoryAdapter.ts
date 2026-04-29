@@ -22,12 +22,19 @@ export const createInMemoryAdapter = <
     snowflake = new Snowflake(1, 1),
     optimistic = true,
     session,
+    engine,
 }: {
     operations: Operations
     entities: Entities
     snowflake?: Snowflake
     optimistic?: boolean
     session: Session
+    engine?: {
+        entities: Map<string, any>
+        mutations: Map<string, any>
+        entitiesUnique: Map<string, any>
+        entitiesIndex: Map<string, any>
+    }
 }) => {
     return createAdapter(
         {
@@ -39,7 +46,7 @@ export const createInMemoryAdapter = <
             optimistic,
             session,
         },
-        {
+        engine ?? {
             entities: new Map(),
             mutations: new Map(),
             entitiesUnique: new Map(),

@@ -6,20 +6,33 @@ export const findDebounceMutation = async (
     engineOpts,
     now: number,
     mutationName: string,
+    identityRef: string,
 ) => {
     const debounceTime = request.operation.debounce
 
     const thresholdTime = new Date(now - debounceTime * 1000).toISOString()
     const { sqlTxn, mutationsTableName } = engineOpts
+    const payloadRef = request.payload?.ref
 
-    const res = await sqlTxn`
-        SELECT * FROM ${sqlTxn(mutationsTableName)}
-        WHERE 
-            operation_name = ${mutationName} AND
-            timestamp > ${thresholdTime} AND
-            log_refs = ARRAY[${request.payload.ref}]
-        LIMIT 2
-    `.catch(err => {
+    const res = await (payloadRef === undefined
+        ? sqlTxn`
+            SELECT * FROM ${sqlTxn(mutationsTableName)}
+            WHERE
+                operation_name = ${mutationName} AND
+                timestamp > ${thresholdTime} AND
+                identity_ref = ${identityRef}
+            LIMIT 2
+        `
+        : sqlTxn`
+            SELECT * FROM ${sqlTxn(mutationsTableName)}
+            WHERE
+                operation_name = ${mutationName} AND
+                timestamp > ${thresholdTime} AND
+                identity_ref = ${identityRef} AND
+                log_refs = ARRAY[${payloadRef}]
+            LIMIT 2
+        `
+    ).catch(err => {
         console.error("findDebounceMutation failed")
         throw err
     })

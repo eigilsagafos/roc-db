@@ -4,5 +4,12 @@ import { createInMemoryAdapter } from "./createInMemoryAdapter"
 import type { InMemoryEngine } from "./types/InMemoryEngine"
 
 describe("createInMemorydapter", () => {
-    testAdapterImplementation<InMemoryEngine>(createInMemoryAdapter, () => ({}))
+    testAdapterImplementation<InMemoryEngine>(createInMemoryAdapter, () => ({
+        engine: {
+            entities: new Map(),
+            mutations: new Map(),
+            entitiesUnique: new Map(),
+            entitiesIndex: new Map(),
+        },
+    }))
 })

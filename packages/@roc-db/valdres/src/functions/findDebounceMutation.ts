@@ -1,10 +1,11 @@
-import type { WriteOperation } from "roc-db"
+import type { WriteRequest } from "roc-db"
 
 export const findDebounceMutation = (
-    request: WriteOperation,
+    request: WriteRequest,
     engine: InMemoryEngine,
     now: number,
     mutationName: string,
+    identityRef: string,
 ) => {
     const debounceTime = request.operation.debounce
     if (debounceTime === undefined) return
@@ -13,13 +14,15 @@ export const findDebounceMutation = (
     const thresholdTime = new Date(now - debounceTime * 1000).toISOString()
     const { mutationAtom } = engine
     const atoms = engine.rootTxn.get(mutationAtom)
+    const payloadRef = request.payload?.ref
     const atom = atoms.find(atom => {
         const mutation = engine.rootTxn.get(atom)
         if (
             mutation &&
             mutation.operation.name === mutationName &&
             mutation.timestamp > thresholdTime &&
-            mutation.payload.ref === request.payload.ref
+            mutation.payload?.ref === payloadRef &&
+            mutation.identityRef === identityRef
         ) {
             return true
         }

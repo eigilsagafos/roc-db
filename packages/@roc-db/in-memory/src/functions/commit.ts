@@ -46,6 +46,12 @@ export const commit = (
     if (txn.request.changeSetRef) return mutation
 
     for (const doc of created) {
+        if (
+            txn.adapter.models?.[doc.entity]?.singleton &&
+            txn.engineOpts.entities.has(doc.ref)
+        ) {
+            throw createUniqueConstraintConflictError(doc.entity)
+        }
         if (doc.__.unique?.length) {
             doc.__.unique.forEach(([key, value]) => {
                 const uniqueKey = `${doc.entity}:${key}:${JSON.stringify(value)}`

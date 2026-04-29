@@ -2,10 +2,11 @@ import { beforeAll, describe, expect, test } from "bun:test"
 import {
     BadRequestError,
     ConflictError,
+    Entity,
     NotFoundError,
     Snowflake,
 } from "roc-db"
-import type { z } from "zod"
+import { z } from "zod"
 import { faker } from "@faker-js/faker"
 import { operations } from "./operations"
 import {
@@ -82,14 +83,22 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
     adapterConstructor,
     generateArgs: () => EngineOptions,
 ) => {
-    let createAdapter = async ({ optimistic = false } = {}) => {
+    let createAdapter = async ({
+        optimistic = false,
+        session = { identityRef: "User/42" },
+        engineArgs,
+    }: {
+        optimistic?: boolean
+        session?: { identityRef: string; [key: string]: any }
+        engineArgs?: any
+    } = {}) => {
         return adapterConstructor({
             operations,
             entities,
-            session: { identityRef: "User/42" },
+            session,
             snowflake,
             optimistic,
-            ...(await generateArgs()),
+            ...(engineArgs ?? (await generateArgs())),
         })
     }
 
@@ -311,6 +320,98 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
                     post2ref: post2.ref,
                 }),
             ).toThrow(BadRequestError)
+        })
+    })
+
+    describe("OrgSettings singleton", () => {
+        let adapter
+        beforeAll(async () => {
+            adapter = await createAdapter()
+        })
+        test("create returns bare-name ref", async () => {
+            const [orgSettings] = await adapter.createOrgSettings({
+                name: "Acme",
+                theme: "dark",
+                primaryAdmin: "User/42",
+            })
+            expect(orgSettings.ref).toBe("OrgSettings")
+            expect(orgSettings.entity).toBe("OrgSettings")
+            expect(orgSettings.data.name).toBe("Acme")
+            expect(orgSettings.parents.primaryAdmin).toBe("User/42")
+            expect(orgSettings.children.featuredPosts).toStrictEqual([])
+        })
+        test("read by bare-name ref", async () => {
+            const orgSettings = await adapter.readOrgSettings()
+            expect(orgSettings.ref).toBe("OrgSettings")
+            expect(orgSettings.data.name).toBe("Acme")
+        })
+        test("second create throws ConflictError", async () => {
+            expect(() =>
+                adapter.createOrgSettings({ name: "Other" }),
+            ).toThrow(ConflictError)
+        })
+        test("patch + debounce collapses mutations", async () => {
+            const [, mutation1] = await adapter.updateOrgSettingsName({
+                name: "Acme Co",
+            })
+            const [updated, mutation2] = await adapter.updateOrgSettingsName({
+                name: "Acme Inc",
+            })
+            expect(updated.data.name).toBe("Acme Inc")
+            expect(mutation1.ref).toBe(mutation2.ref)
+            expect(mutation2.debounceCount).toBeGreaterThanOrEqual(1)
+        })
+        test("debounce does not collapse across identities", async () => {
+            // Two adapters sharing the same backing store but with different
+            // identities. Patches from one identity must not absorb patches
+            // from another in the debounce window — that would lose audit
+            // attribution.
+            const sharedEngineArgs = await generateArgs()
+            const adapterA = await createAdapter({
+                session: { identityRef: "User/A" },
+                engineArgs: sharedEngineArgs,
+            })
+            const adapterB = await createAdapter({
+                session: { identityRef: "User/B" },
+                engineArgs: sharedEngineArgs,
+            })
+            await adapterA.createOrgSettings({ name: "Acme" })
+            const [, mutationA] = await adapterA.updateOrgSettingsName({
+                name: "From A",
+            })
+            const [, mutationB] = await adapterB.updateOrgSettingsName({
+                name: "From B",
+            })
+            expect(mutationA.ref).not.toBe(mutationB.ref)
+            expect(mutationA.identityRef).toBe("User/A")
+            expect(mutationB.identityRef).toBe("User/B")
+            await adapterA.deleteOrgSettings()
+        })
+        test("delete removes the singleton", async () => {
+            const [count] = await adapter.deleteOrgSettings()
+            expect(count).toBe(1)
+            expect(() => adapter.readOrgSettings()).toThrow(NotFoundError)
+        })
+        test("recreate after delete works", async () => {
+            const [orgSettings] = await adapter.createOrgSettings({
+                name: "NewOrg",
+            })
+            expect(orgSettings.ref).toBe("OrgSettings")
+            expect(orgSettings.data.name).toBe("NewOrg")
+        })
+        test("constructor rejects singleton + uniqueDataKeys", () => {
+            expect(() =>
+                new Entity("Bad", {
+                    singleton: true,
+                    data: z.object({ name: z.string() }),
+                    uniqueDataKeys: ["name"],
+                }),
+            ).toThrow(/singleton/)
+        })
+        test("createRef throws on unregistered entity", async () => {
+            // Catches typos like txn.createRef("OrgSetings") before they
+            // produce a malformed ref that fails downstream in createEntity.
+            expect(() => adapter.createUnknownRef()).toThrow(BadRequestError)
         })
     })
 

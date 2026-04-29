@@ -4,10 +4,13 @@ import { createBlockParagrah } from "./createBlockParagraph"
 import { createBlockRow } from "./createBlockRow"
 import { createBlockTitle } from "./createBlockTitle"
 import { createDraft } from "./createDraft"
+import { createOrgSettings } from "./createOrgSettings"
 import { createPost } from "./createPost"
+import { createUnknownRef } from "./createUnknownRef"
 import { createUser } from "./createUser"
 import { deleteBlocks } from "./deleteBlocks"
 import { deleteDraft } from "./deleteDraft"
+import { deleteOrgSettings } from "./deleteOrgSettings"
 import { deletePost } from "./deletePost"
 import { moveBlocks } from "./moveBlocks"
 import { pageBlocks } from "./pageBlocks"
@@ -17,10 +20,12 @@ import { pageSplat } from "./pageSplat"
 import { pagePostsByTag } from "./pagePostsByTag"
 import { readEntity } from "./readEntity"
 import { readMutation } from "./readMutation"
+import { readOrgSettings } from "./readOrgSettings"
 import { readPost } from "./readPost"
 import { readPostBySlug } from "./readPostBySlug"
 import { testTransactionalEdits } from "./testTransactionalEdits"
 import { updateBlockParagraph } from "./updateBlockParagraph"
+import { updateOrgSettingsName } from "./updateOrgSettingsName"
 import { updatePost } from "./updatePost"
 import { updatePostDescription } from "./updatePostDescription"
 import { updatePostSlug } from "./updatePostSlug"
@@ -35,11 +40,14 @@ export const operations: any[] = [
     createBlockParagrah,
     createBlockRow,
     createDraft,
+    createOrgSettings,
     createPost,
+    createUnknownRef,
     createUser,
     crudBySlug,
     deleteBlocks,
     deleteDraft,
+    deleteOrgSettings,
     deletePost,
     readPostBySlug,
     moveBlocks,
@@ -47,12 +55,14 @@ export const operations: any[] = [
     pageBlocks,
     readEntity,
     readMutation,
+    readOrgSettings,
     readPost,
     pageEmptyEntitiesArray,
     pagePosts,
     pageSplat,
     testTransactionalEdits,
     updateBlockParagraph,
+    updateOrgSettingsName,
     updatePost,
     updatePostDescription,
     updatePostSlug,

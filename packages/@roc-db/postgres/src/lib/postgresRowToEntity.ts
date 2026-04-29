@@ -14,7 +14,7 @@ export const postgresRowToEntity = (row: DBRow) => {
         updated_mutation_id,
     } = row
     return {
-        ref: `${kind}/${id}`,
+        ref: id === `_${kind}` ? kind : `${kind}/${id}`,
         entity: kind,
         created: {
             timestamp: created_at.toISOString(),
