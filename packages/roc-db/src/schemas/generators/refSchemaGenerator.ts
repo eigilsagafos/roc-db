@@ -9,7 +9,10 @@ const GENERIC = z.union([
     z
         .string()
         .min(1, "Entity kind cannot be empty")
-        .refine(s => s.indexOf("/") === -1, "Invalid input"),
+        .refine(
+            s => s.indexOf("/") === -1,
+            'Bare refs must not contain "/"; valid refs are either <Kind> or <Kind>/<number>',
+        ),
 ])
 
 export const refSchemaGenerator = <const Entities extends string[]>(
