@@ -22,7 +22,16 @@ const applyChangeSetSync = (txn: WriteTransaction, ref: Ref) => {
         const sortedMutations = sortMutations(mutations)
         for (const mutation of sortedMutations) {
             const applyTxn = prepareTransaction(txn, mutation)
-            runSyncFunctionChain(applyTxn.request.operation.callback(applyTxn))
+            try {
+                runSyncFunctionChain(
+                    applyTxn.request.operation.callback(applyTxn),
+                )
+            } catch (cause) {
+                throw new Error(
+                    `applyChangeSet failed at mutation ${mutation.ref} (operation: ${mutation.operation.name}, timestamp: ${mutation.timestamp}): ${cause instanceof Error ? cause.message : String(cause)}`,
+                    { cause },
+                )
+            }
         }
     }
     if (txn.adapter.functions.onChangeSetApplied) {
@@ -39,9 +48,16 @@ const applyChangeSetAsync = async (txn: WriteTransaction, ref: Ref) => {
         const sortedMutations = sortMutations(mutations)
         for (const mutation of sortedMutations) {
             const applyTxn = prepareTransaction(txn, mutation)
-            await runAsyncFunctionChain(
-                applyTxn.request.operation.callback(applyTxn),
-            )
+            try {
+                await runAsyncFunctionChain(
+                    applyTxn.request.operation.callback(applyTxn),
+                )
+            } catch (cause) {
+                throw new Error(
+                    `applyChangeSet failed at mutation ${mutation.ref} (operation: ${mutation.operation.name}, timestamp: ${mutation.timestamp}): ${cause instanceof Error ? cause.message : String(cause)}`,
+                    { cause },
+                )
+            }
         }
     }
     if (txn.adapter.functions.onChangeSetApplied) {
