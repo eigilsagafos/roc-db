@@ -98,10 +98,6 @@ describe("applyChangeSet", () => {
         const [{ block: row }, rowMutation] = draftAdapter.createBlockRow({
             parentRef: post.ref,
         })
-        engine.mutations.set(rowMutation.ref, {
-            ...engine.mutations.get(rowMutation.ref),
-            persistedAt: rowMutation.timestamp,
-        })
 
         draftAdapter.createBlockParagraph({
             parentRef: row.ref,
@@ -109,9 +105,19 @@ describe("applyChangeSet", () => {
         })
 
         const [, deleteMutation] = draftAdapter.deleteBlocks([row.ref])
+
+        // Simulate sync responses landing after all three local mutations have
+        // been authored: the row's persistedAt is later than the paragraph's
+        // timestamp, mirroring the real `persistOptimisticMutations` path which
+        // stamps persistedAt with wall-clock time at persist receipt.
+        const syncedAt = new Date().toISOString()
+        engine.mutations.set(rowMutation.ref, {
+            ...engine.mutations.get(rowMutation.ref),
+            persistedAt: syncedAt,
+        })
         engine.mutations.set(deleteMutation.ref, {
             ...engine.mutations.get(deleteMutation.ref),
-            persistedAt: deleteMutation.timestamp,
+            persistedAt: syncedAt,
         })
 
         expect(() => adapter.applyDraftTest(draft.ref)).not.toThrow()
