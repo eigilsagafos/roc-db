@@ -1,16 +1,14 @@
 export const sortMutations = documents => {
     return [...documents].sort((a, b) => {
-        if (a.persistedAt && b.persistedAt) {
-            return a.persistedAt.localeCompare(b.persistedAt)
-        } else if (a.persistedAt) {
-            return -1 // a is persisted, b is not
-        } else if (b.persistedAt) {
-            return 1 // b is persisted, a is not
-        } else if (a.timestamp !== b.timestamp) {
-            return a.timestamp.localeCompare(b.timestamp) // Older timestamps first
-        } else {
-            // If timestamps are equal, sort by ref alphabetically
-            return a.ref.localeCompare(b.ref)
+        // Use persistedAt when present, fall back to timestamp. This preserves
+        // causal order when a changeSet mixes persisted and not-yet-persisted
+        // mutations — e.g. a user-made step that landed between a persisted
+        // create and a persisted delete must still replay in the middle.
+        const aKey = a.persistedAt ?? a.timestamp
+        const bKey = b.persistedAt ?? b.timestamp
+        if (aKey !== bKey) {
+            return aKey.localeCompare(bKey)
         }
+        return a.ref.localeCompare(b.ref)
     })
 }

@@ -64,4 +64,56 @@ describe("applyChangeSet", () => {
         expect(readPostBefore.children.blocks).toHaveLength(0)
         expect(readPostAfter.children.blocks).toHaveLength(1)
     })
+
+    test("replays mutations in creation order when changeSet mixes persisted and not-yet-persisted mutations", () => {
+        // Scenario: a changeSet contains three mutations where the middle one
+        // never got `persistedAt` set (e.g. applyChangeSet runs while the
+        // client is offline or before that mutation's sync round-trip lands).
+        //   1. createBlockRow   — persisted
+        //   2. createBlockParagraph (child of row) — NOT persisted
+        //   3. deleteBlocks([row]) — persisted
+        //
+        // If sort puts persisted ahead of unpersisted, deleteBlocks runs
+        // before the paragraph create and the paragraph's readEntity(rowRef)
+        // throws "Entity not found".
+        const engine = {
+            entities: new Map(),
+            mutations: new Map(),
+            entitiesUnique: new Map(),
+            entitiesIndex: new Map(),
+        }
+        const adapter = createInMemoryAdapter({
+            operations: [...operations, applyDraftTest],
+            entities,
+            session: { identityRef: "User/42" },
+            snowflake,
+            engine,
+        })
+
+        const [post] = adapter.createPost({ title: "Post 1" })
+        const [draft] = adapter.createDraft({ postRef: post.ref })
+
+        const draftAdapter = adapter.changeSet(draft.ref)
+
+        const [{ block: row }, rowMutation] = draftAdapter.createBlockRow({
+            parentRef: post.ref,
+        })
+        engine.mutations.set(rowMutation.ref, {
+            ...engine.mutations.get(rowMutation.ref),
+            persistedAt: rowMutation.timestamp,
+        })
+
+        draftAdapter.createBlockParagraph({
+            parentRef: row.ref,
+            content: "Hello world",
+        })
+
+        const [, deleteMutation] = draftAdapter.deleteBlocks([row.ref])
+        engine.mutations.set(deleteMutation.ref, {
+            ...engine.mutations.get(deleteMutation.ref),
+            persistedAt: deleteMutation.timestamp,
+        })
+
+        expect(() => adapter.applyDraftTest(draft.ref)).not.toThrow()
+    })
 })
