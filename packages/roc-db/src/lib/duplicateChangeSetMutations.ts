@@ -1,5 +1,6 @@
 import { BadRequestError } from "../errors/BadRequestError"
 import { ChangeSetIntegrityError } from "../errors/ChangeSetIntegrityError"
+import { ChangeSetNotEmptyError } from "../errors/ChangeSetNotEmptyError"
 import { SingletonDuplicationError } from "../errors/SingletonDuplicationError"
 import type { AdapterOptions } from "../types/AdapterOptions"
 import type { Mutation } from "../types/Mutation"
@@ -104,31 +105,36 @@ const buildClones = (
         }
     }
 
-    // Step 4 — build the full refMap: a fresh ref of the same kind for every
-    // entity created inside the (kept) changeSet.
+    // Steps 4-6 — one pass over the mutations in dependency order. Each clone
+    // gets a single `timestamp`, shared by its own mutation ref AND the entity
+    // refs it creates — mirroring how a normal write stamps its mutation and
+    // every `createRef()` entity with one timestamp (generateMutationDoc +
+    // createRef.ts). Refs are minted with the *current* clock (isoNow), never
+    // the source's timestamp: feeding the snowflake a past timestamp resets its
+    // sequence and would re-mint ids already issued at that instant. Generating
+    // in dependency order keeps numeric id order == dependency order, and the
+    // matching `timestamp` keeps timestamp order aligned too, so `sortMutations`
+    // reproduces dependency order on either key.
     const refMap = new Map<Ref, Ref>()
-    for (const mutation of kept) {
-        for (const ref of createdRefsOf(mutation)) {
-            if (refMap.has(ref)) continue
-            const kind = entityFromRef(ref)
-            if (adapterOptions.models?.[kind]?.singleton) {
-                throw new SingletonDuplicationError(kind)
-            }
-            refMap.set(
-                ref,
-                generateRef(kind, adapterOptions.snowflake, isoNow()),
-            )
-        }
-    }
-
-    // Steps 5 + 6 — build clones with fresh mutation refs in dependency order.
-    // Generating refs in order keeps numeric id order == dependency order, and
-    // setting `timestamp` to the generation moment keeps timestamp order aligned
-    // too, so `sortMutations` reproduces dependency order on either key.
     const sessionRef =
         adapterOptions.session.sessionRef ?? adapterOptions.session.ref ?? null
     const clones = kept.map((mutation: Mutation) => {
         const timestamp = isoNow()
+        // Mint fresh refs for entities this mutation creates *before* remapping
+        // its payload, so a payload that references its own created entity is
+        // covered. Refs created by earlier mutations are already in refMap
+        // (dependency order), and base refs are absent and stay untouched.
+        for (const oldRef of createdRefsOf(mutation)) {
+            if (refMap.has(oldRef)) continue
+            const kind = entityFromRef(oldRef)
+            if (adapterOptions.models?.[kind]?.singleton) {
+                throw new SingletonDuplicationError(kind)
+            }
+            refMap.set(
+                oldRef,
+                generateRef(kind, adapterOptions.snowflake, timestamp),
+            )
+        }
         const ref = generateRef("Mutation", adapterOptions.snowflake, timestamp)
         const remappedPayload = remapValue(mutation.payload, refMap)
         const payload = options.transformPayload
@@ -200,6 +206,17 @@ const duplicateChangeSetMutationsSync = (
     options: DuplicateChangeSetMutationsOptions,
     operations: any[],
 ): DuplicateChangeSetMutationsResult => {
+    const existingTargetMutations = readChangeSetMutations(
+        adapterOptions,
+        engineOptions,
+        targetChangeSetRef,
+    )
+    if (existingTargetMutations.length) {
+        throw new ChangeSetNotEmptyError(
+            targetChangeSetRef,
+            existingTargetMutations.length,
+        )
+    }
     const sourceMutations = readChangeSetMutations(
         adapterOptions,
         engineOptions,
@@ -232,6 +249,17 @@ const duplicateChangeSetMutationsAsync = async (
     options: DuplicateChangeSetMutationsOptions,
     operations: any[],
 ): Promise<DuplicateChangeSetMutationsResult> => {
+    const existingTargetMutations = await readChangeSetMutations(
+        adapterOptions,
+        engineOptions,
+        targetChangeSetRef,
+    )
+    if (existingTargetMutations.length) {
+        throw new ChangeSetNotEmptyError(
+            targetChangeSetRef,
+            existingTargetMutations.length,
+        )
+    }
     const sourceMutations = await readChangeSetMutations(
         adapterOptions,
         engineOptions,

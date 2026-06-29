@@ -2,6 +2,7 @@ import { createInMemoryAdapter } from "@roc-db/in-memory"
 import { DraftRefSchema, entities, operations } from "@roc-db/test-utils"
 import { describe, expect, test } from "bun:test"
 import { ChangeSetIntegrityError } from "../errors/ChangeSetIntegrityError"
+import { ChangeSetNotEmptyError } from "../errors/ChangeSetNotEmptyError"
 import { SingletonDuplicationError } from "../errors/SingletonDuplicationError"
 import { entityFromRef } from "../utils/entityFromRef"
 import { Query } from "../utils/Query"
@@ -359,5 +360,46 @@ describe("duplicateChangeSetMutations", () => {
         }
         expect(err).toBeInstanceOf(SingletonDuplicationError)
         expect(err.entityKind).toBe("OrgSettings")
+    })
+
+    test("throws ChangeSetNotEmptyError when the target already has pending mutations", () => {
+        const adapter = makeAdapter()
+        const [post] = adapter.createPost({ title: "P" })
+        const { draftRef } = seedSource(adapter, post)
+
+        // Target is not fresh: it already has changeSet work of its own.
+        const [target] = adapter.createDraft({ postRef: post.ref })
+        adapter.changeSet(target.ref).createBlockRow({ parentRef: post.ref })
+
+        let err: any
+        try {
+            adapter.duplicateChangeSetMutations(draftRef, target.ref)
+        } catch (e) {
+            err = e
+        }
+        expect(err).toBeInstanceOf(ChangeSetNotEmptyError)
+        expect(err.targetChangeSetRef).toBe(target.ref)
+        expect(err.existingCount).toBeGreaterThan(0)
+    })
+
+    test("each clone's mutation ref and the entity refs it creates share its timestamp", () => {
+        const adapter = makeAdapter()
+        const [post] = adapter.createPost({ title: "P" })
+        const { draftRef, rowRef } = seedSource(adapter, post)
+        const [target] = adapter.createDraft({ postRef: post.ref })
+
+        const { mutations, refMap } = adapter.duplicateChangeSetMutations(
+            draftRef,
+            target.ref,
+        )
+        const snowflake = new Snowflake(10, 10)
+        const tsOf = (ref: string) => snowflake.parse(ref.split("/")[1])[0] // ms epoch from the id
+        const rowClone = mutations.find(
+            (m: any) => m.operation.name === "createBlockRow",
+        )
+        // The mutation ref and the entity ref it creates are minted under the
+        // same single timestamp (single-pass) — their ids encode the same ms.
+        expect(tsOf(rowClone.ref)).toBe(tsOf(refMap.get(rowRef)))
+        expect(new Date(rowClone.timestamp).getTime()).toBe(tsOf(rowClone.ref))
     })
 })
