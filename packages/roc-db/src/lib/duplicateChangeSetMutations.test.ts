@@ -475,4 +475,47 @@ describe("duplicateChangeSetMutations", () => {
         // Nothing was persisted into the target.
         expect(changeSetMutations(adapter, target.ref)).toHaveLength(0)
     })
+
+    // #3: every copy + its entity refs are minted under the single
+    // txn.timestamp, and the snowflake caps at 4096 ids per millisecond (12-bit
+    // sequence) — it throws "Sequence overflow" instead of waiting. So a
+    // duplicate that needs >4096 fresh refs in one go crashes. The source is
+    // injected directly (distinct timestamps) so creation itself never hits the
+    // cap; only the duplicate (one txn.timestamp) does.
+    // KNOWN LIMITATION (#3): currently fails with "Sequence overflow". Marked
+    // `test.failing` so it documents the cap and flips green-to-red once #3 is
+    // fixed (snowflake wait-for-next-ms) — remove `.failing` then.
+    test.failing(
+        "large duplicates should not overflow the snowflake per-ms sequence",
+        () => {
+            const adapter = makeAdapter()
+            const [post] = adapter.createPost({ title: "P" })
+            const [source] = adapter.createDraft({ postRef: post.ref })
+            const [target] = adapter.createDraft({ postRef: post.ref })
+
+            // 2100 mutations, each creating one BlockRow ⇒ ~4200 fresh refs on
+            // duplicate (one mutation ref + one entity ref each) > 4096.
+            const N = 2100
+            for (let i = 0; i < N; i++) {
+                const ref = `Mutation/${1_000_000_000_000 + i}`
+                adapter._engineOpts.mutations.set(ref, {
+                    ref,
+                    timestamp: `2020-01-01T00:00:00.000Z`,
+                    operation: { name: "createBlockRow", version: 1 },
+                    payload: { parentRef: post.ref },
+                    log: [[`BlockRow/${2_000_000_000_000 + i}`, "create"]],
+                    changeSetRef: source.ref,
+                    debounceCount: 0,
+                    identityRef: "User/42",
+                })
+            }
+
+            expect(() =>
+                adapter.duplicateInto({
+                    sourceRef: source.ref,
+                    targetRef: target.ref,
+                }),
+            ).not.toThrow()
+        },
+    )
 })
