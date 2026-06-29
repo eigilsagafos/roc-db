@@ -168,17 +168,11 @@ const buildCopies = (
 }
 
 // Persist one copied record. Mutations always live in root, so we go straight
-// to the adapter's saveMutation (no replay / no entity writes) using a minimal
-// transaction context — the same shape saveMutation reads across adapters.
+// to the adapter's saveMutation (no replay / no entity writes). saveMutation
+// stores the mutation it is handed (keyed by that mutation's ref), so we pass
+// the current transaction plus the copy — no synthetic txn context needed.
 const saveCopy = (txn: WriteTransaction, copy: Mutation) =>
-    txn.adapter.functions.saveMutation(
-        {
-            engineOpts: txn.engineOpts,
-            mutation: copy,
-            adapter: txn.adapter,
-        } as any,
-        copy,
-    )
+    txn.adapter.functions.saveMutation(txn, copy)
 
 const validateRefs = (sourceChangeSetRef: Ref, targetChangeSetRef: Ref) => {
     if (!sourceChangeSetRef) {
