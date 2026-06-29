@@ -42,21 +42,24 @@ describe("Snowflake", () => {
         )
     })
 
-    test("generating over 1024 ids in the same millisecond fails", () => {
+    test("generating over 4096 ids in the same millisecond rolls into the next ms", () => {
         const snowflake = new Snowflake(0, 0)
         const date = new Date()
         date.setMilliseconds(date.getMilliseconds() + 1)
-        const ids = []
-        for (let i = 0; i < 4096; i++) {
-            ids.push(snowflake.generate(Number(date)))
+        const ms = Number(date)
+        const ids: string[] = []
+        for (let i = 0; i < 5000; i++) {
+            ids.push(snowflake.generate(ms))
         }
-        expect(ids[0]).toBeString()
-        expect(ids[4095]).toBeString()
-        expect(ids[4096]).toBeUndefined()
-        expect(ids[0]).not.toEqual(ids[4095])
-        expect(() => snowflake.generate(Number(date))).toThrowError(
-            /Snowflake sequence overflow/,
-        )
+        // No throw; every id is unique and strictly increasing.
+        expect(new Set(ids).size).toBe(5000)
+        for (let i = 1; i < ids.length; i++) {
+            expect(BigInt(ids[i]) > BigInt(ids[i - 1])).toBe(true)
+        }
+        // The first 4096 live in `ms`; the rest roll into the next millisecond.
+        expect(snowflake.parse(ids[0])[0]).toBe(ms)
+        expect(snowflake.parse(ids[4095])[0]).toBe(ms)
+        expect(snowflake.parse(ids[4096])[0]).toBe(ms + 1)
     })
 
     test("date 100 years in the future parses correctly", () => {
