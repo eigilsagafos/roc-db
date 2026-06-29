@@ -80,6 +80,34 @@ const duplicateIntoTag = writeOperation(
         ),
 )
 
+// transformPayload that rewrites refs embedded *inside* a string field — the
+// case the generic value-remap cannot catch (and the reason transformPayload
+// exists). The same embedded refs also live in log reverse/delete blobs.
+const duplicateIntoRewriteEmbedded = writeOperation(
+    "duplicateIntoRewriteEmbedded",
+    PayloadSchema,
+    txn =>
+        Query(() =>
+            txn.duplicateChangeSetMutations(
+                txn.payload.sourceRef,
+                txn.payload.targetRef,
+                {
+                    transformPayload: (payload: any, refMap) => {
+                        if (typeof payload?.content !== "string") return payload
+                        let content = payload.content
+                        for (const [oldRef, newRef] of refMap) {
+                            content = content.replaceAll(
+                                oldRef,
+                                newRef as string,
+                            )
+                        }
+                        return { ...payload, content }
+                    },
+                },
+            ),
+        ),
+)
+
 // transformPayload that returns a payload violating the operation schema
 // (parentRef must be a ref string, not a number).
 const duplicateIntoBadTransform = writeOperation(
@@ -106,6 +134,7 @@ const localOps = [
     duplicateIntoKeepRows,
     duplicateIntoDropRows,
     duplicateIntoTag,
+    duplicateIntoRewriteEmbedded,
     duplicateIntoBadTransform,
 ]
 
@@ -517,17 +546,18 @@ describe("duplicateChangeSetMutations", () => {
         const [source] = adapter.createDraft({ postRef: post.ref })
         const [target] = adapter.createDraft({ postRef: post.ref })
 
-        // 2100 mutations, each creating one BlockRow ⇒ ~4200 fresh refs on
-        // duplicate (one mutation ref + one entity ref each) > 4096.
+        // 2100 mutations, each creating one User ⇒ ~4200 fresh refs on
+        // duplicate (one mutation ref + one entity ref each) > 4096. Using
+        // independent creates (no shared parent to patch) keeps replay O(n).
         const N = 2100
         for (let i = 0; i < N; i++) {
             const ref = `Mutation/${1_000_000_000_000 + i}`
             adapter._engineOpts.mutations.set(ref, {
                 ref,
                 timestamp: `2020-01-01T00:00:00.000Z`,
-                operation: { name: "createBlockRow", version: 1 },
-                payload: { parentRef: post.ref },
-                log: [[`BlockRow/${2_000_000_000_000 + i}`, "create"]],
+                operation: { name: "createUser", version: 1 },
+                payload: { email: `user${i}@example.com` },
+                log: [[`User/${2_000_000_000_000 + i}`, "create"]],
                 changeSetRef: source.ref,
                 debounceCount: 0,
                 identityRef: "User/42",
@@ -546,5 +576,36 @@ describe("duplicateChangeSetMutations", () => {
         expect(changeSetMutations(adapter, target.ref)).toHaveLength(N)
         const refs = result.mutations.map((m: any) => m.ref)
         expect(new Set(refs).size).toBe(N)
+    })
+
+    test("transformPayload rewriting embedded refs is reflected in log blobs", () => {
+        const adapter = makeAdapter()
+        const [post] = adapter.createPost({ title: "P" })
+        const [source] = adapter.createDraft({ postRef: post.ref })
+        const cs = adapter.changeSet(source.ref)
+        const [{ block: a }] = cs.createBlockRow({ parentRef: post.ref })
+        // B's content embeds A's ref as a substring (not a standalone value),
+        // so only transformPayload can rewrite it.
+        const [{ block: b }] = cs.createBlockParagraph({
+            parentRef: post.ref,
+            content: "link:" + a.ref,
+        })
+        // Deleting B puts B's document (content "link:<A>") into a delete blob.
+        cs.deleteBlocks([b.ref])
+        const [target] = adapter.createDraft({ postRef: post.ref })
+
+        const [{ mutations, refMap }] = adapter.duplicateIntoRewriteEmbedded({
+            sourceRef: source.ref,
+            targetRef: target.ref,
+        })
+
+        // The transform rewrote the embedded ref in the create payload...
+        const paraCopy = mutations.find(
+            (m: any) => m.operation.name === "createBlockParagraph",
+        )
+        expect(paraCopy.payload.content).toBe("link:" + refMap.get(a.ref))
+        // ...so it must also be reflected in the delete blob — otherwise undo
+        // restores B with a source ref. No source ref may survive anywhere.
+        expect(JSON.stringify(mutations)).not.toContain(a.ref)
     })
 })

@@ -10,7 +10,11 @@ import { entityFromRef } from "../utils/entityFromRef"
 import { generateRef } from "../utils/generateRef"
 import { sortMutations } from "../utils/sortMutations"
 import { findOperation } from "./findOperation"
-import type { WriteTransaction } from "./WriteTransaction"
+import { generateTransactionCache } from "./generateTransactionCache"
+import { parseRequestPayload } from "./parseRequestPayload"
+import { runAsyncFunctionChain } from "./runAsyncFunctionChain"
+import { runSyncFunctionChain } from "./runSyncFunctionChain"
+import { WriteTransaction } from "./WriteTransaction"
 
 export type DuplicateChangeSetMutationsOptions = {
     filter?: (mutation: Mutation) => boolean
@@ -28,20 +32,20 @@ const createdRefsOf = (mutation: Mutation): Ref[] =>
         .filter((entry: any[]) => entry[1] === "create")
         .map((entry: any[]) => entry[0])
 
-// Deep-clone a value while replacing any string that is a key in `refMap` with
-// its remapped ref. Only standalone string *values* are remapped — object keys
-// and refs embedded inside larger strings are left to `transformPayload`.
-const remapValue = (value: any, refMap: Map<Ref, Ref>): any => {
+// Deep-clone a value while replacing any string that is a key in `map` with its
+// mapped value. Used for the operation payload — standalone string refs only;
+// refs embedded inside larger strings are the caller's job (transformPayload).
+const remapValue = (value: any, map: Map<Ref, Ref>): any => {
     if (typeof value === "string") {
-        return refMap.has(value) ? refMap.get(value) : value
+        return map.has(value) ? map.get(value) : value
     }
     if (Array.isArray(value)) {
-        return value.map(item => remapValue(item, refMap))
+        return value.map(item => remapValue(item, map))
     }
     if (value && typeof value === "object") {
         const out: Record<string, any> = {}
         for (const key in value) {
-            out[key] = remapValue(value[key], refMap)
+            out[key] = remapValue(value[key], map)
         }
         return out
     }
@@ -60,17 +64,27 @@ const collectStrings = (value: any, into: Set<string>) => {
     }
 }
 
-// Pure: turn the source mutations into copied *records* bound to the target
-// changeSet. No replay, no entity materialization — mutations live in root and
-// only enter scope state when something later runs/loads them, so duplicating
-// is record-copying. `timestamp` is the current transaction's timestamp; like a
-// normal write's createRef calls, every fresh ref is minted under it.
-const buildCopies = (
+type ClonePlan = {
+    operation: any
+    // The replay request + the not-yet-finalized clone record. Replaying the
+    // operation against the scratch cache derives the real (consistent) log.
+    request: { type: "write"; operation: any; payload: any; changeSetRef: Ref }
+    skeleton: Mutation
+    // Remapped create-entries; feed createRef so the operation re-mints the new
+    // entity refs (in createRef order) during replay.
+    pinningLog: [Ref, "create"][]
+}
+
+// Pure: turn the source mutations into clone *plans* with fresh refs and
+// remapped/transformed payloads. The log is NOT copied — it's recomputed by
+// replaying each operation (see below), so it's always consistent with the
+// (possibly transformed) payload.
+const buildClonePlans = (
     txn: WriteTransaction,
     sourceMutations: Mutation[],
     targetChangeSetRef: Ref,
     options: DuplicateChangeSetMutationsOptions,
-) => {
+): { plans: ClonePlan[]; refMap: Map<Ref, Ref> } => {
     const { adapter } = txn
     const timestamp = txn.timestamp
     const sorted = sortMutations(sourceMutations)
@@ -78,7 +92,7 @@ const buildCopies = (
     const keptSet = new Set(kept)
 
     // Referential integrity: a ref created only by a dropped mutation must not
-    // be referenced by a kept one (it would not exist when the copy is run).
+    // be referenced by a kept one (replay would hit a non-existent entity).
     const keptCreated = new Set<Ref>()
     for (const mutation of kept) {
         for (const ref of createdRefsOf(mutation)) keptCreated.add(ref)
@@ -103,25 +117,15 @@ const buildCopies = (
         }
     }
 
-    // One pass in dependency order. Each copy gets a fresh mutation ref, and the
-    // entities it creates get fresh refs of the same kind — all minted under the
-    // transaction timestamp. Generating in order keeps numeric id order ==
-    // dependency order, so a later run/load replays them correctly. `appliedAt`
-    // is dropped: the copy starts unapplied even when the source was applied.
     // `refMap` maps source entity refs -> new entity refs (returned to callers).
-    // `remap` additionally maps source mutation refs -> new mutation refs; it's
-    // used for the deep remap of payloads and logs so that everything a copied
-    // record points at — entity refs in relations, refs inside reverse/delete
-    // blobs, and mutation refs (undo/redo payloads, created/updated provenance)
-    // — refers to the copy, never the source.
+    // `remap` also maps source mutation refs -> new mutation refs; it's used for
+    // the payload remap so undo/redo payloads (which are mutation refs) point at
+    // the copies. Fresh refs are minted under the transaction timestamp, exactly
+    // like a normal write's createRef calls.
     const refMap = new Map<Ref, Ref>()
     const remap = new Map<Ref, Ref>()
     const sessionRef = adapter.session.sessionRef ?? adapter.session.ref ?? null
-    const mutations = kept.map((mutation: Mutation) => {
-        // Mint fresh refs for entities this mutation creates, and a fresh
-        // mutation ref, *before* remapping — so a payload/log referencing its
-        // own created entity or its own mutation ref is covered. Earlier
-        // mutations' refs are already mapped; base refs are absent and stay.
+    const plans = kept.map((mutation: Mutation): ClonePlan => {
         for (const oldRef of createdRefsOf(mutation)) {
             if (refMap.has(oldRef)) continue
             const kind = entityFromRef(oldRef)
@@ -136,14 +140,13 @@ const buildCopies = (
         remap.set(mutation.ref, ref)
         const remappedPayload = remapValue(mutation.payload, remap)
         let payload = remappedPayload
+        const operation = findOperation(adapter.operations, mutation)
         if (options.transformPayload) {
-            // The generic remap only swaps refs for same-kind refs, so it stays
-            // valid; transformPayload is arbitrary, so validate its output
-            // against the operation schema (it would otherwise persist silently
-            // and only surface on a later run/load). The hook gets the entity
-            // refMap, matching its documented contract.
+            // The generic remap only swaps standalone refs; transformPayload is
+            // arbitrary, so validate its output against the operation schema (a
+            // bad transform would otherwise blow up mid-replay). The hook gets
+            // the entity refMap, matching its documented contract.
             payload = options.transformPayload(remappedPayload, refMap)
-            const operation = findOperation(adapter.operations, mutation)
             const parsed = operation.payloadSchema.safeParse(payload)
             if (!parsed.success || !deepEqual(parsed.data, payload)) {
                 throw new BadRequestError(
@@ -151,14 +154,16 @@ const buildCopies = (
                 )
             }
         }
-        // Deep-remap each log entry: the leading ref (create entries pin the new
-        // refs on run/load) AND the trailing reverse-patch / deleted-document
-        // blob, whose refs undo/redo would otherwise write back as source refs.
-        // remapValue also deep-clones, so the copy shares nothing with source.
-        const log = (mutation.log ?? []).map((entry: any[]) =>
-            remapValue(entry, remap),
+        const pinningLog = createdRefsOf(mutation).map(
+            (oldRef): [Ref, "create"] => [refMap.get(oldRef)!, "create"],
         )
-        return {
+        const request = {
+            type: "write" as const,
+            operation,
+            payload,
+            changeSetRef: targetChangeSetRef,
+        }
+        const skeleton = {
             ref,
             timestamp,
             operation: {
@@ -166,24 +171,67 @@ const buildCopies = (
                 version: mutation.operation.version,
             },
             payload,
-            log,
+            log: pinningLog,
             changeSetRef: targetChangeSetRef,
             debounceCount: 0,
             identityRef: adapter.session.identityRef,
             sessionRef,
             persistedAt: adapter.optimistic ? null : timestamp,
         } as Mutation
+        return { operation, request, skeleton, pinningLog }
     })
 
-    return { mutations, refMap }
+    return { plans, refMap }
 }
 
-// Persist one copied record. Mutations always live in root, so we go straight
-// to the adapter's saveMutation (no replay / no entity writes). saveMutation
-// stores the mutation it is handed (keyed by that mutation's ref), so we pass
-// the current transaction plus the copy — no synthetic txn context needed.
-const saveCopy = (txn: WriteTransaction, copy: Mutation) =>
-    txn.adapter.functions.saveMutation(txn, copy)
+// Replay one plan against the shared scratch cache: run the operation (which
+// reads accumulated state + mints the pinned refs), then finalize — deriving a
+// log that is always consistent with the payload — and persist the record.
+const replayPlanSync = (
+    txn: WriteTransaction,
+    plan: ClonePlan,
+    cache: any,
+): Mutation => {
+    const payload = parseRequestPayload(plan.request)
+    const replayTxn = new WriteTransaction(
+        plan.request as any,
+        txn.engineOpts,
+        txn.adapter,
+        payload,
+        plan.skeleton,
+        plan.pinningLog as any,
+        cache,
+    )
+    runSyncFunctionChain(
+        plan.operation.callback(replayTxn, txn.adapter.session),
+    )
+    const record = replayTxn.finalizedMutation(false)
+    txn.adapter.functions.saveMutation(replayTxn, record)
+    return record
+}
+
+const replayPlanAsync = async (
+    txn: WriteTransaction,
+    plan: ClonePlan,
+    cache: any,
+): Promise<Mutation> => {
+    const payload = parseRequestPayload(plan.request)
+    const replayTxn = new WriteTransaction(
+        plan.request as any,
+        txn.engineOpts,
+        txn.adapter,
+        payload,
+        plan.skeleton,
+        plan.pinningLog as any,
+        cache,
+    )
+    await runAsyncFunctionChain(
+        plan.operation.callback(replayTxn, txn.adapter.session),
+    )
+    const record = replayTxn.finalizedMutation(false)
+    await txn.adapter.functions.saveMutation(replayTxn, record)
+    return record
+}
 
 const validateRefs = (sourceChangeSetRef: Ref, targetChangeSetRef: Ref) => {
     if (!sourceChangeSetRef) {
@@ -199,15 +247,57 @@ const validateRefs = (sourceChangeSetRef: Ref, targetChangeSetRef: Ref) => {
     }
 }
 
+// Seed the scratch cache with the source changeSet's base (its version
+// snapshot) so replayed operations resolve base entities. We seed from the
+// SOURCE (committed) — never the target — so duplicating works even when the
+// target changeSet was created earlier in this same, not-yet-committed
+// transaction. Returns the source changeSet doc (for existence checking).
+const seedBaseSync = (
+    txn: WriteTransaction,
+    sourceChangeSetRef: Ref,
+    cache: any,
+) => {
+    const sourceDoc = txn.adapter.functions.readEntity(txn, sourceChangeSetRef)
+    if (!sourceDoc) throw new NotFoundError(sourceChangeSetRef)
+    const versionRef = sourceDoc.parents?.version
+    if (versionRef) {
+        const versionDoc = txn.adapter.functions.readEntity(txn, versionRef)
+        for (const doc of versionDoc?.data?.snapshot ?? []) {
+            cache.entities.set(doc.ref, doc)
+        }
+    }
+}
+
+const seedBaseAsync = async (
+    txn: WriteTransaction,
+    sourceChangeSetRef: Ref,
+    cache: any,
+) => {
+    const sourceDoc = await txn.adapter.functions.readEntity(
+        txn,
+        sourceChangeSetRef,
+    )
+    if (!sourceDoc) throw new NotFoundError(sourceChangeSetRef)
+    const versionRef = sourceDoc.parents?.version
+    if (versionRef) {
+        const versionDoc = await txn.adapter.functions.readEntity(
+            txn,
+            versionRef,
+        )
+        for (const doc of versionDoc?.data?.snapshot ?? []) {
+            cache.entities.set(doc.ref, doc)
+        }
+    }
+}
+
 const duplicateSync = (
     txn: WriteTransaction,
     sourceChangeSetRef: Ref,
     targetChangeSetRef: Ref,
     options: DuplicateChangeSetMutationsOptions,
 ): DuplicateChangeSetMutationsResult => {
-    if (!txn.adapter.functions.readEntity(txn, sourceChangeSetRef)) {
-        throw new NotFoundError(sourceChangeSetRef)
-    }
+    const cache = generateTransactionCache(true)
+    seedBaseSync(txn, sourceChangeSetRef, cache)
     const existing = txn.adapter.functions.getChangeSetMutations(
         txn,
         targetChangeSetRef,
@@ -215,17 +305,17 @@ const duplicateSync = (
     if (existing.length) {
         throw new ChangeSetNotEmptyError(targetChangeSetRef, existing.length)
     }
-    const source = txn.adapter.functions.getChangeSetMutations(
+    const sourceMutations = txn.adapter.functions.getChangeSetMutations(
         txn,
         sourceChangeSetRef,
     )
-    const { mutations, refMap } = buildCopies(
+    const { plans, refMap } = buildClonePlans(
         txn,
-        source,
+        sourceMutations,
         targetChangeSetRef,
         options,
     )
-    for (const copy of mutations) saveCopy(txn, copy)
+    const mutations = plans.map(plan => replayPlanSync(txn, plan, cache))
     return { mutations, refMap }
 }
 
@@ -235,9 +325,8 @@ const duplicateAsync = async (
     targetChangeSetRef: Ref,
     options: DuplicateChangeSetMutationsOptions,
 ): Promise<DuplicateChangeSetMutationsResult> => {
-    if (!(await txn.adapter.functions.readEntity(txn, sourceChangeSetRef))) {
-        throw new NotFoundError(sourceChangeSetRef)
-    }
+    const cache = generateTransactionCache(true)
+    await seedBaseAsync(txn, sourceChangeSetRef, cache)
     const existing = await txn.adapter.functions.getChangeSetMutations(
         txn,
         targetChangeSetRef,
@@ -245,29 +334,35 @@ const duplicateAsync = async (
     if (existing.length) {
         throw new ChangeSetNotEmptyError(targetChangeSetRef, existing.length)
     }
-    const source = await txn.adapter.functions.getChangeSetMutations(
+    const sourceMutations = await txn.adapter.functions.getChangeSetMutations(
         txn,
         sourceChangeSetRef,
     )
-    const { mutations, refMap } = buildCopies(
+    const { plans, refMap } = buildClonePlans(
         txn,
-        source,
+        sourceMutations,
         targetChangeSetRef,
         options,
     )
-    // Persist concurrently — porsager/postgres pipelines these on the txn
-    // connection, collapsing N sequential round-trips. Save order is irrelevant
-    // (records are keyed by ref and reordered by sortMutations on read).
-    await Promise.all(mutations.map((copy: Mutation) => saveCopy(txn, copy)))
+    const mutations: Mutation[] = []
+    for (const plan of plans) {
+        mutations.push(await replayPlanAsync(txn, plan, cache))
+    }
     return { mutations, refMap }
 }
 
 /**
  * Copy a changeSet's pending mutations into another changeSet with fresh entity
- * refs, so the source and the copy can both be run/applied later without
+ * refs, so the source and the copy can both be applied later without
  * primary-key collisions. A transaction primitive (like `applyChangeSet`):
  * consumers call it from inside their own write operation, after creating the
  * target changeSet's root entity, so the whole duplicate is one transaction.
+ *
+ * Each mutation is re-played: its operation is re-run (with the remapped /
+ * transformed payload, pinning fresh refs) against a scratch cache seeded from
+ * the source's base, and `finalizeMutation` derives the stored log. So the log
+ * is always consistent with the payload — `transformPayload` rewriting refs
+ * inside strings is reflected in reverse/delete blobs too.
  */
 export const duplicateChangeSetMutations = (
     txn: WriteTransaction,
