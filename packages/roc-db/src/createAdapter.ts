@@ -1,4 +1,8 @@
 import { z } from "zod"
+import {
+    duplicateChangeSetMutations,
+    type DuplicateChangeSetMutationsOptions,
+} from "./lib/duplicateChangeSetMutations"
 import { execute } from "./lib/execute"
 import { loadMutations } from "./lib/loadMutations"
 import { persistOptimisticMutations } from "./lib/persistOptimisticMutations"
@@ -154,6 +158,20 @@ export const createAdapter = <
                 allOperations,
             )
     }
+
+    adapter.duplicateChangeSetMutations = (
+        sourceChangeSetRef: Ref,
+        targetChangeSetRef: Ref,
+        options: DuplicateChangeSetMutationsOptions = {},
+    ) =>
+        duplicateChangeSetMutations(
+            adapterOptions,
+            engineOptions,
+            sourceChangeSetRef,
+            targetChangeSetRef,
+            options,
+            allOperations,
+        )
 
     return adapter
 }

@@ -166,6 +166,40 @@ const prepareChangeSetTest = () => {
     }
 }
 
+test("duplicateChangeSetMutations clones a changeSet with remapped refs", () => {
+    const { adapter, post, draft, changeSetAdapter } = prepareChangeSetTest()
+    const [{ block: row }] = changeSetAdapter.createBlockRow({
+        parentRef: post.ref,
+    })
+    const [{ block: para }] = changeSetAdapter.createBlockParagraph({
+        parentRef: row.ref,
+        content: "Hello",
+    })
+
+    const [target] = adapter.createDraft({ postRef: post.ref })
+    const { mutations, refMap } = adapter.duplicateChangeSetMutations(
+        draft.ref,
+        target.ref,
+    )
+
+    expect(mutations).toHaveLength(2)
+    const newRow = refMap.get(row.ref)
+    const newPara = refMap.get(para.ref)
+    expect(newRow).toBeDefined()
+    expect(newPara).toBeDefined()
+    expect(newRow).not.toBe(row.ref)
+    expect(newPara).not.toBe(para.ref)
+
+    // The clones resolve in the target changeSet scope, and the cross-reference
+    // (paragraph -> its parent row) was remapped to the new row ref.
+    const targetCs = adapter.changeSet(target.ref)
+    expect(targetCs.readEntity(newRow).ref).toBe(newRow)
+    expect(targetCs.readEntity(newPara).parents.parent).toBe(newRow)
+
+    // Source changeSet still resolves to its original refs.
+    expect(changeSetAdapter.readEntity(para.ref).parents.parent).toBe(row.ref)
+})
+
 test("initChangeSet not called on operations in changeSet", () => {
     const { changeSetAdapter, post } = prepareChangeSetTest()
     const initializeChangeSetSpy = spyOn(
