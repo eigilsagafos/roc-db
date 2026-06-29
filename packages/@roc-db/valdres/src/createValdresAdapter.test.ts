@@ -166,7 +166,7 @@ const prepareChangeSetTest = () => {
     }
 }
 
-test("duplicateChangeSetMutations clones a changeSet with remapped refs", () => {
+test("duplicateDraft (txn.duplicateChangeSetMutations) clones a changeSet with remapped refs", () => {
     const { adapter, post, draft, changeSetAdapter } = prepareChangeSetTest()
     const [{ block: row }] = changeSetAdapter.createBlockRow({
         parentRef: post.ref,
@@ -176,11 +176,9 @@ test("duplicateChangeSetMutations clones a changeSet with remapped refs", () => 
         content: "Hello",
     })
 
-    const [target] = adapter.createDraft({ postRef: post.ref })
-    const { mutations, refMap } = adapter.duplicateChangeSetMutations(
-        draft.ref,
-        target.ref,
-    )
+    // One transaction: create the new draft + copy the source's mutations.
+    const [{ draftRef: newDraftRef, mutations, refMap }] =
+        adapter.duplicateDraft({ sourceRef: draft.ref, postRef: post.ref })
 
     expect(mutations).toHaveLength(2)
     const newRow = refMap.get(row.ref)
@@ -190,9 +188,9 @@ test("duplicateChangeSetMutations clones a changeSet with remapped refs", () => 
     expect(newRow).not.toBe(row.ref)
     expect(newPara).not.toBe(para.ref)
 
-    // The clones resolve in the target changeSet scope, and the cross-reference
+    // The copies resolve in the new draft scope, and the cross-reference
     // (paragraph -> its parent row) was remapped to the new row ref.
-    const targetCs = adapter.changeSet(target.ref)
+    const targetCs = adapter.changeSet(newDraftRef)
     expect(targetCs.readEntity(newRow).ref).toBe(newRow)
     expect(targetCs.readEntity(newPara).parents.parent).toBe(newRow)
 

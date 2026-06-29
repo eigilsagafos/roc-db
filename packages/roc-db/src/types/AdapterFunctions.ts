@@ -37,6 +37,7 @@ export type UpdateEntityFunction<EngineOpts extends any = any> = (
 
 export type SaveMutationFunction<EngineOpts extends any = any> = (
     txn: WriteTransaction<EngineOpts>,
+    finalizedMutation: Mutation,
 ) => Mutation
 
 export type PatchEntityFunction<EngineOpts extends any = any> = (

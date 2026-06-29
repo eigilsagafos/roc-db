@@ -1,6 +1,7 @@
 import { createInMemoryAdapter } from "@roc-db/in-memory"
 import { DraftRefSchema, entities, operations } from "@roc-db/test-utils"
 import { describe, expect, test } from "bun:test"
+import { z } from "zod"
 import { ChangeSetIntegrityError } from "../errors/ChangeSetIntegrityError"
 import { ChangeSetNotEmptyError } from "../errors/ChangeSetNotEmptyError"
 import { SingletonDuplicationError } from "../errors/SingletonDuplicationError"
@@ -11,7 +12,7 @@ import { Snowflake } from "../utils/Snowflake"
 import { sortMutations } from "../utils/sortMutations"
 import { writeOperation } from "../writeOperation"
 
-// Minimal apply op: apply the changeSet onto its base, then mark the draft applied.
+// Minimal apply op: apply the changeSet onto its base, then mark it applied.
 const applyDraftTest = writeOperation("applyDraftTest", DraftRefSchema, txn => {
     const ref = txn.payload
     return QueryChain(
@@ -21,6 +22,69 @@ const applyDraftTest = writeOperation("applyDraftTest", DraftRefSchema, txn => {
         ),
     )
 })
+
+// Consumer ops exercising the txn primitive with an explicit (pre-created)
+// target, so tests can drive the hooks / guards directly.
+const PayloadSchema = z
+    .object({ sourceRef: DraftRefSchema, targetRef: DraftRefSchema })
+    .strict()
+const duplicateInto = writeOperation("duplicateInto", PayloadSchema, txn =>
+    Query(() =>
+        txn.duplicateChangeSetMutations(
+            txn.payload.sourceRef,
+            txn.payload.targetRef,
+        ),
+    ),
+)
+const duplicateIntoKeepRows = writeOperation(
+    "duplicateIntoKeepRows",
+    PayloadSchema,
+    txn =>
+        Query(() =>
+            txn.duplicateChangeSetMutations(
+                txn.payload.sourceRef,
+                txn.payload.targetRef,
+                { filter: m => m.operation.name === "createBlockRow" },
+            ),
+        ),
+)
+const duplicateIntoDropRows = writeOperation(
+    "duplicateIntoDropRows",
+    PayloadSchema,
+    txn =>
+        Query(() =>
+            txn.duplicateChangeSetMutations(
+                txn.payload.sourceRef,
+                txn.payload.targetRef,
+                { filter: m => m.operation.name !== "createBlockRow" },
+            ),
+        ),
+)
+const duplicateIntoTag = writeOperation(
+    "duplicateIntoTag",
+    PayloadSchema,
+    txn =>
+        Query(() =>
+            txn.duplicateChangeSetMutations(
+                txn.payload.sourceRef,
+                txn.payload.targetRef,
+                {
+                    transformPayload: (payload: any) =>
+                        typeof payload?.content === "string"
+                            ? { ...payload, content: payload.content + "!" }
+                            : payload,
+                },
+            ),
+        ),
+)
+
+const localOps = [
+    applyDraftTest,
+    duplicateInto,
+    duplicateIntoKeepRows,
+    duplicateIntoDropRows,
+    duplicateIntoTag,
+]
 
 const makeEngine = () => ({
     entities: new Map(),
@@ -39,16 +103,15 @@ const makeAdapter = ({
     snowflake?: Snowflake
 } = {}) =>
     createInMemoryAdapter({
-        operations: [...operations, applyDraftTest],
+        operations: [...operations, ...localOps],
         entities,
         session,
         snowflake,
         engine,
     })
 
-// Build a source changeSet: a Post (base) with a BlockRow created in the
-// changeSet and a BlockParagraph child of that row (cross-reference between two
-// changeSet-created entities).
+// Source changeSet: a Post (base) + a BlockRow created in the changeSet + a
+// BlockParagraph child of that row (cross-reference between two created refs).
 const seedSource = (adapter: any, post: any) => {
     const [draft] = adapter.createDraft({ postRef: post.ref })
     const cs = adapter.changeSet(draft.ref)
@@ -60,30 +123,32 @@ const seedSource = (adapter: any, post: any) => {
     return { draftRef: draft.ref, rowRef: row.ref, paraRef: para.ref }
 }
 
+const changeSetMutations = (adapter: any, changeSetRef: string) =>
+    sortMutations(
+        [...adapter._engineOpts.mutations.values()].filter(
+            (m: any) => m.changeSetRef === changeSetRef,
+        ),
+    )
+
 describe("duplicateChangeSetMutations", () => {
     test("remaps every created ref to a distinct new ref with no overlap", () => {
         const adapter = makeAdapter()
         const [post] = adapter.createPost({ title: "P" })
         const { draftRef, rowRef, paraRef } = seedSource(adapter, post)
-        const [target] = adapter.createDraft({ postRef: post.ref })
 
-        const { refMap } = adapter.duplicateChangeSetMutations(
-            draftRef,
-            target.ref,
-        )
+        const [{ refMap }] = adapter.duplicateDraft({
+            sourceRef: draftRef,
+            postRef: post.ref,
+        })
 
-        // Both changeSet-created entities are remapped.
         expect(refMap.has(rowRef)).toBe(true)
         expect(refMap.has(paraRef)).toBe(true)
-        // Base ref (the Post) is NOT remapped.
-        expect(refMap.has(post.ref)).toBe(false)
-        // New refs are distinct from the source refs and from each other...
+        expect(refMap.has(post.ref)).toBe(false) // base ref untouched
         const newRow = refMap.get(rowRef)
         const newPara = refMap.get(paraRef)
         expect(newRow).not.toBe(rowRef)
         expect(newPara).not.toBe(paraRef)
         expect(newRow).not.toBe(newPara)
-        // ...and of the same entity kind.
         expect(entityFromRef(newRow)).toBe(entityFromRef(rowRef))
         expect(entityFromRef(newPara)).toBe(entityFromRef(paraRef))
         const sourceRefs = new Set([rowRef, paraRef])
@@ -94,23 +159,21 @@ describe("duplicateChangeSetMutations", () => {
         const adapter = makeAdapter()
         const [post] = adapter.createPost({ title: "P" })
         const { draftRef, rowRef, paraRef } = seedSource(adapter, post)
-        const [target] = adapter.createDraft({ postRef: post.ref })
 
-        const { mutations, refMap } = adapter.duplicateChangeSetMutations(
-            draftRef,
-            target.ref,
-        )
+        const [{ mutations, refMap }] = adapter.duplicateDraft({
+            sourceRef: draftRef,
+            postRef: post.ref,
+        })
 
-        // Verify via the SAME sort the load/apply path uses.
         const sorted = sortMutations(mutations)
         const createIndex = (ref: string) =>
             sorted.findIndex((m: any) =>
                 m.log.some((e: any[]) => e[1] === "create" && e[0] === ref),
             )
-        const rowCreate = createIndex(refMap.get(rowRef))
-        const paraCreate = createIndex(refMap.get(paraRef))
-        expect(rowCreate).toBeGreaterThanOrEqual(0)
-        expect(paraCreate).toBeGreaterThan(rowCreate)
+        expect(createIndex(refMap.get(paraRef))).toBeGreaterThan(
+            createIndex(refMap.get(rowRef)),
+        )
+        expect(createIndex(refMap.get(rowRef))).toBeGreaterThanOrEqual(0)
     })
 
     test("orders correctly across 3 levels of nesting (A <- B <- C)", () => {
@@ -121,12 +184,11 @@ describe("duplicateChangeSetMutations", () => {
         const [{ block: a }] = cs.createBlockRow({ parentRef: post.ref })
         const [{ block: b }] = cs.createBlockRow({ parentRef: a.ref })
         const [{ block: c }] = cs.createBlockRow({ parentRef: b.ref })
-        const [target] = adapter.createDraft({ postRef: post.ref })
 
-        const { mutations, refMap } = adapter.duplicateChangeSetMutations(
-            draft.ref,
-            target.ref,
-        )
+        const [{ mutations, refMap }] = adapter.duplicateDraft({
+            sourceRef: draft.ref,
+            postRef: post.ref,
+        })
 
         const sorted = sortMutations(mutations)
         const createIndex = (ref: string) =>
@@ -141,21 +203,19 @@ describe("duplicateChangeSetMutations", () => {
         expect(ic).toBeGreaterThan(ib)
     })
 
-    test("applying both source and target onto the same base succeeds with no collision", () => {
+    test("applying both source and the duplicate onto the same base succeeds", () => {
         const adapter = makeAdapter()
         const [post] = adapter.createPost({ title: "P" })
         const { draftRef, rowRef, paraRef } = seedSource(adapter, post)
-        const [target] = adapter.createDraft({ postRef: post.ref })
 
-        const { refMap } = adapter.duplicateChangeSetMutations(
-            draftRef,
-            target.ref,
-        )
+        const [{ draftRef: newDraftRef, refMap }] = adapter.duplicateDraft({
+            sourceRef: draftRef,
+            postRef: post.ref,
+        })
 
         expect(() => adapter.applyDraftTest(draftRef)).not.toThrow()
-        expect(() => adapter.applyDraftTest(target.ref)).not.toThrow()
+        expect(() => adapter.applyDraftTest(newDraftRef)).not.toThrow()
 
-        // Base post ends up with both rows; every block entity resolves.
         const finalPost = adapter.readEntity(post.ref)
         expect(finalPost.children.blocks).toContain(rowRef)
         expect(finalPost.children.blocks).toContain(refMap.get(rowRef))
@@ -176,14 +236,10 @@ describe("duplicateChangeSetMutations", () => {
         const { draftRef, rowRef, paraRef } = seedSource(adapter, post)
         const [target] = adapter.createDraft({ postRef: post.ref })
 
-        // Keep only the BlockRow create (a self-contained mutation).
-        const { mutations, refMap } = adapter.duplicateChangeSetMutations(
-            draftRef,
-            target.ref,
-            {
-                filter: (m: any) => m.operation.name === "createBlockRow",
-            },
-        )
+        const [{ mutations, refMap }] = adapter.duplicateIntoKeepRows({
+            sourceRef: draftRef,
+            targetRef: target.ref,
+        })
         expect(mutations).toHaveLength(1)
         expect(refMap.has(rowRef)).toBe(true)
         expect(refMap.has(paraRef)).toBe(false)
@@ -195,11 +251,11 @@ describe("duplicateChangeSetMutations", () => {
         const { draftRef, rowRef } = seedSource(adapter, post)
         const [target] = adapter.createDraft({ postRef: post.ref })
 
-        // Drop the row create but keep the paragraph that is its child.
         let err: any
         try {
-            adapter.duplicateChangeSetMutations(draftRef, target.ref, {
-                filter: (m: any) => m.operation.name !== "createBlockRow",
+            adapter.duplicateIntoDropRows({
+                sourceRef: draftRef,
+                targetRef: target.ref,
             })
         } catch (e) {
             err = e
@@ -208,64 +264,44 @@ describe("duplicateChangeSetMutations", () => {
         expect(err.danglingRef).toBe(rowRef)
     })
 
-    test("transformPayload receives the refMap and its output is persisted", () => {
+    test("transformPayload output is what gets persisted", () => {
         const adapter = makeAdapter()
         const [post] = adapter.createPost({ title: "P" })
         const { draftRef } = seedSource(adapter, post)
         const [target] = adapter.createDraft({ postRef: post.ref })
 
-        let seenRefMap: Map<string, string> | undefined
-        const { mutations } = adapter.duplicateChangeSetMutations(
-            draftRef,
-            target.ref,
-            {
-                transformPayload: (payload: any, refMap) => {
-                    seenRefMap = refMap
-                    // Tag every BlockParagraph clone's content.
-                    if (typeof payload?.content === "string") {
-                        return { ...payload, content: payload.content + "!" }
-                    }
-                    return payload
-                },
-            },
-        )
-        expect(seenRefMap).toBeInstanceOf(Map)
+        const [{ mutations }] = adapter.duplicateIntoTag({
+            sourceRef: draftRef,
+            targetRef: target.ref,
+        })
         const para = mutations.find(
             (m: any) => m.operation.name === "createBlockParagraph",
         )
         expect(para.payload.content).toBe("Hello!")
     })
 
-    test("returned mutations match the persisted form on the target", () => {
+    test("returned mutations are the persisted records on the target", () => {
         const adapter = makeAdapter()
         const [post] = adapter.createPost({ title: "P" })
         const { draftRef, rowRef } = seedSource(adapter, post)
-        const [target] = adapter.createDraft({ postRef: post.ref })
 
-        const { mutations, refMap } = adapter.duplicateChangeSetMutations(
-            draftRef,
-            target.ref,
-        )
+        const [{ draftRef: newDraftRef, mutations, refMap }] =
+            adapter.duplicateDraft({ sourceRef: draftRef, postRef: post.ref })
 
-        // Equal to a fresh read of the target changeSet, in the same order.
-        const persisted = sortMutations(
-            [...adapter._engineOpts.mutations.values()].filter(
-                (m: any) => m.changeSetRef === target.ref,
-            ),
-        )
+        const persisted = changeSetMutations(adapter, newDraftRef)
         expect(mutations.map((m: any) => m.ref)).toEqual(
             persisted.map((m: any) => m.ref),
         )
-        // Logs were recomputed against the NEW refs, not copied from source.
-        const rowClone = mutations.find(
+        // Logs reference the NEW refs, not the source ones.
+        const rowCopy = mutations.find(
             (m: any) => m.operation.name === "createBlockRow",
         )
-        const created = rowClone.log.find((e: any[]) => e[1] === "create")
+        const created = rowCopy.log.find((e: any[]) => e[1] === "create")
         expect(created[0]).toBe(refMap.get(rowRef))
-        expect(JSON.stringify(rowClone.log)).not.toContain(rowRef)
+        expect(JSON.stringify(rowCopy.log)).not.toContain(rowRef)
     })
 
-    test("clones reset debounceCount and carry the duplicating actor's identity", () => {
+    test("copies reset debounceCount, carry the duplicating actor, and are unapplied", () => {
         const engine = makeEngine()
         const snowflake = new Snowflake(10, 10)
         const author = makeAdapter({
@@ -275,18 +311,16 @@ describe("duplicateChangeSetMutations", () => {
         })
         const [post] = author.createPost({ title: "P" })
         const { draftRef } = seedSource(author, post)
-        const [target] = author.createDraft({ postRef: post.ref })
 
-        // A different actor performs the duplication.
         const duplicator = makeAdapter({
             engine,
             snowflake,
             session: { identityRef: "User/duplicator" },
         })
-        const { mutations } = duplicator.duplicateChangeSetMutations(
-            draftRef,
-            target.ref,
-        )
+        const [{ mutations }] = duplicator.duplicateDraft({
+            sourceRef: draftRef,
+            postRef: post.ref,
+        })
 
         expect(mutations.length).toBeGreaterThan(0)
         for (const m of mutations) {
@@ -300,43 +334,26 @@ describe("duplicateChangeSetMutations", () => {
         const adapter = makeAdapter()
         const [post] = adapter.createPost({ title: "P" })
         const { draftRef } = seedSource(adapter, post)
-        const [target] = adapter.createDraft({ postRef: post.ref })
 
-        const before = JSON.stringify(
-            sortMutations(
-                [...adapter._engineOpts.mutations.values()].filter(
-                    (m: any) => m.changeSetRef === draftRef,
-                ),
-            ),
-        )
-        adapter.duplicateChangeSetMutations(draftRef, target.ref)
-        const after = JSON.stringify(
-            sortMutations(
-                [...adapter._engineOpts.mutations.values()].filter(
-                    (m: any) => m.changeSetRef === draftRef,
-                ),
-            ),
-        )
+        const before = JSON.stringify(changeSetMutations(adapter, draftRef))
+        adapter.duplicateDraft({ sourceRef: draftRef, postRef: post.ref })
+        const after = JSON.stringify(changeSetMutations(adapter, draftRef))
         expect(after).toBe(before)
     })
 
-    test("undo of a cloned mutation reverses against the new refs", () => {
+    test("undo of a copied mutation reverses against the new refs", () => {
         const adapter = makeAdapter()
         const [post] = adapter.createPost({ title: "P" })
         const { draftRef, rowRef } = seedSource(adapter, post)
-        const [target] = adapter.createDraft({ postRef: post.ref })
 
-        const { mutations, refMap } = adapter.duplicateChangeSetMutations(
-            draftRef,
-            target.ref,
-        )
-        const rowClone = mutations.find(
+        const [{ draftRef: newDraftRef, mutations, refMap }] =
+            adapter.duplicateDraft({ sourceRef: draftRef, postRef: post.ref })
+        const rowCopy = mutations.find(
             (m: any) => m.operation.name === "createBlockRow",
         )
 
-        const cs = adapter.changeSet(target.ref)
-        const [, undoMutation] = cs.undo(rowClone.ref)
-        // The reverse deletes the NEW row, never the source row.
+        const cs = adapter.changeSet(newDraftRef)
+        const [, undoMutation] = cs.undo(rowCopy.ref)
         const deleteEntry = undoMutation.log.find(
             (e: any[]) => e[1] === "delete",
         )
@@ -344,17 +361,33 @@ describe("duplicateChangeSetMutations", () => {
         expect(JSON.stringify(undoMutation.log)).not.toContain(rowRef)
     })
 
+    test("each copy's mutation ref and the entity refs it creates share its timestamp", () => {
+        const adapter = makeAdapter()
+        const [post] = adapter.createPost({ title: "P" })
+        const { draftRef, rowRef } = seedSource(adapter, post)
+
+        const [{ mutations, refMap }] = adapter.duplicateDraft({
+            sourceRef: draftRef,
+            postRef: post.ref,
+        })
+        const sf = new Snowflake(10, 10)
+        const tsOf = (ref: string) => sf.parse(ref.split("/")[1])[0]
+        const rowCopy = mutations.find(
+            (m: any) => m.operation.name === "createBlockRow",
+        )
+        expect(tsOf(rowCopy.ref)).toBe(tsOf(refMap.get(rowRef)))
+        expect(new Date(rowCopy.timestamp).getTime()).toBe(tsOf(rowCopy.ref))
+    })
+
     test("throws SingletonDuplicationError when the changeSet creates a singleton", () => {
         const adapter = makeAdapter()
         const [post] = adapter.createPost({ title: "P" })
         const [draft] = adapter.createDraft({ postRef: post.ref })
-        const cs = adapter.changeSet(draft.ref)
-        cs.createOrgSettings({ name: "Acme" })
-        const [target] = adapter.createDraft({ postRef: post.ref })
+        adapter.changeSet(draft.ref).createOrgSettings({ name: "Acme" })
 
         let err: any
         try {
-            adapter.duplicateChangeSetMutations(draft.ref, target.ref)
+            adapter.duplicateDraft({ sourceRef: draft.ref, postRef: post.ref })
         } catch (e) {
             err = e
         }
@@ -366,40 +399,20 @@ describe("duplicateChangeSetMutations", () => {
         const adapter = makeAdapter()
         const [post] = adapter.createPost({ title: "P" })
         const { draftRef } = seedSource(adapter, post)
-
-        // Target is not fresh: it already has changeSet work of its own.
         const [target] = adapter.createDraft({ postRef: post.ref })
         adapter.changeSet(target.ref).createBlockRow({ parentRef: post.ref })
 
         let err: any
         try {
-            adapter.duplicateChangeSetMutations(draftRef, target.ref)
+            adapter.duplicateInto({
+                sourceRef: draftRef,
+                targetRef: target.ref,
+            })
         } catch (e) {
             err = e
         }
         expect(err).toBeInstanceOf(ChangeSetNotEmptyError)
         expect(err.targetChangeSetRef).toBe(target.ref)
         expect(err.existingCount).toBeGreaterThan(0)
-    })
-
-    test("each clone's mutation ref and the entity refs it creates share its timestamp", () => {
-        const adapter = makeAdapter()
-        const [post] = adapter.createPost({ title: "P" })
-        const { draftRef, rowRef } = seedSource(adapter, post)
-        const [target] = adapter.createDraft({ postRef: post.ref })
-
-        const { mutations, refMap } = adapter.duplicateChangeSetMutations(
-            draftRef,
-            target.ref,
-        )
-        const snowflake = new Snowflake(10, 10)
-        const tsOf = (ref: string) => snowflake.parse(ref.split("/")[1])[0] // ms epoch from the id
-        const rowClone = mutations.find(
-            (m: any) => m.operation.name === "createBlockRow",
-        )
-        // The mutation ref and the entity ref it creates are minted under the
-        // same single timestamp (single-pass) — their ids encode the same ms.
-        expect(tsOf(rowClone.ref)).toBe(tsOf(refMap.get(rowRef)))
-        expect(new Date(rowClone.timestamp).getTime()).toBe(tsOf(rowClone.ref))
     })
 })

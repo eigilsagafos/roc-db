@@ -580,7 +580,7 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
             ).toThrow(BadRequestError)
         })
 
-        test("duplicateChangeSetMutations produces an independent copy with remapped refs", async () => {
+        test("duplicateDraft (txn.duplicateChangeSetMutations) produces an independent copy with remapped refs", async () => {
             const [post] = await adapter1.createPost({
                 title: "Title 1",
                 slug: faker.lorem.slug(5),
@@ -597,13 +597,13 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
                 content: "Hello",
             })
 
-            const [targetDraft] = await adapter1.createDraft({
-                postRef: post.ref,
-            })
-            const { mutations, refMap } = await adapter1.duplicateChangeSetMutations(
-                sourceDraft.ref,
-                targetDraft.ref,
-            )
+            // One transaction: create the new draft and copy the source's
+            // mutations into it via the txn primitive.
+            const [{ draftRef: newDraftRef, mutations, refMap }] =
+                await adapter1.duplicateDraft({
+                    sourceRef: sourceDraft.ref,
+                    postRef: post.ref,
+                })
 
             expect(mutations).toHaveLength(2)
             const newRow = refMap.get(row.ref)
@@ -616,9 +616,9 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
             expect([...refMap.values()]).not.toContain(row.ref)
             expect([...refMap.values()]).not.toContain(para.ref)
 
-            // The clones resolve in the target changeSet, with the
-            // cross-reference (paragraph -> row) remapped to the new row ref.
-            const targetCs = adapter1.changeSet(targetDraft.ref)
+            // The copies resolve in the new draft, with the cross-reference
+            // (paragraph -> row) remapped to the new row ref.
+            const targetCs = adapter1.changeSet(newDraftRef)
             expect((await targetCs.readEntity(newRow)).ref).toBe(newRow)
             expect((await targetCs.readEntity(newPara)).parents.parent).toBe(
                 newRow,

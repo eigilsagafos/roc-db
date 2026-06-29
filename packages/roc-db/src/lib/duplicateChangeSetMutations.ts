@@ -2,22 +2,12 @@ import { BadRequestError } from "../errors/BadRequestError"
 import { ChangeSetIntegrityError } from "../errors/ChangeSetIntegrityError"
 import { ChangeSetNotEmptyError } from "../errors/ChangeSetNotEmptyError"
 import { SingletonDuplicationError } from "../errors/SingletonDuplicationError"
-import type { AdapterOptions } from "../types/AdapterOptions"
 import type { Mutation } from "../types/Mutation"
 import type { Ref } from "../types/Ref"
 import { entityFromRef } from "../utils/entityFromRef"
 import { generateRef } from "../utils/generateRef"
 import { sortMutations } from "../utils/sortMutations"
-import { defaultBeginTransaction } from "./defaultBeginTransaction"
-import { loadMutations } from "./loadMutations"
-import { persistOptimisticMutations } from "./persistOptimisticMutations"
-
-// Millisecond ISO timestamp, matching how `generateMutationDoc` stamps real
-// mutations. Entity/mutation schemas require `precision: 3`, so we must NOT use
-// a higher-resolution clock here. Same-millisecond ties are resolved by the
-// numeric id tiebreak in `sortMutations`, and the snowflake generates ids in
-// call order, so dependency order is preserved regardless of clock resolution.
-const isoNow = () => new Date().toISOString()
+import type { WriteTransaction } from "./WriteTransaction"
 
 export type DuplicateChangeSetMutationsOptions = {
     filter?: (mutation: Mutation) => boolean
@@ -67,20 +57,25 @@ const collectStrings = (value: any, into: Set<string>) => {
     }
 }
 
-// Pure: turn the source mutations into clones bound to the target changeSet.
-// No I/O — both the sync and async drivers share this.
-const buildClones = (
-    adapterOptions: AdapterOptions,
+// Pure: turn the source mutations into copied *records* bound to the target
+// changeSet. No replay, no entity materialization — mutations live in root and
+// only enter scope state when something later runs/loads them, so duplicating
+// is record-copying. `timestamp` is the current transaction's timestamp; like a
+// normal write's createRef calls, every fresh ref is minted under it.
+const buildCopies = (
+    txn: WriteTransaction,
     sourceMutations: Mutation[],
     targetChangeSetRef: Ref,
     options: DuplicateChangeSetMutationsOptions,
 ) => {
+    const { adapter } = txn
+    const timestamp = txn.timestamp
     const sorted = sortMutations(sourceMutations)
     const kept = options.filter ? sorted.filter(options.filter) : sorted
     const keptSet = new Set(kept)
 
-    // Step 3 — referential integrity. A ref created only by a dropped mutation
-    // must not be referenced by a kept one (it would not exist on replay).
+    // Referential integrity: a ref created only by a dropped mutation must not
+    // be referenced by a kept one (it would not exist when the copy is run).
     const keptCreated = new Set<Ref>()
     for (const mutation of kept) {
         for (const ref of createdRefsOf(mutation)) keptCreated.add(ref)
@@ -105,44 +100,34 @@ const buildClones = (
         }
     }
 
-    // Steps 4-6 — one pass over the mutations in dependency order. Each clone
-    // gets a single `timestamp`, shared by its own mutation ref AND the entity
-    // refs it creates — mirroring how a normal write stamps its mutation and
-    // every `createRef()` entity with one timestamp (generateMutationDoc +
-    // createRef.ts). Refs are minted with the *current* clock (isoNow), never
-    // the source's timestamp: feeding the snowflake a past timestamp resets its
-    // sequence and would re-mint ids already issued at that instant. Generating
-    // in dependency order keeps numeric id order == dependency order, and the
-    // matching `timestamp` keeps timestamp order aligned too, so `sortMutations`
-    // reproduces dependency order on either key.
+    // One pass in dependency order. Each copy gets a fresh mutation ref, and the
+    // entities it creates get fresh refs of the same kind — all minted under the
+    // transaction timestamp. Generating in order keeps numeric id order ==
+    // dependency order, so a later run/load replays them correctly. `appliedAt`
+    // is dropped: the copy starts unapplied even when the source was applied.
     const refMap = new Map<Ref, Ref>()
-    const sessionRef =
-        adapterOptions.session.sessionRef ?? adapterOptions.session.ref ?? null
-    const clones = kept.map((mutation: Mutation) => {
-        const timestamp = isoNow()
+    const sessionRef = adapter.session.sessionRef ?? adapter.session.ref ?? null
+    const mutations = kept.map((mutation: Mutation) => {
         // Mint fresh refs for entities this mutation creates *before* remapping
-        // its payload, so a payload that references its own created entity is
-        // covered. Refs created by earlier mutations are already in refMap
-        // (dependency order), and base refs are absent and stay untouched.
+        // its payload, so a payload referencing its own created entity is
+        // covered. Earlier mutations' creates are already in refMap; base refs
+        // are absent and stay untouched.
         for (const oldRef of createdRefsOf(mutation)) {
             if (refMap.has(oldRef)) continue
             const kind = entityFromRef(oldRef)
-            if (adapterOptions.models?.[kind]?.singleton) {
+            if (adapter.models?.[kind]?.singleton) {
                 throw new SingletonDuplicationError(kind)
             }
-            refMap.set(
-                oldRef,
-                generateRef(kind, adapterOptions.snowflake, timestamp),
-            )
+            refMap.set(oldRef, generateRef(kind, adapter.snowflake, timestamp))
         }
-        const ref = generateRef("Mutation", adapterOptions.snowflake, timestamp)
+        const ref = generateRef("Mutation", adapter.snowflake, timestamp)
         const remappedPayload = remapValue(mutation.payload, refMap)
         const payload = options.transformPayload
             ? options.transformPayload(remappedPayload, refMap)
             : remappedPayload
-        // Only the leading ref of each entry matters on replay (create entries
-        // feed optimisticCreateRefs). The trailing reverse/document blob is
-        // discarded and recomputed, so we leave it untouched.
+        // Remap the leading ref of each log entry (create entries pin the new
+        // refs on run/load). The trailing reverse/document blob is recomputed
+        // when the copy is run, so we leave it untouched.
         const log = (mutation.log ?? []).map((entry: any[]) => {
             const [entryRef, ...rest] = entry
             return [refMap.get(entryRef) ?? entryRef, ...rest]
@@ -158,140 +143,29 @@ const buildClones = (
             log,
             changeSetRef: targetChangeSetRef,
             debounceCount: 0,
-            identityRef: adapterOptions.session.identityRef,
+            identityRef: adapter.session.identityRef,
             sessionRef,
-            persistedAt: null,
+            persistedAt: adapter.optimistic ? null : timestamp,
         } as Mutation
     })
 
-    const cloneRefs = new Set(clones.map((clone: Mutation) => clone.ref))
-    return { clones, refMap, cloneRefs }
-}
-
-const readChangeSetMutations = (
-    adapterOptions: AdapterOptions,
-    engineOptions: any,
-    changeSetRef: Ref,
-) => {
-    const beginTransaction =
-        adapterOptions.functions.begin || defaultBeginTransaction
-    return beginTransaction(engineOptions, (engineOptsTxn: any) =>
-        adapterOptions.functions.getChangeSetMutations(
-            { engineOpts: engineOptsTxn } as any,
-            changeSetRef,
-        ),
-    )
-}
-
-const ingestClones = (
-    adapterOptions: AdapterOptions,
-    engineOptions: any,
-    clones: Mutation[],
-    operations: any[],
-) =>
-    adapterOptions.optimistic
-        ? loadMutations(adapterOptions, engineOptions, clones, operations)
-        : persistOptimisticMutations(
-              adapterOptions,
-              engineOptions,
-              clones,
-              operations,
-          )
-
-const duplicateChangeSetMutationsSync = (
-    adapterOptions: AdapterOptions,
-    engineOptions: any,
-    sourceChangeSetRef: Ref,
-    targetChangeSetRef: Ref,
-    options: DuplicateChangeSetMutationsOptions,
-    operations: any[],
-): DuplicateChangeSetMutationsResult => {
-    const existingTargetMutations = readChangeSetMutations(
-        adapterOptions,
-        engineOptions,
-        targetChangeSetRef,
-    )
-    if (existingTargetMutations.length) {
-        throw new ChangeSetNotEmptyError(
-            targetChangeSetRef,
-            existingTargetMutations.length,
-        )
-    }
-    const sourceMutations = readChangeSetMutations(
-        adapterOptions,
-        engineOptions,
-        sourceChangeSetRef,
-    )
-    const { clones, refMap, cloneRefs } = buildClones(
-        adapterOptions,
-        sourceMutations,
-        targetChangeSetRef,
-        options,
-    )
-    if (!clones.length) return { mutations: [], refMap }
-    ingestClones(adapterOptions, engineOptions, clones, operations)
-    const targetMutations = readChangeSetMutations(
-        adapterOptions,
-        engineOptions,
-        targetChangeSetRef,
-    )
-    const mutations = sortMutations(
-        targetMutations.filter((m: Mutation) => cloneRefs.has(m.ref)),
-    )
     return { mutations, refMap }
 }
 
-const duplicateChangeSetMutationsAsync = async (
-    adapterOptions: AdapterOptions,
-    engineOptions: any,
-    sourceChangeSetRef: Ref,
-    targetChangeSetRef: Ref,
-    options: DuplicateChangeSetMutationsOptions,
-    operations: any[],
-): Promise<DuplicateChangeSetMutationsResult> => {
-    const existingTargetMutations = await readChangeSetMutations(
-        adapterOptions,
-        engineOptions,
-        targetChangeSetRef,
+// Persist one copied record. Mutations always live in root, so we go straight
+// to the adapter's saveMutation (no replay / no entity writes) using a minimal
+// transaction context — the same shape saveMutation reads across adapters.
+const saveCopy = (txn: WriteTransaction, copy: Mutation) =>
+    txn.adapter.functions.saveMutation(
+        {
+            engineOpts: txn.engineOpts,
+            mutation: copy,
+            adapter: txn.adapter,
+        } as any,
+        copy,
     )
-    if (existingTargetMutations.length) {
-        throw new ChangeSetNotEmptyError(
-            targetChangeSetRef,
-            existingTargetMutations.length,
-        )
-    }
-    const sourceMutations = await readChangeSetMutations(
-        adapterOptions,
-        engineOptions,
-        sourceChangeSetRef,
-    )
-    const { clones, refMap, cloneRefs } = buildClones(
-        adapterOptions,
-        sourceMutations,
-        targetChangeSetRef,
-        options,
-    )
-    if (!clones.length) return { mutations: [], refMap }
-    await ingestClones(adapterOptions, engineOptions, clones, operations)
-    const targetMutations = await readChangeSetMutations(
-        adapterOptions,
-        engineOptions,
-        targetChangeSetRef,
-    )
-    const mutations = sortMutations(
-        targetMutations.filter((m: Mutation) => cloneRefs.has(m.ref)),
-    )
-    return { mutations, refMap }
-}
 
-export const duplicateChangeSetMutations = (
-    adapterOptions: AdapterOptions,
-    engineOptions: any,
-    sourceChangeSetRef: Ref,
-    targetChangeSetRef: Ref,
-    options: DuplicateChangeSetMutationsOptions = {},
-    operations: any[],
-) => {
+const validateRefs = (sourceChangeSetRef: Ref, targetChangeSetRef: Ref) => {
     if (!sourceChangeSetRef) {
         throw new BadRequestError("sourceChangeSetRef is required")
     }
@@ -303,22 +177,83 @@ export const duplicateChangeSetMutations = (
             "sourceChangeSetRef and targetChangeSetRef must differ",
         )
     }
-    if (adapterOptions.async) {
-        return duplicateChangeSetMutationsAsync(
-            adapterOptions,
-            engineOptions,
+}
+
+const duplicateSync = (
+    txn: WriteTransaction,
+    sourceChangeSetRef: Ref,
+    targetChangeSetRef: Ref,
+    options: DuplicateChangeSetMutationsOptions,
+): DuplicateChangeSetMutationsResult => {
+    const existing = txn.adapter.functions.getChangeSetMutations(
+        txn,
+        targetChangeSetRef,
+    )
+    if (existing.length) {
+        throw new ChangeSetNotEmptyError(targetChangeSetRef, existing.length)
+    }
+    const source = txn.adapter.functions.getChangeSetMutations(
+        txn,
+        sourceChangeSetRef,
+    )
+    const { mutations, refMap } = buildCopies(
+        txn,
+        source,
+        targetChangeSetRef,
+        options,
+    )
+    for (const copy of mutations) saveCopy(txn, copy)
+    return { mutations, refMap }
+}
+
+const duplicateAsync = async (
+    txn: WriteTransaction,
+    sourceChangeSetRef: Ref,
+    targetChangeSetRef: Ref,
+    options: DuplicateChangeSetMutationsOptions,
+): Promise<DuplicateChangeSetMutationsResult> => {
+    const existing = await txn.adapter.functions.getChangeSetMutations(
+        txn,
+        targetChangeSetRef,
+    )
+    if (existing.length) {
+        throw new ChangeSetNotEmptyError(targetChangeSetRef, existing.length)
+    }
+    const source = await txn.adapter.functions.getChangeSetMutations(
+        txn,
+        sourceChangeSetRef,
+    )
+    const { mutations, refMap } = buildCopies(
+        txn,
+        source,
+        targetChangeSetRef,
+        options,
+    )
+    for (const copy of mutations) await saveCopy(txn, copy)
+    return { mutations, refMap }
+}
+
+/**
+ * Copy a changeSet's pending mutations into another changeSet with fresh entity
+ * refs, so the source and the copy can both be run/applied later without
+ * primary-key collisions. A transaction primitive (like `applyChangeSet`):
+ * consumers call it from inside their own write operation, after creating the
+ * target changeSet's root entity, so the whole duplicate is one transaction.
+ */
+export const duplicateChangeSetMutations = (
+    txn: WriteTransaction,
+    sourceChangeSetRef: Ref,
+    targetChangeSetRef: Ref,
+    options: DuplicateChangeSetMutationsOptions = {},
+) => {
+    validateRefs(sourceChangeSetRef, targetChangeSetRef)
+    if (txn.adapter.async) {
+        return duplicateAsync(
+            txn,
             sourceChangeSetRef,
             targetChangeSetRef,
             options,
-            operations,
         )
     }
-    return duplicateChangeSetMutationsSync(
-        adapterOptions,
-        engineOptions,
-        sourceChangeSetRef,
-        targetChangeSetRef,
-        options,
-        operations,
-    )
+    return duplicateSync(txn, sourceChangeSetRef, targetChangeSetRef, options)
 }
