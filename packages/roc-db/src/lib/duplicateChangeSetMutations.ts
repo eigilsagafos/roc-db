@@ -1,12 +1,15 @@
 import { BadRequestError } from "../errors/BadRequestError"
 import { ChangeSetIntegrityError } from "../errors/ChangeSetIntegrityError"
 import { ChangeSetNotEmptyError } from "../errors/ChangeSetNotEmptyError"
+import { NotFoundError } from "../errors/NotFoundError"
 import { SingletonDuplicationError } from "../errors/SingletonDuplicationError"
 import type { Mutation } from "../types/Mutation"
 import type { Ref } from "../types/Ref"
+import { deepEqual } from "../utils/deepPatch"
 import { entityFromRef } from "../utils/entityFromRef"
 import { generateRef } from "../utils/generateRef"
 import { sortMutations } from "../utils/sortMutations"
+import { findOperation } from "./findOperation"
 import type { WriteTransaction } from "./WriteTransaction"
 
 export type DuplicateChangeSetMutationsOptions = {
@@ -122,9 +125,21 @@ const buildCopies = (
         }
         const ref = generateRef("Mutation", adapter.snowflake, timestamp)
         const remappedPayload = remapValue(mutation.payload, refMap)
-        const payload = options.transformPayload
-            ? options.transformPayload(remappedPayload, refMap)
-            : remappedPayload
+        let payload = remappedPayload
+        if (options.transformPayload) {
+            // The generic remap only swaps refs for same-kind refs, so it stays
+            // valid; transformPayload is arbitrary, so validate its output
+            // against the operation schema (it would otherwise persist silently
+            // and only surface on a later run/load).
+            payload = options.transformPayload(remappedPayload, refMap)
+            const operation = findOperation(adapter.operations, mutation)
+            const parsed = operation.payloadSchema.safeParse(payload)
+            if (!parsed.success || !deepEqual(parsed.data, payload)) {
+                throw new BadRequestError(
+                    `transformPayload produced an invalid payload for operation '${mutation.operation.name}'`,
+                )
+            }
+        }
         // Remap the leading ref of each log entry (create entries pin the new
         // refs on run/load). The trailing reverse/document blob is recomputed
         // when the copy is run, so we leave it untouched.
@@ -185,6 +200,9 @@ const duplicateSync = (
     targetChangeSetRef: Ref,
     options: DuplicateChangeSetMutationsOptions,
 ): DuplicateChangeSetMutationsResult => {
+    if (!txn.adapter.functions.readEntity(txn, sourceChangeSetRef)) {
+        throw new NotFoundError(sourceChangeSetRef)
+    }
     const existing = txn.adapter.functions.getChangeSetMutations(
         txn,
         targetChangeSetRef,
@@ -212,6 +230,9 @@ const duplicateAsync = async (
     targetChangeSetRef: Ref,
     options: DuplicateChangeSetMutationsOptions,
 ): Promise<DuplicateChangeSetMutationsResult> => {
+    if (!(await txn.adapter.functions.readEntity(txn, sourceChangeSetRef))) {
+        throw new NotFoundError(sourceChangeSetRef)
+    }
     const existing = await txn.adapter.functions.getChangeSetMutations(
         txn,
         targetChangeSetRef,
@@ -229,7 +250,10 @@ const duplicateAsync = async (
         targetChangeSetRef,
         options,
     )
-    for (const copy of mutations) await saveCopy(txn, copy)
+    // Persist concurrently — porsager/postgres pipelines these on the txn
+    // connection, collapsing N sequential round-trips. Save order is irrelevant
+    // (records are keyed by ref and reordered by sortMutations on read).
+    await Promise.all(mutations.map((copy: Mutation) => saveCopy(txn, copy)))
     return { mutations, refMap }
 }
 

@@ -2,8 +2,10 @@ import { createInMemoryAdapter } from "@roc-db/in-memory"
 import { DraftRefSchema, entities, operations } from "@roc-db/test-utils"
 import { describe, expect, test } from "bun:test"
 import { z } from "zod"
+import { BadRequestError } from "../errors/BadRequestError"
 import { ChangeSetIntegrityError } from "../errors/ChangeSetIntegrityError"
 import { ChangeSetNotEmptyError } from "../errors/ChangeSetNotEmptyError"
+import { NotFoundError } from "../errors/NotFoundError"
 import { SingletonDuplicationError } from "../errors/SingletonDuplicationError"
 import { entityFromRef } from "../utils/entityFromRef"
 import { Query } from "../utils/Query"
@@ -78,12 +80,33 @@ const duplicateIntoTag = writeOperation(
         ),
 )
 
+// transformPayload that returns a payload violating the operation schema
+// (parentRef must be a ref string, not a number).
+const duplicateIntoBadTransform = writeOperation(
+    "duplicateIntoBadTransform",
+    PayloadSchema,
+    txn =>
+        Query(() =>
+            txn.duplicateChangeSetMutations(
+                txn.payload.sourceRef,
+                txn.payload.targetRef,
+                {
+                    transformPayload: (payload: any) => ({
+                        ...payload,
+                        parentRef: 123,
+                    }),
+                },
+            ),
+        ),
+)
+
 const localOps = [
     applyDraftTest,
     duplicateInto,
     duplicateIntoKeepRows,
     duplicateIntoDropRows,
     duplicateIntoTag,
+    duplicateIntoBadTransform,
 ]
 
 const makeEngine = () => ({
@@ -414,5 +437,42 @@ describe("duplicateChangeSetMutations", () => {
         expect(err).toBeInstanceOf(ChangeSetNotEmptyError)
         expect(err.targetChangeSetRef).toBe(target.ref)
         expect(err.existingCount).toBeGreaterThan(0)
+    })
+
+    test("throws NotFoundError when the source changeSet does not exist", () => {
+        const adapter = makeAdapter()
+        const [post] = adapter.createPost({ title: "P" })
+        const [target] = adapter.createDraft({ postRef: post.ref })
+
+        let err: any
+        try {
+            adapter.duplicateInto({
+                sourceRef: "Draft/999999999",
+                targetRef: target.ref,
+            })
+        } catch (e) {
+            err = e
+        }
+        expect(err).toBeInstanceOf(NotFoundError)
+    })
+
+    test("validates the transformPayload output against the operation schema", () => {
+        const adapter = makeAdapter()
+        const [post] = adapter.createPost({ title: "P" })
+        const { draftRef } = seedSource(adapter, post)
+        const [target] = adapter.createDraft({ postRef: post.ref })
+
+        let err: any
+        try {
+            adapter.duplicateIntoBadTransform({
+                sourceRef: draftRef,
+                targetRef: target.ref,
+            })
+        } catch (e) {
+            err = e
+        }
+        expect(err).toBeInstanceOf(BadRequestError)
+        // Nothing was persisted into the target.
+        expect(changeSetMutations(adapter, target.ref)).toHaveLength(0)
     })
 })
