@@ -476,6 +476,35 @@ describe("duplicateChangeSetMutations", () => {
         expect(changeSetMutations(adapter, target.ref)).toHaveLength(0)
     })
 
+    test("deep-remaps refs inside log reverse/delete blobs, not just the leading ref", () => {
+        const adapter = makeAdapter()
+        const [post] = adapter.createPost({ title: "P" })
+        const [source] = adapter.createDraft({ postRef: post.ref })
+        const cs = adapter.changeSet(source.ref)
+        const [{ block: a }] = cs.createBlockRow({ parentRef: post.ref })
+        const [{ block: b }] = cs.createBlockParagraph({ parentRef: a.ref })
+        // deleteBlocks patches a's children (update reverse holds [b]) and
+        // deletes b (delete document holds b, whose parents.parent is a).
+        cs.deleteBlocks([b.ref])
+
+        const [{ mutations, refMap }] = adapter.duplicateDraft({
+            sourceRef: source.ref,
+            postRef: post.ref,
+        })
+
+        const delCopy = mutations.find(
+            (m: any) => m.operation.name === "deleteBlocks",
+        )
+        const deleteEntry = delCopy.log.find((e: any[]) => e[1] === "delete")
+        expect(deleteEntry[0]).toBe(refMap.get(b.ref))
+        // The deleted document's relation points at the NEW parent, not source.
+        expect(deleteEntry[2].parents.parent).toBe(refMap.get(a.ref))
+        // No source ref survives anywhere in the copied log (incl. the update
+        // reverse blob) — undo/redo in the copy operates only on new refs.
+        expect(JSON.stringify(delCopy.log)).not.toContain(a.ref)
+        expect(JSON.stringify(delCopy.log)).not.toContain(b.ref)
+    })
+
     // #3: every copy + its entity refs are minted under the single
     // txn.timestamp. The snowflake caps at 4096 ids per millisecond (12-bit
     // sequence), so a duplicate needing >4096 fresh refs used to overflow; it

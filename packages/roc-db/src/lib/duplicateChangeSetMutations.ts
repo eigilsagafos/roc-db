@@ -108,29 +108,40 @@ const buildCopies = (
     // transaction timestamp. Generating in order keeps numeric id order ==
     // dependency order, so a later run/load replays them correctly. `appliedAt`
     // is dropped: the copy starts unapplied even when the source was applied.
+    // `refMap` maps source entity refs -> new entity refs (returned to callers).
+    // `remap` additionally maps source mutation refs -> new mutation refs; it's
+    // used for the deep remap of payloads and logs so that everything a copied
+    // record points at — entity refs in relations, refs inside reverse/delete
+    // blobs, and mutation refs (undo/redo payloads, created/updated provenance)
+    // — refers to the copy, never the source.
     const refMap = new Map<Ref, Ref>()
+    const remap = new Map<Ref, Ref>()
     const sessionRef = adapter.session.sessionRef ?? adapter.session.ref ?? null
     const mutations = kept.map((mutation: Mutation) => {
-        // Mint fresh refs for entities this mutation creates *before* remapping
-        // its payload, so a payload referencing its own created entity is
-        // covered. Earlier mutations' creates are already in refMap; base refs
-        // are absent and stay untouched.
+        // Mint fresh refs for entities this mutation creates, and a fresh
+        // mutation ref, *before* remapping — so a payload/log referencing its
+        // own created entity or its own mutation ref is covered. Earlier
+        // mutations' refs are already mapped; base refs are absent and stay.
         for (const oldRef of createdRefsOf(mutation)) {
             if (refMap.has(oldRef)) continue
             const kind = entityFromRef(oldRef)
             if (adapter.models?.[kind]?.singleton) {
                 throw new SingletonDuplicationError(kind)
             }
-            refMap.set(oldRef, generateRef(kind, adapter.snowflake, timestamp))
+            const newRef = generateRef(kind, adapter.snowflake, timestamp)
+            refMap.set(oldRef, newRef)
+            remap.set(oldRef, newRef)
         }
         const ref = generateRef("Mutation", adapter.snowflake, timestamp)
-        const remappedPayload = remapValue(mutation.payload, refMap)
+        remap.set(mutation.ref, ref)
+        const remappedPayload = remapValue(mutation.payload, remap)
         let payload = remappedPayload
         if (options.transformPayload) {
             // The generic remap only swaps refs for same-kind refs, so it stays
             // valid; transformPayload is arbitrary, so validate its output
             // against the operation schema (it would otherwise persist silently
-            // and only surface on a later run/load).
+            // and only surface on a later run/load). The hook gets the entity
+            // refMap, matching its documented contract.
             payload = options.transformPayload(remappedPayload, refMap)
             const operation = findOperation(adapter.operations, mutation)
             const parsed = operation.payloadSchema.safeParse(payload)
@@ -140,13 +151,13 @@ const buildCopies = (
                 )
             }
         }
-        // Remap the leading ref of each log entry (create entries pin the new
-        // refs on run/load). The trailing reverse/document blob is recomputed
-        // when the copy is run, so we leave it untouched.
-        const log = (mutation.log ?? []).map((entry: any[]) => {
-            const [entryRef, ...rest] = entry
-            return [refMap.get(entryRef) ?? entryRef, ...rest]
-        })
+        // Deep-remap each log entry: the leading ref (create entries pin the new
+        // refs on run/load) AND the trailing reverse-patch / deleted-document
+        // blob, whose refs undo/redo would otherwise write back as source refs.
+        // remapValue also deep-clones, so the copy shares nothing with source.
+        const log = (mutation.log ?? []).map((entry: any[]) =>
+            remapValue(entry, remap),
+        )
         return {
             ref,
             timestamp,
