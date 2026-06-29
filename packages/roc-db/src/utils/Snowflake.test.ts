@@ -55,7 +55,7 @@ describe("Snowflake", () => {
         expect(ids[4096]).toBeUndefined()
         expect(ids[0]).not.toEqual(ids[4095])
         expect(() => snowflake.generate(Number(date))).toThrowError(
-            "Error! Sequence overflow",
+            /Snowflake sequence overflow/,
         )
     })
 

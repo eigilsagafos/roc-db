@@ -40,7 +40,16 @@ export class Snowflake {
             // this.sequence
             if (this.sequence === 0) {
                 //TODO: Wait for next millisecond
-                throw new Error("Error! Sequence overflow")
+                throw new Error(
+                    `Snowflake sequence overflow: more than 4096 ids requested ` +
+                        `within a single millisecond (${new Date(
+                            currentTimestamp,
+                        ).toISOString()}) on group ${this.groupId}/server ${
+                            this.serverId
+                        }. The 12-bit per-millisecond sequence is exhausted — ` +
+                        `this usually means too many refs were generated in one ` +
+                        `tight operation (e.g. duplicating a very large changeSet).`,
+                )
                 // while (currentTimestamp <= this.lastTimestamp) {
                 //     currentTimestamp = Date.now()
                 // }
