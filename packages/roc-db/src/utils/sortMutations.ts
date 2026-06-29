@@ -1,3 +1,5 @@
+import { idFromRef } from "./idFromRef"
+
 export const sortMutations = documents => {
     // Pick a single sort key per call:
     //   - If every mutation has `persistedAt` (typical on the server, or a
@@ -13,6 +15,14 @@ export const sortMutations = documents => {
         if (a[key] !== b[key]) {
             return a[key].localeCompare(b[key])
         }
-        return a.ref.localeCompare(b.ref)
+        // Deterministic tiebreak on the snowflake id so equal keys (e.g. a
+        // whole batch sharing one `persistedAt`, or two writes in the same
+        // millisecond) still replay in creation order. The id's high bits are
+        // the timestamp, so numeric id order == single-client creation order.
+        // Compare as BigInt: ids exceed Number.MAX_SAFE_INTEGER and vary in
+        // decimal length, so a lexical compare would misorder them.
+        const aId = BigInt(idFromRef(a.ref))
+        const bId = BigInt(idFromRef(b.ref))
+        return aId < bId ? -1 : aId > bId ? 1 : 0
     })
 }
