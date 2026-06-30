@@ -22,8 +22,10 @@ const addUndefinedCheck = schema => {
 
 type MutationRef = `Mutation/${number}`
 
-type EntityRef<Name extends string, Singleton extends boolean> =
-    Singleton extends true ? Name : `${Name}/${number}`
+type EntityRef<
+    Name extends string,
+    Singleton extends boolean,
+> = Singleton extends true ? Name : `${Name}/${number}`
 
 type EntitySchemaOutput<
     Name extends string,
@@ -53,6 +55,12 @@ export class Entity<
 > {
     name: Name
     singleton: Singleton
+    // Role markers. A changeSet entity groups pending mutations (its ref is used
+    // as a changeSetRef); a version entity carries a base snapshot a changeSet
+    // resolves from. Both are plain flags (they don't affect the ref type), used
+    // for validation here and — in a later phase — runtime guardrails.
+    changeSet: boolean
+    version: boolean
     indexedDataKeys: string[]
     uniqueDataKeys: string[]
     schema: z.ZodType<
@@ -64,6 +72,8 @@ export class Entity<
         name: Name,
         args: {
             singleton?: Singleton
+            changeSet?: boolean
+            version?: boolean
             data?: Data
             children?: Children
             parents?: Parents
@@ -74,6 +84,8 @@ export class Entity<
     ) {
         this.name = name
         this.singleton = (args.singleton ?? false) as Singleton
+        this.changeSet = args.changeSet ?? false
+        this.version = args.version ?? false
         this.indexedDataKeys = args.indexedDataKeys ?? []
         this.uniqueDataKeys = args.uniqueDataKeys ?? []
         if (this.singleton) {
@@ -82,6 +94,25 @@ export class Entity<
                     `Entity "${name}" is a singleton; indexedDataKeys and uniqueDataKeys are not allowed`,
                 )
             }
+        }
+        const dataShape: Record<string, unknown> =
+            (args.data as any)?.shape ?? {}
+        if (this.changeSet) {
+            if (this.singleton || this.version) {
+                throw new Error(
+                    `Entity "${name}" cannot be a changeSet and also a singleton/version`,
+                )
+            }
+            if (!("appliedAt" in dataShape)) {
+                throw new Error(
+                    `Entity "${name}" is a changeSet; its data schema must declare an "appliedAt" field`,
+                )
+            }
+        }
+        if (this.version && !("snapshot" in dataShape)) {
+            throw new Error(
+                `Entity "${name}" is a version; its data schema must declare a "snapshot" field`,
+            )
         }
         this.refSchema = (
             this.singleton ? z.literal(name) : refSchemaGenerator(name)

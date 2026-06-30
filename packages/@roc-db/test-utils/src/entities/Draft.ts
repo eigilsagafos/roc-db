@@ -3,6 +3,7 @@ import { z } from "zod"
 import { PostRefSchema } from "../schemas"
 
 export const Draft = new Entity("Draft", {
+    changeSet: true,
     data: z.object({
         appliedAt: z.string().optional(),
     }),
