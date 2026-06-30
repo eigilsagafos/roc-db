@@ -9,6 +9,7 @@ import { deepEqual } from "../utils/deepPatch"
 import { entityFromRef } from "../utils/entityFromRef"
 import { generateRef } from "../utils/generateRef"
 import { sortMutations } from "../utils/sortMutations"
+import { assertChangeSetKind } from "./assertChangeSetKind"
 import { findOperation } from "./findOperation"
 import { generateTransactionCache } from "./generateTransactionCache"
 import { loadChangeSetBase } from "./loadChangeSetBase"
@@ -354,6 +355,8 @@ export const duplicateChangeSetMutations = (
     options: DuplicateChangeSetMutationsOptions = {},
 ) => {
     validateRefs(sourceChangeSetRef, targetChangeSetRef)
+    assertChangeSetKind(txn.adapter, sourceChangeSetRef)
+    assertChangeSetKind(txn.adapter, targetChangeSetRef)
     if (txn.adapter.async) {
         return duplicateAsync(
             txn,

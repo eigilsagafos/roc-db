@@ -9,6 +9,7 @@ export { ConflictError } from "./errors/ConflictError"
 export { NotFoundError } from "./errors/NotFoundError"
 export { ChangeSetIntegrityError } from "./errors/ChangeSetIntegrityError"
 export { ChangeSetNotEmptyError } from "./errors/ChangeSetNotEmptyError"
+export { NotAChangeSetError } from "./errors/NotAChangeSetError"
 export { SingletonDuplicationError } from "./errors/SingletonDuplicationError"
 export { createUniqueConstraintConflictError } from "./errors/createUniqueConstraintConflictError"
 

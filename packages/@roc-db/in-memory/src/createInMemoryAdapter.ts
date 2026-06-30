@@ -21,6 +21,7 @@ export const createInMemoryAdapter = <
     entities,
     snowflake = new Snowflake(1, 1),
     optimistic = true,
+    strictChangeSets = false,
     session,
     engine,
 }: {
@@ -28,6 +29,7 @@ export const createInMemoryAdapter = <
     entities: Entities
     snowflake?: Snowflake
     optimistic?: boolean
+    strictChangeSets?: boolean
     session: Session
     engine?: {
         entities: Map<string, any>
@@ -44,6 +46,7 @@ export const createInMemoryAdapter = <
             functions,
             snowflake,
             optimistic,
+            strictChangeSets,
             session,
         },
         engine ?? {

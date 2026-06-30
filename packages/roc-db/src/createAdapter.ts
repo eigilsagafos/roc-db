@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { assertChangeSetKind } from "./lib/assertChangeSetKind"
 import { execute } from "./lib/execute"
 import { loadMutations } from "./lib/loadMutations"
 import { persistOptimisticMutations } from "./lib/persistOptimisticMutations"
@@ -123,6 +124,7 @@ export const createAdapter = <
                 new Date().toISOString(),
             ),
         changeSet: (changeSetRef: Ref) => {
+            assertChangeSetKind(adapterOptions, changeSetRef)
             const { onChangeSetInit } = adapterOptions.functions
             return createAdapter(
                 { ...adapterOptions, changeSetRef },
