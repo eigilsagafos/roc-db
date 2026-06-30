@@ -182,6 +182,19 @@ const changeSetMutations = (adapter: any, changeSetRef: string) =>
         ),
     )
 
+const TS = "2020-01-01T00:00:00.000Z"
+const makeDoc = (ref: string, entity: string, rest: any) => ({
+    ref,
+    entity,
+    created: { mutationRef: "Mutation/1", timestamp: TS },
+    updated: { mutationRef: "Mutation/1", timestamp: TS },
+    data: {},
+    children: {},
+    parents: {},
+    ancestors: {},
+    ...rest,
+})
+
 describe("duplicateChangeSetMutations", () => {
     test("remaps every created ref to a distinct new ref with no overlap", () => {
         const adapter = makeAdapter()
@@ -607,5 +620,57 @@ describe("duplicateChangeSetMutations", () => {
         // ...so it must also be reflected in the delete blob — otherwise undo
         // restores B with a source ref. No source ref may survive anywhere.
         expect(JSON.stringify(mutations)).not.toContain(a.ref)
+    })
+
+    test("resolves base entities from the source's version snapshot (seeding)", () => {
+        const adapter = makeAdapter()
+        // basePost lives ONLY in the version snapshot, never in the live store —
+        // so the duplicate can only resolve it if loadChangeSetBase seeds it.
+        const basePost = makeDoc("Post/900000000000", "Post", {
+            data: { title: "Base", tags: [] },
+            children: { blocks: [] },
+        })
+        const versionRef = "PostVersion/900000000001"
+        adapter._engineOpts.entities.set(
+            versionRef,
+            makeDoc(versionRef, "PostVersion", {
+                data: { version: 1, snapshot: [basePost] },
+                parents: { post: basePost.ref },
+            }),
+        )
+        const sourceRef = "Draft/900000000002"
+        adapter._engineOpts.entities.set(
+            sourceRef,
+            makeDoc(sourceRef, "Draft", {
+                parents: { post: basePost.ref, version: versionRef },
+            }),
+        )
+        // A changeSet mutation that reads + patches the snapshot-only base.
+        adapter._engineOpts.mutations.set("Mutation/900000000003", {
+            ref: "Mutation/900000000003",
+            timestamp: TS,
+            operation: { name: "createBlockRow", version: 1 },
+            payload: { parentRef: basePost.ref },
+            log: [["BlockRow/900000000004", "create"]],
+            changeSetRef: sourceRef,
+            debounceCount: 0,
+            identityRef: "User/42",
+        })
+
+        const [livePost] = adapter.createPost({ title: "P" })
+        const [target] = adapter.createDraft({ postRef: livePost.ref })
+
+        // Succeeds only because basePost was seeded from the snapshot; otherwise
+        // the replayed createBlockRow's readEntity(basePost) would throw.
+        const [{ mutations, refMap }] = adapter.duplicateInto({
+            sourceRef,
+            targetRef: target.ref,
+        })
+        expect(mutations).toHaveLength(1)
+        const newRow = refMap.get("BlockRow/900000000004")
+        expect(newRow).toBeDefined()
+        expect(newRow).not.toBe("BlockRow/900000000004")
+        // The base was never materialized into the live store.
+        expect(adapter._engineOpts.entities.has(basePost.ref)).toBe(false)
     })
 })

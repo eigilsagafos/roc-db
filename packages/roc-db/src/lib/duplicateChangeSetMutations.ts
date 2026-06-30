@@ -11,6 +11,7 @@ import { generateRef } from "../utils/generateRef"
 import { sortMutations } from "../utils/sortMutations"
 import { findOperation } from "./findOperation"
 import { generateTransactionCache } from "./generateTransactionCache"
+import { loadChangeSetBase } from "./loadChangeSetBase"
 import { parseRequestPayload } from "./parseRequestPayload"
 import { runAsyncFunctionChain } from "./runAsyncFunctionChain"
 import { runSyncFunctionChain } from "./runSyncFunctionChain"
@@ -247,25 +248,19 @@ const validateRefs = (sourceChangeSetRef: Ref, targetChangeSetRef: Ref) => {
     }
 }
 
-// Seed the scratch cache with the source changeSet's base (its version
-// snapshot) so replayed operations resolve base entities. We seed from the
-// SOURCE (committed) — never the target — so duplicating works even when the
-// target changeSet was created earlier in this same, not-yet-committed
-// transaction. Returns the source changeSet doc (for existence checking).
+// Seed the scratch cache with the SOURCE changeSet's base (its version
+// snapshot), via the shared loadChangeSetBase so duplication resolves the base
+// exactly as initializeChangeSet does. We seed from the source (committed) —
+// never the target — so duplicating works even when the target changeSet was
+// created earlier in this same, not-yet-committed transaction.
 const seedBaseSync = (
     txn: WriteTransaction,
     sourceChangeSetRef: Ref,
     cache: any,
 ) => {
-    const sourceDoc = txn.adapter.functions.readEntity(txn, sourceChangeSetRef)
+    const sourceDoc = txn.readEntity(sourceChangeSetRef, false)
     if (!sourceDoc) throw new NotFoundError(sourceChangeSetRef)
-    const versionRef = sourceDoc.parents?.version
-    if (versionRef) {
-        const versionDoc = txn.adapter.functions.readEntity(txn, versionRef)
-        for (const doc of versionDoc?.data?.snapshot ?? []) {
-            cache.entities.set(doc.ref, doc)
-        }
-    }
+    loadChangeSetBase(txn as any, sourceDoc, cache)
 }
 
 const seedBaseAsync = async (
@@ -273,21 +268,9 @@ const seedBaseAsync = async (
     sourceChangeSetRef: Ref,
     cache: any,
 ) => {
-    const sourceDoc = await txn.adapter.functions.readEntity(
-        txn,
-        sourceChangeSetRef,
-    )
+    const sourceDoc = await txn.readEntity(sourceChangeSetRef, false)
     if (!sourceDoc) throw new NotFoundError(sourceChangeSetRef)
-    const versionRef = sourceDoc.parents?.version
-    if (versionRef) {
-        const versionDoc = await txn.adapter.functions.readEntity(
-            txn,
-            versionRef,
-        )
-        for (const doc of versionDoc?.data?.snapshot ?? []) {
-            cache.entities.set(doc.ref, doc)
-        }
-    }
+    await loadChangeSetBase(txn as any, sourceDoc, cache)
 }
 
 const duplicateSync = (

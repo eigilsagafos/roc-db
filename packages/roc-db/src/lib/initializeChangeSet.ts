@@ -3,6 +3,7 @@ import type { Mutation } from "../types/Mutation"
 import type { Ref } from "../types/Ref"
 import type { Transaction } from "../types/Transaction"
 import { findOperation } from "./findOperation"
+import { loadChangeSetBase } from "./loadChangeSetBase"
 import { parseRequestPayload } from "./parseRequestPayload"
 import { runAsyncFunctionChain } from "./runAsyncFunctionChain"
 import { runSyncFunctionChain } from "./runSyncFunctionChain"
@@ -40,17 +41,7 @@ const prepareInitTransaction = (txn: Transaction, mutation: Mutation) => {
 const initializeChangeSetAsync = async (txn: Transaction) => {
     const changeSetDoc = await txn.readEntity(txn.changeSetRef, false)
     verifyChangeSet(changeSetDoc)
-    if (changeSetDoc.parents.version) {
-        const versionDoc = await txn.readEntity(
-            changeSetDoc.parents.version,
-            false,
-        )
-        if (versionDoc?.data?.snapshot) {
-            for (const doc of versionDoc.data.snapshot) {
-                txn.changeSet.entities.set(doc.ref, doc)
-            }
-        }
-    }
+    await loadChangeSetBase(txn, changeSetDoc, txn.changeSet)
     const mutations = await txn.adapter.functions.getChangeSetMutations(
         txn,
         txn.changeSetRef as Ref,
@@ -70,14 +61,7 @@ const initializeChangeSetAsync = async (txn: Transaction) => {
 export const initializeChangeSetSync = (txn: Transaction) => {
     const changeSetDoc = txn.readEntity(txn.changeSetRef, false)
     verifyChangeSet(changeSetDoc)
-    if (changeSetDoc.parents.version) {
-        const versionDoc = txn.readEntity(changeSetDoc.parents.version, false)
-        if (versionDoc?.data?.snapshot) {
-            for (const doc of versionDoc.data.snapshot) {
-                txn.changeSet.entities.set(doc.ref, doc)
-            }
-        }
-    }
+    loadChangeSetBase(txn, changeSetDoc, txn.changeSet)
     const mutations = txn.adapter.functions.getChangeSetMutations(
         txn,
         txn.changeSetRef as Ref,
