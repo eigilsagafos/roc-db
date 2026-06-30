@@ -26,5 +26,9 @@ export const refSchemaGenerator = <const Entities extends string[]>(
         z.literal("/"),
         z.number().int(),
     ])
+    // Tag the schema with the entity kinds it accepts, so callers (e.g. the
+    // changeSet/version cross-entity validation) can recover them without
+    // depending on zod internals. Read via `entityKindsFromRefSchema`.
+    ;(specific as any).entityKinds = entityKinds
     return specific
 }

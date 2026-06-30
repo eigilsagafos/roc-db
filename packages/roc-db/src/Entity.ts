@@ -61,6 +61,9 @@ export class Entity<
     // for validation here and — in a later phase — runtime guardrails.
     changeSet: boolean
     version: boolean
+    // Raw parents schema, kept so the adapter can introspect parent ref kinds
+    // (e.g. validate a changeSet's version parent points at a version entity).
+    parents?: Parents
     indexedDataKeys: string[]
     uniqueDataKeys: string[]
     schema: z.ZodType<
@@ -86,6 +89,7 @@ export class Entity<
         this.singleton = (args.singleton ?? false) as Singleton
         this.changeSet = args.changeSet ?? false
         this.version = args.version ?? false
+        this.parents = args.parents
         this.indexedDataKeys = args.indexedDataKeys ?? []
         this.uniqueDataKeys = args.uniqueDataKeys ?? []
         if (this.singleton) {
