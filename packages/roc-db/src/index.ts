@@ -10,6 +10,7 @@ export { NotFoundError } from "./errors/NotFoundError"
 export { ChangeSetIntegrityError } from "./errors/ChangeSetIntegrityError"
 export { ChangeSetNotEmptyError } from "./errors/ChangeSetNotEmptyError"
 export { NotAChangeSetError } from "./errors/NotAChangeSetError"
+export { NotAVersionError } from "./errors/NotAVersionError"
 export { SingletonDuplicationError } from "./errors/SingletonDuplicationError"
 export { createUniqueConstraintConflictError } from "./errors/createUniqueConstraintConflictError"
 

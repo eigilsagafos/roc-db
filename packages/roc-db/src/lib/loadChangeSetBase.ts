@@ -1,4 +1,5 @@
 import type { Transaction } from "../types/Transaction"
+import { assertVersionKind } from "./assertChangeSetKind"
 
 // Seed `cache.entities` with a changeSet's base — the snapshot carried by its
 // `parents.version` entity. This centralizes the version/snapshot convention so
@@ -35,6 +36,7 @@ const loadChangeSetBaseSync = (
 ) => {
     const versionRef = changeSetDoc?.parents?.version
     if (!versionRef) return
+    assertVersionKind(txn.adapter, versionRef)
     seedSnapshot(cache, (txn as any).readEntity(versionRef, false))
 }
 
@@ -45,5 +47,6 @@ const loadChangeSetBaseAsync = async (
 ) => {
     const versionRef = changeSetDoc?.parents?.version
     if (!versionRef) return
+    assertVersionKind(txn.adapter, versionRef)
     seedSnapshot(cache, await (txn as any).readEntity(versionRef, false))
 }
