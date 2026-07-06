@@ -11,6 +11,6 @@ export type WriteOperation<
     readonly version: number
     readonly debounce: number
     readonly changeSetOnly: boolean
-    readonly callback: (payload: z.output<PayloadSchema>) => any
+    readonly callback: (txn: any, session?: any) => any
     readonly mutationSchema: ZodSchema
 }

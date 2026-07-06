@@ -2,6 +2,7 @@ import { BadRequestError } from "../errors/BadRequestError"
 import type { AdapterOptions } from "../types/AdapterOptions"
 import type { Mutation } from "../types/Mutation"
 import type { WriteOperation } from "../types/WriteOperation"
+import type { WriteRequest } from "../types/WriteRequest"
 import { deepEqual } from "../utils/deepPatch"
 import { defaultBeginRequest } from "./defaultBeginRequest"
 import { defaultBeginTransaction } from "./defaultBeginTransaction"
@@ -50,7 +51,7 @@ const persistOptimisticMutationsSync = (
                 payload: mutation.payload,
                 changeSetRef: mutation.changeSetRef,
                 optimisticMutation: { ...mutation, persistedAt },
-            }
+            } as unknown as WriteRequest
 
             const [, persistedMutation] = beginRequest(
                 request,
@@ -115,7 +116,7 @@ const persistOptimisticMutationsAsync = async (
                 payload: mutation.payload,
                 changeSetRef: mutation.changeSetRef,
                 optimisticMutation: { ...mutation, persistedAt },
-            }
+            } as unknown as WriteRequest
             const [, persistedMutation] = await beginRequest(
                 request,
                 engineOptsTxn,

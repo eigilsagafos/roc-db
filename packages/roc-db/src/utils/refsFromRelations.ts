@@ -1,5 +1,9 @@
-export const refsFromRelations = relations => {
-    const res = []
+import type { Ref } from "../types/Ref"
+
+export const refsFromRelations = (
+    relations: Record<string, Ref | Ref[]> | undefined | null,
+): Ref[] => {
+    const res: Ref[] = []
     for (const property in relations) {
         const val = relations[property]
         if (Array.isArray(val)) {

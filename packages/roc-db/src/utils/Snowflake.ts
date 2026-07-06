@@ -30,7 +30,7 @@ export class Snowflake {
         this.epoch = epoch
     }
 
-    public generate(currentTimestamp = Date.now()): string {
+    public generate(currentTimestamp: number | string = Date.now()): string {
         if (typeof currentTimestamp !== "number") {
             currentTimestamp = new Date(currentTimestamp).getTime()
         }

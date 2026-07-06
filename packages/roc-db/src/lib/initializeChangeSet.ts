@@ -2,6 +2,7 @@ import { BadRequestError } from "../errors/BadRequestError"
 import type { Mutation } from "../types/Mutation"
 import type { Ref } from "../types/Ref"
 import type { Transaction } from "../types/Transaction"
+import type { WriteRequest } from "../types/WriteRequest"
 import { findOperation } from "./findOperation"
 import { loadChangeSetBase } from "./loadChangeSetBase"
 import { parseRequestPayload } from "./parseRequestPayload"
@@ -25,7 +26,7 @@ const prepareInitTransaction = (txn: Transaction, mutation: Mutation) => {
         operation,
         payload: mutation.payload,
         changeSetRef: txn.changeSetRef,
-    }
+    } as unknown as WriteRequest
     const payload = parseRequestPayload(request)
     return new WriteTransaction(
         request,
@@ -39,7 +40,7 @@ const prepareInitTransaction = (txn: Transaction, mutation: Mutation) => {
 }
 
 const initializeChangeSetAsync = async (txn: Transaction) => {
-    const changeSetDoc = await txn.readEntity(txn.changeSetRef, false)
+    const changeSetDoc = await txn.readEntity(txn.changeSetRef as Ref, false)
     verifyChangeSet(changeSetDoc)
     await loadChangeSetBase(txn, changeSetDoc, txn.changeSet)
     const mutations = await txn.adapter.functions.getChangeSetMutations(
@@ -59,7 +60,7 @@ const initializeChangeSetAsync = async (txn: Transaction) => {
 }
 
 export const initializeChangeSetSync = (txn: Transaction) => {
-    const changeSetDoc = txn.readEntity(txn.changeSetRef, false)
+    const changeSetDoc = txn.readEntity(txn.changeSetRef as Ref, false)
     verifyChangeSet(changeSetDoc)
     loadChangeSetBase(txn, changeSetDoc, txn.changeSet)
     const mutations = txn.adapter.functions.getChangeSetMutations(
@@ -76,7 +77,7 @@ export const initializeChangeSetSync = (txn: Transaction) => {
     txn.changeSet.initialized = true
 }
 
-const verifyChangeSet = changeSetDoc => {
+const verifyChangeSet = (changeSetDoc: any) => {
     if (!changeSetDoc)
         throw new BadRequestError("The provided changeSetRef does not exist")
     if (changeSetDoc?.data?.appliedAt)

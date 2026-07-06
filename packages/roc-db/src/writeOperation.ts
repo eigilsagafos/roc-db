@@ -33,7 +33,7 @@ export const writeOperation = <
         mutationSchema: mutationSchemaGenerator(
             name,
             payloadSchema,
-            mutationLogSchema,
+            mutationLogSchema as any,
             changeSetOnly,
         ),
     })

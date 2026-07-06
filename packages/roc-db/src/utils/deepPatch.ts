@@ -26,7 +26,7 @@ export const deepEqual = (a: any, b: any): boolean => {
     return false
 }
 
-export const deepMergePatchSet = (current, patch) => {
+export const deepMergePatchSet = (current: any, patch: any): any => {
     // Handle null or undefined
     if (patch == null) return patch
     if (current == null) return patch
@@ -43,7 +43,7 @@ export const deepMergePatchSet = (current, patch) => {
     return result
 }
 
-export const deepPatch = (original, patch) => {
+export const deepPatch = (original: any, patch: any): [any, any] => {
     // No patch provided, return original unchanged
     if (patch === undefined) {
         return [original, undefined]
@@ -75,8 +75,8 @@ export const deepPatch = (original, patch) => {
     }
 
     // Both are plain objects, patch recursively
-    const result = { ...original }
-    const reversePatch = {}
+    const result: Record<string, any> = { ...original }
+    const reversePatch: Record<string, any> = {}
 
     Object.keys(patch).forEach(key => {
         if (patch[key] === null) {

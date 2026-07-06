@@ -15,16 +15,16 @@ export const deleteEntity = (
     }
 }
 
-const removeIndexEntriesFromMap = (document, indexMap) => {
+const removeIndexEntriesFromMap = (document: any, indexMap: any) => {
     for (const [key, value] of document.__.index) {
         const entry = `${document.entity}:${key}:${JSON.stringify(value)}`
         const arr = (indexMap.get(entry) || []).filter(
-            ref => ref !== document.ref,
+            (ref: any) => ref !== document.ref,
         )
         indexMap.set(entry, arr)
     }
 }
-const removeUniqueEntriesFromMap = (document, uniqueMap) => {
+const removeUniqueEntriesFromMap = (document: any, uniqueMap: any) => {
     for (const [key, value] of document.__.unique) {
         const entry = `${document.entity}:${key}:${JSON.stringify(value)}`
         console.log("removing unique entry", entry)
@@ -32,7 +32,7 @@ const removeUniqueEntriesFromMap = (document, uniqueMap) => {
     }
 }
 
-const applyInLog = (txn: WriteTransaction, ref: Ref, currentDocument) => {
+const applyInLog = (txn: WriteTransaction, ref: Ref, currentDocument: any) => {
     txn.changeSet.entities.set(ref, DELETED_IN_CHANGE_SET_SYMBOL)
     const model = txn.adapter.models[currentDocument.entity]
     const validated = validateAndIndexDocument(model, currentDocument)
@@ -45,9 +45,9 @@ const applyInLog = (txn: WriteTransaction, ref: Ref, currentDocument) => {
     if (txn.changeSet.initialized) {
         if (txn.log.has(ref)) {
             const event = txn.log.get(ref)
-            if (event[0] === "create") {
+            if (event?.[0] === "create") {
                 txn.log.delete(ref)
-            } else if (event[0] === "update") {
+            } else if (event?.[0] === "update") {
                 txn.log.set(ref, ["delete", currentDocument])
             } else {
                 throw new Error("Unhandled event type")

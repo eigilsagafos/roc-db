@@ -2,7 +2,10 @@ import type { Ref } from "../types/Ref"
 import type { Transaction } from "../types/Transaction"
 import { refsFromRelations } from "../utils/refsFromRelations"
 
-export const findDependents = (txn: Transaction, ref: Ref): Ref[] | Promise<Ref[]> => {
+export const findDependents = (
+    txn: Transaction,
+    ref: Ref,
+): Ref[] | Promise<Ref[]> => {
     if (txn.adapter.async) {
         return findDependentsAsync(txn, ref)
     } else {
@@ -12,7 +15,7 @@ export const findDependents = (txn: Transaction, ref: Ref): Ref[] | Promise<Ref[
 
 const findDependentsSync = (txn: Transaction, ref: Ref) => {
     const res = txn.readEntity(ref)
-    const children = refsFromRelations(res.children)
+    const children = refsFromRelations((res as any).children)
     let dependents: Ref[] = []
     for (const childRef of children) {
         dependents.push(...findDependentsSync(txn, childRef))
@@ -23,7 +26,7 @@ const findDependentsSync = (txn: Transaction, ref: Ref) => {
 
 const findDependentsAsync = async (txn: Transaction, ref: Ref) => {
     const res = await txn.readEntity(ref)
-    const children = refsFromRelations(res.children)
+    const children = refsFromRelations((res as any).children)
     let dependents: Ref[] = []
     for (const childRef of children) {
         dependents.push(...(await findDependentsAsync(txn, childRef)))

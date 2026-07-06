@@ -9,7 +9,7 @@ export type ReadOperation<
     readonly name: Name
     readonly payloadSchema: PayloadSchema
     readonly ouputSchema: OutputSchema
-    readonly callback: (s: string) => {}
+    readonly callback: (txn: any, session?: any) => any
 }
 
 // (input: Input, changeSetRef?: Ref): Output

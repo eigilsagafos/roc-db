@@ -112,10 +112,10 @@ const readEntityByUniqueFieldSync = (
 
 const handleReadResponse = (
     txn: Transaction,
-    document = null,
-    entity,
-    field,
-    value,
+    document: any = null,
+    entity: string,
+    field: string,
+    value: any,
     throwIfMissing: boolean,
 ) => {
     if (!document && throwIfMissing)

@@ -9,8 +9,8 @@ export const createMutationSync = <
 >(
     request: WriteRequest,
     engine: Engine,
-    adapter,
-    payload,
+    adapter: any,
+    payload: any,
 ) => {
     if (request.optimisticMutation) {
         const current = adapter.functions.readMutation(

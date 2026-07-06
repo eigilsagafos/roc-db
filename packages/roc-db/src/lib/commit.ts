@@ -20,13 +20,15 @@ export const commit = (txn: WriteTransaction, isChangeSetApply = false) => {
     }
     if (txn.adapter.validateUpdate) {
         docsToUpdate.forEach(doc => {
-            const [, , , , originalDoc] = txn.log.get(doc.ref)
+            const [, , , , originalDoc] = txn.log.get(
+                doc.ref,
+            ) as unknown as any[]
             txn.adapter.validateUpdate(txn, doc, originalDoc)
         })
     }
     if (txn.adapter.validateDelete) {
         refsToDelete.forEach(ref => {
-            const [, doc] = txn.log.get(ref)
+            const [, doc] = txn.log.get(ref) as unknown as any[]
             txn.adapter.validateDelete(txn, doc)
         })
     }
@@ -38,10 +40,10 @@ export const commit = (txn: WriteTransaction, isChangeSetApply = false) => {
     })
 }
 
-const convertLog = log => {
-    const docsToCreate = []
-    const docsToUpdate = []
-    const refsToDelete = []
+const convertLog = (log: WriteTransaction["log"]) => {
+    const docsToCreate: any[] = []
+    const docsToUpdate: any[] = []
+    const refsToDelete: any[] = []
     for (const [ref, [action, document]] of log) {
         switch (action) {
             case "create": {

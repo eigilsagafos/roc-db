@@ -21,6 +21,7 @@ const updateEntityAsync = async (
     updateBody: any,
 ) => {
     const currentDoc = await txn.readEntity(ref)
+    // @ts-expect-error TODO: updateEntity is unimplemented (WIP)
     const [updatedEntity, reversePatch] = patch(txn, currentEntity, patchSet)
     txn.changeSet.entities.set(ref, updatedEntity)
     if (txn.changeSet.initialized) {

@@ -3,7 +3,11 @@ import { executeReadRequestSync } from "./executeReadRequestSync"
 import { executeWriteRequestSync } from "./executeWriteRequestSync"
 import { isWriteRequest } from "./isWriteRequest"
 
-export const executeSync = (request: RocDBRequest, engineOpts, adapter) => {
+export const executeSync = (
+    request: RocDBRequest,
+    engineOpts: any,
+    adapter: any,
+) => {
     if (isWriteRequest(request)) {
         return executeWriteRequestSync(request, engineOpts, adapter)
     } else {

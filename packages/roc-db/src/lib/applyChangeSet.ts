@@ -9,7 +9,7 @@ import { runSyncFunctionChain } from "./runSyncFunctionChain"
 import { sortMutations } from "../utils/sortMutations"
 import { WriteTransaction } from "./WriteTransaction"
 
-export const applyChangeSet = (txn: WriteTransaction, ref) => {
+export const applyChangeSet = (txn: WriteTransaction, ref: Ref) => {
     assertChangeSetKind(txn.adapter, ref)
     if (txn.adapter.async) {
         return applyChangeSetAsync(txn, ref)

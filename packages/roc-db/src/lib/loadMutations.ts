@@ -1,6 +1,7 @@
 import type { AdapterOptions } from "../types/AdapterOptions"
 import type { Mutation } from "../types/Mutation"
 import type { WriteOperation } from "../types/WriteOperation"
+import type { WriteRequest } from "../types/WriteRequest"
 import { defaultBeginRequest } from "./defaultBeginRequest"
 import { defaultBeginTransaction } from "./defaultBeginTransaction"
 import { executeWriteRequestAsyncInternal } from "./executeWriteRequestAsync"
@@ -49,7 +50,7 @@ const loadMutationsSync = (
                 changeSetRef: mutation.changeSetRef,
                 optimisticMutation: mutation,
                 isBatch: true,
-            }
+            } as unknown as WriteRequest
 
             const result = beginRequest(
                 request,
@@ -103,7 +104,7 @@ const loadMutationsAsync = async (
                 changeSetRef: mutation.changeSetRef,
                 optimisticMutation: mutation,
                 isBatch: true,
-            }
+            } as unknown as WriteRequest
             const result = await beginRequest(
                 request,
                 engineOptsTxn,

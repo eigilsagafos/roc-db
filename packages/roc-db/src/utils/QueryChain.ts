@@ -10,23 +10,25 @@ type AnyQuery<I extends any[], O> =
     | QueryArrayClass<O>
     | undefined
 
-type UnwrapInner<T> = T extends QueryObjectClass<infer O>
-    ? O
-    : T extends QueryArrayClass<infer O>
-      ? O
-      : T extends QueryChainClass<infer O>
+type UnwrapInner<T> =
+    T extends QueryObjectClass<infer O>
         ? O
-        : T
+        : T extends QueryArrayClass<infer O>
+          ? O
+          : T extends QueryChainClass<infer O>
+            ? O
+            : T
 
-type UnwrapOutput<O> = O extends QueryClass<any[], infer T>
-    ? UnwrapInner<T>
-    : O extends QueryObjectClass<infer T>
-      ? T
-      : O extends QueryArrayClass<infer T>
-        ? T
-        : O extends QueryChainClass<infer T>
+type UnwrapOutput<O> =
+    O extends QueryClass<any[], infer T>
+        ? UnwrapInner<T>
+        : O extends QueryObjectClass<infer T>
           ? T
-          : O
+          : O extends QueryArrayClass<infer T>
+            ? T
+            : O extends QueryChainClass<infer T>
+              ? T
+              : O
 
 type QueryChainFn = {
     // 1 query

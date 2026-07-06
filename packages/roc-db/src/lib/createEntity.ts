@@ -26,14 +26,14 @@ const generateCreateDocument = (txn: WriteTransaction, ref: Ref, body: any) => {
     }
 }
 
-const addIndexEntriesToMap = (document, indexMap) => {
+const addIndexEntriesToMap = (document: any, indexMap: any) => {
     for (const [key, value] of document.__.index) {
         const entry = `${document.entity}:${key}:${JSON.stringify(value)}`
         const arr = [document.ref, ...(indexMap.get(entry) || [])]
         indexMap.set(entry, arr)
     }
 }
-const addUniqueEntriesToMap = (document, uniqueMap) => {
+const addUniqueEntriesToMap = (document: any, uniqueMap: any) => {
     for (const [key, value] of document.__.unique) {
         const entry = `${document.entity}:${key}:${JSON.stringify(value)}`
         uniqueMap.set(entry, document.ref)

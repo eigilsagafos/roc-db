@@ -7,7 +7,7 @@ import { initializeChangeSet } from "./initializeChangeSet"
 import { ReadTransaction } from "./ReadTransaction"
 import { runSyncFunctionChain } from "./runSyncFunctionChain"
 
-const parseAndValidatePayload = (request: WriteRequest) => {
+const parseAndValidatePayload = (request: ReadRequest | WriteRequest) => {
     return request.operation.payloadSchema.parse(request.payload, {
         reportInput: process.env.NODE_ENV !== "production",
     })

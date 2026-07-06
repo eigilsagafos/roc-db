@@ -61,7 +61,9 @@ const getRootMutations = (
             changeSetRef,
         )
     })
-    return sortMutations(res)
+    // valdres' Store.txn is typed to return void, but returns the callback's
+    // value (Mutation[]) at runtime.
+    return sortMutations(res as Mutation[])
 }
 
 export const onChangeSetInit: OnChangeSetInitFunction<ValdresEngine> = (

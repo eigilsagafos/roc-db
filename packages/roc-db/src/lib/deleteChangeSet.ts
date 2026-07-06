@@ -31,9 +31,10 @@ const applyInLog = (txn: WriteTransaction, ref: Ref) => {
         if (txn.log.has(ref)) {
             throw new Error("TODO")
             const event = txn.log.get(ref)
-            if (event[0] === "create") {
+            if (event?.[0] === "create") {
                 txn.log.delete(ref)
-            } else if (event[0] === "update") {
+            } else if (event?.[0] === "update") {
+                // @ts-expect-error TODO: unreachable WIP branch references undefined currentDocument
                 txn.log.set(ref, ["delete", currentDocument])
             } else {
                 throw new Error("Unhandled event type")

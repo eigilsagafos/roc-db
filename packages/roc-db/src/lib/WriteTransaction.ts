@@ -23,10 +23,11 @@ import { readEntity } from "./readEntity"
 import { undo } from "./undo"
 import { updateEntity } from "./updateEntity"
 
-type UpdateLogItem = readonly ["update", Entity, any]
+type UpdateLogItem = readonly ["update", Entity, any, any?, any?]
 type CreateLogItem = readonly ["create", Entity]
-type DeleteLogItem = readonly ["delete", Entity]
-type LogItem = UpdateLogItem | CreateLogItem | DeleteLogItem
+type DeleteLogItem = readonly ["delete", Entity?]
+type RefLogItem = readonly ["ref"]
+type LogItem = UpdateLogItem | CreateLogItem | DeleteLogItem | RefLogItem
 type Log = Map<Ref, LogItem>
 
 export class WriteTransaction<
@@ -46,7 +47,7 @@ export class WriteTransaction<
         public mutation: Mutation,
         public optimisticRefs: [string, string, string][] = [],
         changeSet: any = undefined,
-        log = new Map([]),
+        log: Log = new Map(),
     ) {
         super(request, engineOpts, adapter, payload, changeSet)
         this.mutation = mutation
@@ -91,5 +92,9 @@ export class WriteTransaction<
     ): ReadEntityResult<R> =>
         readEntity(this, ref, throwIfMissing) as ReadEntityResult<R>
     undo = (mutationRef: MutationRef) => undo(this, mutationRef)
+    // `redo` is invoked by the redo operation but not wired as an instance
+    // method here; declared type-only so callers type-check without changing
+    // runtime behavior.
+    declare redo: (mutationRef: MutationRef) => any
     updateEntity = (ref: Ref, body: any) => updateEntity(this, ref, body)
 }

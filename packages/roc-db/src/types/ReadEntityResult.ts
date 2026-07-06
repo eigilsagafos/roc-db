@@ -1,6 +1,8 @@
 import type { Ref } from "./Ref"
 
-type EntityNameFromRef<R extends Ref> = R extends `${infer E}/${string}` ? E : never
+type EntityNameFromRef<R extends Ref> = R extends `${infer E}/${string}`
+    ? E
+    : never
 
 type BaseEntity = {
     ref: Ref

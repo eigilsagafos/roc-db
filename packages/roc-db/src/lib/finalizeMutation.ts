@@ -1,6 +1,9 @@
 import type { WriteTransaction } from "./WriteTransaction"
 
-export const finalizeMutation = (txn: WriteTransaction, isChangeSetApply) => {
+export const finalizeMutation = (
+    txn: WriteTransaction,
+    isChangeSetApply: boolean,
+) => {
     const log = [...txn.log.entries()].map(
         ([ref, [action, document, reverse]]) => {
             switch (action) {
