@@ -3,6 +3,7 @@ import { createInMemoryAdapter } from "@roc-db/in-memory"
 import { DraftRefSchema, entities, operations } from "@roc-db/test-utils"
 import { describe, expect, test } from "bun:test"
 import { z } from "zod"
+import { ApplyChangeSetError } from "../errors/ApplyChangeSetError"
 import { Query } from "../utils/Query"
 import { QueryChain } from "../utils/QueryChain"
 import { Snowflake } from "../utils/Snowflake"
@@ -77,7 +78,10 @@ describe("applyChangeSet", () => {
             caught = err
         }
 
-        expect(caught).toBeInstanceOf(Error)
+        expect(caught).toBeInstanceOf(ApplyChangeSetError)
+        expect(caught.mutationRef).toBe(throwingMutation.ref)
+        expect(caught.operationName).toBe("throwingChangeSetOp")
+        expect(caught.timestamp).toBe(throwingMutation.timestamp)
         expect(caught.message).toContain(String(throwingMutation.ref))
         expect(caught.message).toContain("throwingChangeSetOp")
         expect(caught.message).toContain(String(throwingMutation.timestamp))
@@ -109,7 +113,10 @@ describe("applyChangeSet", () => {
             caught = err
         }
 
-        expect(caught).toBeInstanceOf(Error)
+        expect(caught).toBeInstanceOf(ApplyChangeSetError)
+        expect(caught.mutationRef).toBe(throwingMutation.ref)
+        expect(caught.operationName).toBe("throwingChangeSetOp")
+        expect(caught.timestamp).toBe(throwingMutation.timestamp)
         expect(caught.message).toContain(String(throwingMutation.ref))
         expect(caught.message).toContain("throwingChangeSetOp")
         expect(caught.message).toContain(String(throwingMutation.timestamp))

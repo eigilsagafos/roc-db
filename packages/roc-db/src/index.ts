@@ -4,6 +4,7 @@ export { writeOperation } from "./writeOperation"
 export { Entity } from "./Entity"
 
 // errors
+export { ApplyChangeSetError } from "./errors/ApplyChangeSetError"
 export { BadRequestError } from "./errors/BadRequestError"
 export { ConflictError } from "./errors/ConflictError"
 export { NotFoundError } from "./errors/NotFoundError"

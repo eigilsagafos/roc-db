@@ -1,3 +1,4 @@
+import { ApplyChangeSetError } from "../errors/ApplyChangeSetError"
 import type { Mutation } from "../types/Mutation"
 import type { Ref } from "../types/Ref"
 import type { WriteRequest } from "../types/WriteRequest"
@@ -62,8 +63,12 @@ const applyChangeSetAsync = async (txn: WriteTransaction, ref: Ref) => {
 }
 
 const throwMutationContext = (mutation: Mutation, cause: unknown): never => {
-    throw new Error(
-        `applyChangeSet failed at mutation ${mutation.ref} (operation: ${mutation.operation.name}, timestamp: ${mutation.timestamp}): ${cause instanceof Error ? cause.message : String(cause)}`,
+    throw new ApplyChangeSetError(
+        {
+            mutationRef: mutation.ref,
+            operationName: mutation.operation.name,
+            timestamp: mutation.timestamp,
+        },
         { cause },
     )
 }
