@@ -6,6 +6,7 @@ export const findDebounceMutation = async (
     engine: IndexedDBEngine,
     now: number,
     mutationName: string,
+    identityRef: string,
 ) => {
     const objectStore = engine.txn.objectStore("mutations")
     const index = objectStore.index("timestamp")
@@ -24,23 +25,22 @@ export const findDebounceMutation = async (
                 if (
                     doc.operation.name === mutationName &&
                     doc.payload.ref === request.payload.ref &&
-                    doc.changeSetRef === request.changeSetRef
+                    doc.changeSetRef === request.changeSetRef &&
+                    doc.identityRef === identityRef
                 ) {
                     results.push(doc)
                 }
                 cursor.continue()
             } else {
-                if (results.length) {
-                    if (results.length > 1) {
-                        throw new Error(
-                            "Unhandled multiple debounced mutations",
-                        )
-                    }
-                    resolve(results[0])
-                } else {
-                    resolve(undefined)
+                if (results.length > 1) {
+                    reject(new Error("Unhandled multiple debounced mutations"))
+                    return
                 }
+                resolve(results[0])
             }
+        }
+        idbRequest.onerror = () => {
+            reject(idbRequest.error)
         }
     })
 }

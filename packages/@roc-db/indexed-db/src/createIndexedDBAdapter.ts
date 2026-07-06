@@ -7,6 +7,7 @@ export const createIndexedDBAdapter = ({
     session,
     dbName = "roc-db",
     optimistic = false,
+    snowflake = new Snowflake(1, 1),
 }) => {
     return createAdapter(
         {
@@ -16,7 +17,7 @@ export const createIndexedDBAdapter = ({
             functions,
             optimistic,
             session,
-            snowflake: new Snowflake(1, 1),
+            snowflake,
             async: true,
         },
         {
