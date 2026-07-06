@@ -1,4 +1,9 @@
-import { Query, QueryChain, writeOperation } from "roc-db"
+import {
+    type DuplicateChangeSetMutationsResult,
+    Query,
+    QueryChain,
+    writeOperation,
+} from "roc-db"
 import { z } from "zod"
 import { DraftRefSchema } from "../schemas/DraftRefSchema"
 import { PostRefSchema } from "../schemas/PostRefSchema"
@@ -21,11 +26,14 @@ export const duplicateDraft = writeOperation(
             Query(() =>
                 txn.duplicateChangeSetMutations(sourceRef, newDraftRef),
             ),
-            Query(dup => ({
-                draftRef: newDraftRef,
-                mutations: dup.mutations,
-                refMap: dup.refMap,
-            })),
+            Query(dup => {
+                const result = dup as DuplicateChangeSetMutationsResult
+                return {
+                    draftRef: newDraftRef,
+                    mutations: result.mutations,
+                    refMap: result.refMap,
+                }
+            }),
         )
     },
 )

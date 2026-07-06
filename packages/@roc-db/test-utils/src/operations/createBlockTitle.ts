@@ -13,9 +13,11 @@ export const createBlockTitle = writeOperation(
     PayloadSchema,
     txn => {
         const ref = txn.createRef("BlockTitle")
-        const { postRef } = txn.payload
+        // Payload field is `parentRef` (was mistakenly read as `postRef`, which
+        // is undefined, so the parent was never set).
+        const { parentRef } = txn.payload
         return Query(() =>
-            txn.createEntity(ref, { parents: { post: postRef } }),
+            txn.createEntity(ref, { parents: { post: parentRef } }),
         )
     },
     { changeSetOnly: true, outputSchema: BlockTitleSchema },
