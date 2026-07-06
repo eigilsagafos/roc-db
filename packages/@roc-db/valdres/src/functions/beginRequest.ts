@@ -1,6 +1,6 @@
 import type { WriteRequest } from "roc-db"
 import type { ValdresEngine } from "../types/ValdresEngine"
-import { generateTransactionCache } from "../../../../roc-db/src/lib/generateTransactionCache"
+import { generateTransactionCache } from "roc-db"
 
 const selectScopedStore = (engineOpts: ValdresEngine, changeSetRef) => {
     if (
