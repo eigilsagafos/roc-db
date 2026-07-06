@@ -20,6 +20,7 @@ import { finalizeMutation } from "./finalizeMutation"
 import { findDependents } from "./findDependents"
 import { patchEntity } from "./patchEntity"
 import { readEntity } from "./readEntity"
+import { redo } from "./redo"
 import { undo } from "./undo"
 import { updateEntity } from "./updateEntity"
 
@@ -92,9 +93,6 @@ export class WriteTransaction<
     ): ReadEntityResult<R> =>
         readEntity(this, ref, throwIfMissing) as ReadEntityResult<R>
     undo = (mutationRef: MutationRef) => undo(this, mutationRef)
-    // `redo` is invoked by the redo operation but not wired as an instance
-    // method here; declared type-only so callers type-check without changing
-    // runtime behavior.
-    declare redo: (mutationRef: MutationRef) => any
+    redo = (mutationRef: MutationRef) => redo(this, mutationRef)
     updateEntity = (ref: Ref, body: any) => updateEntity(this, ref, body)
 }

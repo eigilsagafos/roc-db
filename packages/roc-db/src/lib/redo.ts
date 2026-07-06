@@ -1,13 +1,16 @@
-const redoAsync = async (txn, mutationRef) => {
+import type { MutationRef } from "../types/MutationRef"
+import type { WriteTransaction } from "./WriteTransaction"
+
+const redoAsync = async (txn: WriteTransaction, mutationRef: MutationRef) => {
     const mutation = await txn.readMutation(mutationRef)
     addToLog(txn, mutation)
 }
 
-const redoSync = (txn, mutationRef) => {
+const redoSync = (txn: WriteTransaction, mutationRef: MutationRef) => {
     const mutation = txn.readMutation(mutationRef)
     addToLog(txn, mutation)
 }
-export const redo = (txn, mutationRef) => {
+export const redo = (txn: WriteTransaction, mutationRef: MutationRef) => {
     if (txn.adapter.async) {
         return redoAsync(txn, mutationRef)
     } else {
@@ -15,8 +18,8 @@ export const redo = (txn, mutationRef) => {
     }
 }
 
-const addToLog = (txn, mutation) => {
-    mutation.log.forEach(([ref, action, document]) => {
+const addToLog = (txn: WriteTransaction, mutation: any) => {
+    mutation.log.forEach(([ref, action, document]: any) => {
         switch (action) {
             case "create": {
                 const { ref, data, children, parents, ancestors } = document

@@ -43,6 +43,8 @@ jobs:
             - name: Require changeset
               if: github.event_name == 'pull_request'
               run: bunx changeset status --since=origin/main
+            - name: Typecheck
+              run: bun run typecheck
             - name: Build
               run: bun run build
             - name: Build types

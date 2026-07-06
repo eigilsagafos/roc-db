@@ -1,32 +1,9 @@
 import type { Ref } from "../types/Ref"
 import type { WriteTransaction } from "./WriteTransaction"
 
+// TODO: not implemented. `updateEntity` (full-document replace) has no callers
+// yet; the previous sync/async scaffolding was incomplete (referenced undefined
+// vars) and has been removed. Implement against patchEntity when needed.
 export const updateEntity = (txn: WriteTransaction, ref: Ref, body: any) => {
     throw new Error("Not Implemented")
-    if (txn.adapter.async) {
-        return updateEntityAsync(txn, ref, body)
-    } else {
-        return updateEntitySync(txn, ref, body)
-    }
-}
-
-const updateEntitySync = (txn: WriteTransaction, ref: Ref, body: any) => {
-    const currentDoc = txn.readEntity(ref)
-    throw new Error("TOOO")
-    // return updateEntity(txn, ref, currentDoc, updateBody)
-}
-const updateEntityAsync = async (
-    txn: WriteTransaction,
-    ref: Ref,
-    updateBody: any,
-) => {
-    const currentDoc = await txn.readEntity(ref)
-    // @ts-expect-error TODO: updateEntity is unimplemented (WIP)
-    const [updatedEntity, reversePatch] = patch(txn, currentEntity, patchSet)
-    txn.changeSet.entities.set(ref, updatedEntity)
-    if (txn.changeSet.initialized) {
-        if (txn.log.has(ref)) throw new Error("TODO")
-        txn.log.set(ref, ["update", updatedEntity, reversePatch])
-    }
-    return updatedEntity
 }

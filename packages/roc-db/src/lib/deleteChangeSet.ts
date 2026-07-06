@@ -27,18 +27,10 @@ const deleteChangeSetSync = (txn: WriteTransaction, ref: Ref) => {
 const applyInLog = (txn: WriteTransaction, ref: Ref) => {
     txn.changeSet.mutations.set(ref, DELETED_IN_CHANGE_SET_SYMBOL)
     if (txn.changeSet.initialized) {
-        // throw new Error("TODO - Should not happen")
         if (txn.log.has(ref)) {
+            // TODO: deleting a ref already mutated within an initialized
+            // changeSet is not handled yet.
             throw new Error("TODO")
-            const event = txn.log.get(ref)
-            if (event?.[0] === "create") {
-                txn.log.delete(ref)
-            } else if (event?.[0] === "update") {
-                // @ts-expect-error TODO: unreachable WIP branch references undefined currentDocument
-                txn.log.set(ref, ["delete", currentDocument])
-            } else {
-                throw new Error("Unhandled event type")
-            }
         } else {
             txn.log.set(ref, ["delete"])
         }

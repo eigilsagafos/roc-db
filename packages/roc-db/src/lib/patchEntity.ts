@@ -58,7 +58,7 @@ const updateChangeIndexEntries = (changeSet: any, oldDoc: any, newDoc: any) => {
             const arr = changeSet.entitiesIndex.get(indexKey) ?? []
             changeSet.entitiesIndex.set(
                 indexKey,
-                arr.filter((ref: any) => ref !== ref),
+                arr.filter((r: any) => r !== ref),
             )
         })
 
