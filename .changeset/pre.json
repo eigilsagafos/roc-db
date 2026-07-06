@@ -1,0 +1,13 @@
+{
+  "mode": "pre",
+  "tag": "pre",
+  "initialVersions": {
+    "@roc-db/in-memory": "0.2.0-pre.98",
+    "@roc-db/indexed-db": "0.2.0-pre.98",
+    "@roc-db/postgres": "0.2.0-pre.98",
+    "@roc-db/test-utils": "0.2.0-pre.98",
+    "@roc-db/valdres": "0.2.0-pre.98",
+    "roc-db": "0.2.0-pre.98"
+  },
+  "changesets": []
+}
