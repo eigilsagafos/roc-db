@@ -18,7 +18,12 @@
  * `workspace:` would ship verbatim and break consumers. The check below is
  * the regression gate. (devDependencies are stripped by prepack, so they're
  * allowed to use `workspace:^` for ergonomics with non-publishable packages.)
+ *
+ * The per-package checks live in ./lib/checkPublishablePackage.ts (pure and
+ * unit-tested); this script owns the build/prepack/restore orchestration.
  */
+
+import { checkPublishablePackage } from "./lib/checkPublishablePackage"
 
 const PUBLIC_PACKAGES = [
     "packages/roc-db",
@@ -98,102 +103,19 @@ for (const pkg of PUBLIC_PACKAGES) {
     }
 
     try {
-        // Read the prepacked package.json
+        // Read the prepacked package.json and run the shared checks, resolving
+        // export/types paths against this package's directory.
         const packageJson = await Bun.file(pkgJsonPath).json()
-
-        // Check: no scripts
-        if (packageJson.scripts) {
-            error(pkgName, "scripts should be removed by prepack")
-        }
-
-        // Check: no devDependencies
-        if (packageJson.devDependencies) {
-            error(pkgName, "devDependencies should be removed by prepack")
-        }
-
-        // Check: version exists
-        if (!packageJson.version) {
-            error(pkgName, "missing version field")
-        }
-
-        // Check: no workspace: references in any dependency field
-        for (const depField of [
-            "dependencies",
-            "peerDependencies",
-            "optionalDependencies",
-        ]) {
-            const deps = packageJson[depField]
-            if (!deps) continue
-            for (const [dep, version] of Object.entries(deps)) {
-                if (
-                    typeof version === "string" &&
-                    version.includes("workspace:")
-                ) {
-                    error(
-                        pkgName,
-                        `${depField}.${dep} still has workspace reference: ${version}`,
-                    )
-                }
-            }
-        }
-
-        // Check: exports point to real files
-        if (packageJson.exports) {
-            for (const [exportPath, exportValue] of Object.entries(
-                packageJson.exports,
-            )) {
-                const exp = exportValue as {
-                    import?: string
-                    default?: string
-                    types?: string
-                }
-
-                const runtimeField = exp.import ?? exp.default
-                if (runtimeField) {
-                    const importPath = `${pkgDir}/${runtimeField}`
-                    const file = Bun.file(importPath)
-                    if (!(await file.exists())) {
-                        error(
-                            pkgName,
-                            `export "${exportPath}" entry file missing: ${runtimeField}`,
-                        )
-                    } else if (file.size === 0) {
-                        error(
-                            pkgName,
-                            `export "${exportPath}" entry file is empty: ${runtimeField}`,
-                        )
-                    }
-                } else {
-                    error(
-                        pkgName,
-                        `export "${exportPath}" missing import/default field`,
-                    )
-                }
-
-                if (exp.types) {
-                    const typesPath = `${pkgDir}/${exp.types}`
-                    const file = Bun.file(typesPath)
-                    if (!(await file.exists())) {
-                        error(
-                            pkgName,
-                            `export "${exportPath}" types file missing: ${exp.types}`,
-                        )
-                    }
-                } else {
-                    error(
-                        pkgName,
-                        `export "${exportPath}" missing types field`,
-                    )
-                }
-            }
-        } else {
-            error(pkgName, "missing exports field")
-        }
-
-        // Check: publishConfig
-        if (!packageJson.publishConfig?.access) {
-            warn(pkgName, "missing publishConfig.access")
-        }
+        const result = await checkPublishablePackage(
+            pkgName,
+            packageJson,
+            async relativePath => {
+                const file = Bun.file(`${pkgDir}/${relativePath}`)
+                return { exists: await file.exists(), size: file.size }
+            },
+        )
+        errors.push(...result.errors)
+        warnings.push(...result.warnings)
     } finally {
         // postpublish restores from package.tmp.json, so clean up the tmp file
         // and restore the true original.

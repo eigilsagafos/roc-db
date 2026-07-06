@@ -15,6 +15,7 @@
         "build:types": "bun --filter '*' build:types",
         "test": "bun --filter '*' test",
         "test:ci": "bun --filter '*' test -- --reporter=junit --reporter-outfile=junit.xml",
+        "test:scripts": "bun test scripts",
         "changeset": "changeset",
         "version-packages": "changeset version",
         "release": "bash scripts/ci-publish.sh",

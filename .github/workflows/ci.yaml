@@ -49,6 +49,8 @@ jobs:
               run: bun run build:types
             - name: Verify publish (dry-run)
               run: DRY_RUN=1 bash scripts/ci-publish.sh
+            - name: Test release scripts
+              run: bun run test:scripts
             - name: Test
               id: test
               run: bun run test:ci
