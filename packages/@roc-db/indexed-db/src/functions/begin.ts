@@ -1,8 +1,11 @@
-export const begin = async (engineOpts, callback) => {
-    return new Promise((resolve, reject) => {
-        let db
-        const idbRequest = indexedDB.open(engineOpts.dbName, 1)
-        idbRequest.onupgradeneeded = event => {
+const DB_CACHE = new WeakMap()
+
+const openDatabase = engineOpts => {
+    let cached = DB_CACHE.get(engineOpts)
+    if (cached) return cached
+    const promise = new Promise((resolve, reject) => {
+        const idbRequest = indexedDB.open(engineOpts.dbName, engineOpts.version)
+        idbRequest.onupgradeneeded = () => {
             const entitiesObjectStore = idbRequest.result.createObjectStore(
                 "entities",
                 { keyPath: "ref" },
@@ -33,20 +36,70 @@ export const begin = async (engineOpts, callback) => {
             })
         }
 
-        idbRequest.onsuccess = event => {
-            db = idbRequest.result
-
-            resolve(
-                callback({
-                    ...engineOpts,
-                    db,
-                    txn: db.transaction(
-                        ["entities", "mutations"],
-                        "readwrite",
-                        // request.type === "write" ? "readwrite" : "readonly",
-                    ),
-                }),
-            )
+        idbRequest.onsuccess = () => {
+            resolve(idbRequest.result)
         }
+        idbRequest.onerror = () => {
+            DB_CACHE.delete(engineOpts)
+            reject(idbRequest.error)
+        }
+    })
+    DB_CACHE.set(engineOpts, promise)
+    return promise
+}
+
+export const begin = async (engineOpts, callback) => {
+    const db = await openDatabase(engineOpts)
+    return new Promise((resolve, reject) => {
+        const txn = db.transaction(["entities", "mutations"], "readwrite")
+
+        let callbackResult
+        let callbackDone = false
+        let txnComplete = false
+        let settled = false
+
+        const maybeResolve = () => {
+            if (settled) return
+            if (callbackDone && txnComplete) {
+                settled = true
+                resolve(callbackResult)
+            }
+        }
+
+        txn.oncomplete = () => {
+            txnComplete = true
+            maybeResolve()
+        }
+        txn.onerror = event => {
+            if (settled) return
+            settled = true
+            reject(event.target.error)
+        }
+        txn.onabort = () => {
+            if (settled) return
+            settled = true
+            reject(txn.error ?? new Error("Transaction aborted"))
+        }
+
+        Promise.resolve(
+            callback({
+                ...engineOpts,
+                db,
+                txn,
+            }),
+        )
+            .then(result => {
+                callbackResult = result
+                callbackDone = true
+                maybeResolve()
+            })
+            .catch(error => {
+                if (settled) return
+                settled = true
+                try {
+                    txn.abort()
+                } catch {}
+                reject(error)
+            })
     })
 }

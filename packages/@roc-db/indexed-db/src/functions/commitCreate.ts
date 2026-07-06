@@ -16,6 +16,11 @@ export const commitCreate: CreateEntityFunction<IndexedDBEngine> = (
         }
         request.onerror = event => {
             if (event?.target?.error?.name === "ConstraintError") {
+                // Prevent the raw ConstraintError from bubbling to (and
+                // aborting via) the transaction's error handler before our
+                // converted ConflictError can propagate through the chain.
+                event.stopPropagation()
+                event.preventDefault()
                 reject(createUniqueConstraintConflictError(document.entity))
             } else {
                 console.error(
