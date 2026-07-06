@@ -72,6 +72,7 @@ export { sortMutations } from "./utils/sortMutations"
 
 // lib - temporarily exposed for valdres integration until a better solution is found
 export { findOperation } from "./lib/findOperation"
+export { loadChangeSetBase } from "./lib/loadChangeSetBase"
 export { parseRequestPayload } from "./lib/parseRequestPayload"
 export { WriteTransaction } from "./lib/WriteTransaction"
 export { runSyncFunctionChain } from "./lib/runSyncFunctionChain"
