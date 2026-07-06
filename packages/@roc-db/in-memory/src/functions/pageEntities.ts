@@ -1,4 +1,10 @@
-export const pageEntities = (txn, args) => {
+import type { PageEntitiesFunction, Ref } from "roc-db"
+import type { InMemoryEngine } from "../types/InMemoryEngine"
+
+export const pageEntities: PageEntitiesFunction<InMemoryEngine> = (
+    txn,
+    args,
+) => {
     const { size, entities, childrenOf } = args
     const result = []
     for (const [, doc] of txn.engineOpts.entities) {
@@ -10,8 +16,8 @@ export const pageEntities = (txn, args) => {
         } else {
             if (childrenOf && childrenOf.length > 0) {
                 if (
-                    !childrenOf.some(childRef =>
-                        doc.__.parentRefs.includes(childRef),
+                    !childrenOf.some((childRef: Ref) =>
+                        (doc as any).__.parentRefs.includes(childRef),
                     )
                 ) {
                     continue

@@ -1,12 +1,20 @@
 import { entityFromRef, type Ref, type WriteTransaction } from "roc-db"
+import type {
+    IndexedDBEngine,
+    IndexedDBTxnEngine,
+} from "../types/IndexedDBEngine"
 
-export const commitDelete = async (txn: WriteTransaction, ref: Ref) => {
+export const commitDelete = async (
+    txn: WriteTransaction<IndexedDBEngine>,
+    ref: Ref,
+) => {
     const entity = entityFromRef(ref)
+    const engineTxn = (txn.engineOpts as IndexedDBTxnEngine).txn
     let objectStore
     if (entity === "Mutation") {
-        objectStore = txn.engineOpts.txn.objectStore("mutations")
+        objectStore = engineTxn.objectStore("mutations")
     } else {
-        objectStore = txn.engineOpts.txn.objectStore("entities")
+        objectStore = engineTxn.objectStore("entities")
     }
     const request = objectStore.delete(ref)
 
@@ -16,8 +24,11 @@ export const commitDelete = async (txn: WriteTransaction, ref: Ref) => {
         }
 
         request.onerror = event => {
-            console.error("Error deleting document", event?.target?.error)
-            reject(event?.target?.error)
+            console.error(
+                "Error deleting document",
+                (event?.target as IDBRequest)?.error,
+            )
+            reject((event?.target as IDBRequest)?.error)
         }
     })
 }

@@ -1,8 +1,11 @@
-import type { IndexedDBReadTransaction } from "../types/IndexedDBReadTransaction"
+import type { PageEntitiesFunction } from "roc-db"
+import type { IndexedDBTxnEngine } from "../types/IndexedDBEngine"
 
-export const pageEntities = async (txn: IndexedDBReadTransaction, args) => {
+export const pageEntities: PageEntitiesFunction = async (txn, args) => {
     const { size, entities, childrenOf } = args
-    const objectStore = txn.engineOpts.txn.objectStore("entities")
+    const objectStore = (txn.engineOpts as IndexedDBTxnEngine).txn.objectStore(
+        "entities",
+    )
     const idbRequest = objectStore.openCursor()
     return new Promise((resolve, reject) => {
         const results: any[] = []
@@ -24,7 +27,7 @@ export const pageEntities = async (txn: IndexedDBReadTransaction, args) => {
                         childrenOf &&
                         childrenOf.length > 0 &&
                         !childrenOf.some(
-                            childRef =>
+                            (childRef: any) =>
                                 cursor.value.__.parentRefs.includes(childRef), // TODO: check if this is correct
                         )
                     ) {

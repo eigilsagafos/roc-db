@@ -1,21 +1,30 @@
-import type { WriteRequest } from "roc-db"
+import type { FindDebounceMutationFunction, WriteRequest } from "roc-db"
+import type { PostgresTxnEngine } from "../types/PostgresEngineOpts"
 import { postgresRowToMutation } from "../lib/postgresRowToMutation"
 
-export const findDebounceMutation = async (
+// Async adapter: the runtime returns a Promise, so the body cannot satisfy the
+// synchronous `Mutation | null | undefined` alias return directly. Params are
+// typed manually and the value is cast to the alias for the AdapterFunctions
+// check. NOTE: the alias types `now` as a Date; core passes a Date, so
+// `now.getTime()` replaces the previous numeric subtraction (equivalent).
+export const findDebounceMutation: FindDebounceMutationFunction = (async (
     request: WriteRequest,
-    engineOpts,
-    now: number,
+    engineOpts: PostgresTxnEngine,
+    now: Date,
     mutationName: string,
     identityRef: string,
 ) => {
-    const debounceTime = request.operation.debounce
+    const debounceTime = (request.operation as { debounce: number }).debounce
 
-    const thresholdTime = new Date(now - debounceTime * 1000).toISOString()
+    const thresholdTime = new Date(
+        now.getTime() - debounceTime * 1000,
+    ).toISOString()
     const { sqlTxn, mutationsTableName } = engineOpts
-    const payloadRef = request.payload?.ref
+    const payloadRef = (request.payload as { ref?: any } | undefined)?.ref
 
-    const res = await (payloadRef === undefined
-        ? sqlTxn`
+    const res = await (
+        payloadRef === undefined
+            ? sqlTxn`
             SELECT * FROM ${sqlTxn(mutationsTableName)}
             WHERE
                 operation_name = ${mutationName} AND
@@ -23,7 +32,7 @@ export const findDebounceMutation = async (
                 identity_ref = ${identityRef}
             LIMIT 2
         `
-        : sqlTxn`
+            : sqlTxn`
             SELECT * FROM ${sqlTxn(mutationsTableName)}
             WHERE
                 operation_name = ${mutationName} AND
@@ -32,7 +41,7 @@ export const findDebounceMutation = async (
                 log_refs = ARRAY[${payloadRef}]
             LIMIT 2
         `
-    ).catch(err => {
+    ).catch((err: any) => {
         console.error("findDebounceMutation failed")
         throw err
     })
@@ -44,4 +53,4 @@ export const findDebounceMutation = async (
     }
     const mutations = res.values().toArray()
     return postgresRowToMutation(mutations[0])
-}
+}) as unknown as FindDebounceMutationFunction

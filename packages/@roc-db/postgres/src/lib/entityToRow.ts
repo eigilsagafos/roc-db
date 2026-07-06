@@ -1,12 +1,13 @@
 import { entityFromRef, idFromRef } from "roc-db"
 
-const stringifyIndexEntry = ([k, v]) => `${k}:${JSON.stringify(v)}`
+const stringifyIndexEntry = ([k, v]: [string, any]) =>
+    `${k}:${JSON.stringify(v)}`
 
-const stringifyIndexEntries = arr => {
+const stringifyIndexEntries = (arr: [string, any][]) => {
     return arr.map(stringifyIndexEntry)
 }
 
-export const entityToRow = entity => {
+export const entityToRow = (entity: any) => {
     const kind = entityFromRef(entity.ref)
     return {
         // Singleton entities have no id segment in their ref (just the kind).

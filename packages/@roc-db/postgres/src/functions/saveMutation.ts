@@ -1,10 +1,19 @@
-import { idFromRef, parseRef } from "roc-db"
+import {
+    idFromRef,
+    parseRef,
+    type Mutation,
+    type SaveMutationFunction,
+} from "roc-db"
 import type { PostgresMutationTransaction } from "../types/PostgresMutationTransaction"
+import type { PostgresTxnEngine } from "../types/PostgresEngineOpts"
 import { postgresRowToMutation } from "../lib/postgresRowToMutation"
 
-export const saveMutation = async (
+// Async adapter: the runtime returns a Promise, so the body cannot satisfy the
+// synchronous `Mutation` alias return directly. Params are typed manually and
+// the value is cast to the alias for the AdapterFunctions check.
+export const saveMutation: SaveMutationFunction = (async (
     txn: PostgresMutationTransaction,
-    finalizedMutation,
+    finalizedMutation: Mutation,
 ) => {
     const {
         ref,
@@ -18,12 +27,17 @@ export const saveMutation = async (
         sessionRef,
         appliedAt,
         persistedAt,
-    } = finalizedMutation
+    } = finalizedMutation as Mutation & {
+        identityRef: any
+        sessionRef: any
+        appliedAt: any
+        persistedAt: any
+    }
     const id = idFromRef(ref)
     const [changeSetId, changeSetKind] = changeSetRef
         ? parseRef(changeSetRef)
         : [null, null]
-    const { sqlTxn, mutationsTableName } = txn.engineOpts
+    const { sqlTxn, mutationsTableName } = txn.engineOpts as PostgresTxnEngine
 
     if (debounceCount > 0 || appliedAt) {
         const [row] = await sqlTxn`
@@ -43,7 +57,7 @@ export const saveMutation = async (
             )
             WHERE id = ${id}
             RETURNING *;
-        `.catch(err => {
+        `.catch((err: any) => {
             console.error("Error updating mutation")
             throw err
         })
@@ -75,7 +89,7 @@ export const saveMutation = async (
                 ${operation.version ?? 1},
                 ${payload ?? null},
                 ${log},
-                ${log.map(logItem => logItem[0])},
+                ${log.map((logItem: any) => logItem[0])},
                 ${changeSetId},
                 ${changeSetKind},
                 ${debounceCount},
@@ -83,9 +97,9 @@ export const saveMutation = async (
                 ${persistedAt || null},
                 ${sessionRef || null}
             ) RETURNING *;
-        `.catch(err => {
+        `.catch((err: any) => {
         console.error("Error creating mutation", finalizedMutation)
         throw err
     })
     return postgresRowToMutation(row)
-}
+}) as unknown as SaveMutationFunction

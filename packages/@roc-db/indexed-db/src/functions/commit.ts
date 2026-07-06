@@ -1,13 +1,22 @@
+import type { CommitFunction } from "roc-db"
+import type { IndexedDBEngine } from "../types/IndexedDBEngine"
 import { commitCreate } from "./commitCreate"
 import { commitDelete } from "./commitDelete"
 import { commitUpdate } from "./commitUpdate"
 import { saveMutation } from "./saveMutation"
 import { documentToDBRow } from "../lib/documentToDBRow"
 
-export const commit = async (txn, mutation, { created, updated, deleted }) => {
+export const commit: CommitFunction<IndexedDBEngine> = async (
+    txn,
+    mutation,
+    { created, updated, deleted },
+) => {
     const currentMutation = await txn.readMutation(txn.mutation.ref, false)
     if (currentMutation) {
-        if (currentMutation && mutation.appliedAt === txn.timestamp) {
+        if (
+            currentMutation &&
+            (mutation as { appliedAt?: unknown }).appliedAt === txn.timestamp
+        ) {
             await saveMutation(txn, mutation)
         } else if (
             currentMutation &&

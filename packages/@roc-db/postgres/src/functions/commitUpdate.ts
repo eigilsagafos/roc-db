@@ -1,12 +1,13 @@
 import type { Entity } from "roc-db"
 import { entityToRow } from "../lib/entityToRow"
 import type { PostgresMutationTransaction } from "../types/PostgresMutationTransaction"
+import type { PostgresTxnEngine } from "../types/PostgresEngineOpts"
 
 export const commitUpdate = async (
     txn: PostgresMutationTransaction,
-    entity: Entity,
+    entity: Entity<any>,
 ) => {
-    const { sqlTxn, entitiesTableName } = txn.engineOpts
+    const { sqlTxn, entitiesTableName } = txn.engineOpts as PostgresTxnEngine
     const row = entityToRow(entity)
     return sqlTxn`
         UPDATE ${sqlTxn(entitiesTableName)}
@@ -40,7 +41,7 @@ export const commitUpdate = async (
         WHERE
             id = ${row.id}
         RETURNING *;
-    `.catch(err => {
+    `.catch((err: any) => {
         console.error("Error updating entity", row)
         throw err
     })

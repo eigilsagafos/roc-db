@@ -3,7 +3,7 @@ export const documentFromDBRow = ({
     unique_constraint_1,
     index_entries,
     ...document
-}) => {
+}: any) => {
     return {
         ...document,
         __: {

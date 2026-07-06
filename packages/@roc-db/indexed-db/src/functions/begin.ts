@@ -1,9 +1,12 @@
-const DB_CACHE = new WeakMap()
+import type { BeginFunction } from "roc-db"
+import type { IndexedDBEngine } from "../types/IndexedDBEngine"
 
-const openDatabase = engineOpts => {
+const DB_CACHE = new WeakMap<IndexedDBEngine, Promise<IDBDatabase>>()
+
+const openDatabase = (engineOpts: IndexedDBEngine): Promise<IDBDatabase> => {
     let cached = DB_CACHE.get(engineOpts)
     if (cached) return cached
-    const promise = new Promise((resolve, reject) => {
+    const promise = new Promise<IDBDatabase>((resolve, reject) => {
         const idbRequest = indexedDB.open(engineOpts.dbName, engineOpts.version)
         idbRequest.onupgradeneeded = () => {
             const entitiesObjectStore = idbRequest.result.createObjectStore(
@@ -57,12 +60,15 @@ const openDatabase = engineOpts => {
     return promise
 }
 
-export const begin = async (engineOpts, callback) => {
+export const begin: BeginFunction<IndexedDBEngine> = async (
+    engineOpts,
+    callback,
+) => {
     const db = await openDatabase(engineOpts)
     return new Promise((resolve, reject) => {
         const txn = db.transaction(["entities", "mutations"], "readwrite")
 
-        let callbackResult
+        let callbackResult: any
         let callbackDone = false
         let txnComplete = false
         let settled = false
@@ -82,7 +88,7 @@ export const begin = async (engineOpts, callback) => {
         txn.onerror = event => {
             if (settled) return
             settled = true
-            reject(txn.error ?? event.target?.error)
+            reject(txn.error ?? (event.target as IDBRequest)?.error)
         }
         txn.onabort = () => {
             if (settled) return
