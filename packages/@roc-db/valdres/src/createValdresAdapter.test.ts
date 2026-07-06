@@ -4,7 +4,7 @@ import {
     testAdapterImplementation,
 } from "@roc-db/test-utils"
 import { describe, expect, spyOn, test } from "bun:test"
-import type { Entity, Mutation, MutationRef, Ref } from "roc-db"
+import type { Entity, Mutation, Ref } from "roc-db"
 import { atomFamily, store } from "valdres"
 import { createValdresAdapter } from "./createValdresAdapter"
 import type { ValdresEngine } from "./types/ValdresEngine"
@@ -14,10 +14,17 @@ describe("createValdresAdapter", () => {
     testAdapterImplementation<ValdresEngine>(createValdresAdapter, () => {
         return {
             store: store(),
-            entityAtom: atomFamily<Ref, Entity | null>(null),
-            mutationAtom: atomFamily<MutationRef, Mutation | null>(null),
-            entityUniqueAtom: atomFamily<Ref, Entity | null>(null),
-            entityIndexAtom: atomFamily<Ref[], [string, string, any]>([]),
+            // Generics are <Value, Args>: value first, key-args tuple second.
+            entityAtom: atomFamily<Entity | null, [string]>(null),
+            mutationAtom: atomFamily<Mutation | null, [string]>(null),
+            entityUniqueAtom: atomFamily<
+                Ref | null,
+                [string, string, string | number | boolean]
+            >(null),
+            entityIndexAtom: atomFamily<
+                Ref[],
+                [string, string, string | number | boolean]
+            >([]),
         }
     })
 })

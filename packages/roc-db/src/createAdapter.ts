@@ -1,4 +1,5 @@
 import { z } from "zod"
+import type { Entity } from "./Entity"
 import { assertChangeSetKind } from "./lib/assertChangeSetKind"
 import { execute } from "./lib/execute"
 import { validateChangeSetVersionParents } from "./lib/validateChangeSetVersionParents"
@@ -15,11 +16,11 @@ import type { Ref } from "./types/Ref"
 import { Snowflake } from "./utils/Snowflake"
 import { generateRef } from "./utils/generateRef"
 
-export type EntityN = z.ZodObject<{
-    entity: z.ZodLiteral<string>
-    // entity: z.string(),
-    // payload: z.ZodTypeAny
-}>
+// An entity model: an instance of the `Entity` builder class (adapters pass
+// `new Entity("Post", {...})` instances). This was previously mistyped as a
+// bare zod object, so real usage (e.g. `model.name` below) never type-checked
+// and `Entity` instances weren't assignable to the `entities` param.
+export type EntityN = Entity<any>
 
 type AdapterOptions<
     Operations extends readonly Operation[] = [],
@@ -99,10 +100,8 @@ export const createAdapter = <
         get _adapterOpts() {
             return adapterOptions
         },
-        get _entityKinds(): Entities[number]["shape"]["entity"]["value"] {
-            return adapterOptions.entities.map(
-                schema => schema.shape.entity.value,
-            )
+        get _entityKinds(): Entities[number]["name"][] {
+            return adapterOptions.entities.map(model => model.name)
         },
         get _operationNames(): Operations[number]["operationName"] {
             return adapterOptions.operations.map(op => op.name)

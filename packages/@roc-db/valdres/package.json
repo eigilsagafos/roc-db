@@ -12,7 +12,8 @@
     "scripts": {
         "build": "NODE_ENV=production bun run scripts/build.ts",
         "build:types": "rm -rf dist/types && bun run tsc --noCheck",
-        "test": "bun test"
+        "test": "bun test",
+        "test:types": "bun run build:types && (cd ../../roc-db && bun run build:types) && bun run tsc -p tsconfig.type-test.json"
     },
     "dependencies": {},
     "devDependencies": {

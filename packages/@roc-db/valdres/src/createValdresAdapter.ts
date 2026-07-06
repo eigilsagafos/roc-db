@@ -2,6 +2,7 @@ import {
     createAdapter,
     type Adapter,
     type Entity,
+    type EntityDocument,
     type Mutation,
     Snowflake,
     type Operation,
@@ -17,17 +18,19 @@ import {
     type Atom,
 } from "valdres"
 
-export const createValdresAdapter = <Session>({
+export const createValdresAdapter = <
+    Session extends { identityRef: string; sessionRef?: string },
+>({
     operations,
     entities,
     store, // = createStore(),
     rootTxn,
     txn,
     session,
-    entityAtom, // = atomFamily<string, Entity | null>(null),
+    entityAtom, // = atomFamily<EntityDocument | null, [string]>(null),
     entityUniqueAtom,
     entityIndexAtom,
-    mutationAtom, // = atomFamily<string, Mutation | null>(null),
+    mutationAtom, // = atomFamily<Mutation | null, [string]>(null),
     changeSetRef,
     optimistic = true,
     snowflake = new Snowflake(1, 1),
@@ -37,14 +40,20 @@ export const createValdresAdapter = <Session>({
     validateDelete,
 }: {
     operations: readonly Operation[]
-    entities: readonly Entity[]
+    entities: readonly Entity<any>[]
     store?: Store
     rootTxn?: TransactionInterface
     txn?: TransactionInterface
-    entityAtom: AtomFamily<string, Entity | null>
-    mutationAtom: AtomFamily<string, Mutation | null>
-    entityUniqueAtom: AtomFamily<Ref, [string]>
-    entityIndexAtom: AtomFamily<Ref, [string, string, string]>
+    entityAtom: AtomFamily<EntityDocument | null, [string]>
+    mutationAtom: AtomFamily<Mutation | null, [string]>
+    entityUniqueAtom: AtomFamily<
+        Ref | null,
+        [string, string, string | number | boolean]
+    >
+    entityIndexAtom: AtomFamily<
+        Ref[],
+        [string, string, string | number | boolean]
+    >
     changeSetRef?: Ref
     session: Session
     optimistic: boolean
