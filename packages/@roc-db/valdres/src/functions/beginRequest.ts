@@ -1,21 +1,20 @@
-import type { WriteRequest } from "roc-db"
-import type { ValdresEngine } from "../types/ValdresEngine"
+import type { BeginRequestFunction, Ref } from "roc-db"
+import type { Store, TransactionInterface } from "valdres"
+import type { ValdresEngine, ValdresTxnEngine } from "../types/ValdresEngine"
 import { generateTransactionCache } from "roc-db"
 
-const selectScopedStore = (engineOpts: ValdresEngine, changeSetRef) => {
-    if (
-        engineOpts.scopedStore &&
-        changeSetRef in engineOpts.store.data.scopes
-    ) {
+const selectScopedStore = (engineOpts: ValdresEngine, changeSetRef: Ref) => {
+    const store = engineOpts.store as Store
+    if (engineOpts.scopedStore && changeSetRef in store.data.scopes) {
         return engineOpts.scopedStore
     } else {
-        return engineOpts.store.scope(changeSetRef)
+        return store.scope(changeSetRef)
     }
 }
 
-export const beginRequest = (
-    request: WriteRequest,
-    engineOpts: ValdresEngine,
+export const beginRequest: BeginRequestFunction<ValdresEngine> = (
+    request,
+    engineOpts,
     callback,
 ) => {
     if (request.changeSetRef) {
@@ -26,33 +25,36 @@ export const beginRequest = (
                 engineOpts,
                 request.changeSetRef,
             )
-            return engineOpts.rootTxn.scope(request.changeSetRef, scopedTxn => {
+            const { rootTxn } = engineOpts as ValdresTxnEngine
+            return rootTxn.scope(request.changeSetRef, scopedTxn => {
+                const scopedData = scopedTxn.data as any
                 if (scopedStoreAlreadyAttachedBeforeBegin) {
-                    scopedTxn.data.txnCache ||= generateTransactionCache(false)
+                    scopedData.txnCache ||= generateTransactionCache(false)
                 }
                 return callback(
                     {
                         ...engineOpts,
-                        txn: scopedTxn,
-                        rootTxn: engineOpts.rootTxn,
+                        txn: scopedTxn as unknown as TransactionInterface,
+                        rootTxn,
                         scopedStoreAlreadyAttachedBeforeBegin,
                         scopedStore,
                     },
-                    scopedTxn.data.txnCache,
+                    scopedData.txnCache,
                 )
             })
         } else {
             if (engineOpts.txn && engineOpts.rootTxn) {
                 return callback(engineOpts)
             } else {
+                const { txn: valdresTxn } = engineOpts as ValdresTxnEngine
                 let scopedTxn
-                engineOpts.txn.scope(request.changeSetRef, txn => {
+                valdresTxn.scope(request.changeSetRef, txn => {
                     scopedTxn = txn
                 })
                 return callback({
                     ...engineOpts,
                     txn: scopedTxn,
-                    rootTxn: engineOpts.txn,
+                    rootTxn: valdresTxn,
                 })
             }
         }

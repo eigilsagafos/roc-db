@@ -1,19 +1,24 @@
-import type { Entity } from "roc-db"
-import type { ValdresWriteTransaction } from "../types/ValdresWriteTransaction"
+import type { CreateEntityFunction } from "roc-db"
+import type { ValdresEngine, ValdresTxnEngine } from "../types/ValdresEngine"
 
-export const commitCreate = (
-    txn: ValdresWriteTransaction,
-    document: Entity,
+export const commitCreate: CreateEntityFunction<ValdresEngine> = (
+    txn,
+    ref,
+    document,
 ) => {
     throw new Error("commitCreate is not implemented")
-    const { ref, entity } = document
+    const { entity } = document
     console.log("commitCreate", ref, document)
-    const { entityAtom, entityRefListAtom, entityUniqueAtom } = txn.engineOpts
-    txn.engineOpts.txn.set(entityAtom(ref), document)
+    const {
+        entityAtom,
+        entityRefListAtom,
+        txn: valdresTxn,
+    } = txn.engineOpts as ValdresTxnEngine
+    valdresTxn.set(entityAtom(ref), document)
     if (entityRefListAtom) {
-        txn.engineOpts.txn.set(entityRefListAtom(entity), (curr: string[]) => [
-            ...curr,
-            ref,
-        ])
+        const refListAtom = entityRefListAtom as NonNullable<
+            typeof entityRefListAtom
+        >
+        valdresTxn.set(refListAtom(entity), (curr: string[]) => [...curr, ref])
     }
 }

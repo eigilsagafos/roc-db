@@ -31,7 +31,7 @@ type AdapterOptions<
     functions: AdapterFunctions<EngineOptions>
     operations: Operations
     entities: Entities
-    changeSetRefs: Ref[]
+    changeSetRefs?: Ref[]
     snowflake: Snowflake
     session: {
         identityRef: string
@@ -41,6 +41,10 @@ type AdapterOptions<
     async?: boolean
     changeSetRef?: Ref
     optimistic?: boolean
+    // Optional per-operation validation hooks, invoked from lib/commit.
+    validateCreate?: (txn: any, document: any) => void
+    validateUpdate?: (txn: any, document: any, originalDocument: any) => void
+    validateDelete?: (txn: any, document: any) => void
 }
 export const createAdapter = <
     const Operations extends readonly Operation[],
