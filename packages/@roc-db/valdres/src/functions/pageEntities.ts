@@ -17,7 +17,7 @@ export const pageEntities: PageEntitiesFunction<ValdresEngine> = (
             continue
         if (childrenOf && childrenOf.length > 0) {
             if (
-                !(entity as any).__.parentRefs?.some((ref: Ref) =>
+                !entity.__?.parentRefs?.some((ref: Ref) =>
                     childrenOf.includes(ref),
                 )
             )

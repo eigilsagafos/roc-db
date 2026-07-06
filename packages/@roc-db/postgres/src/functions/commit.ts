@@ -15,10 +15,7 @@ export const commit: CommitFunction<PostgresEngineOpts> = async (
     const currentMutation = await readMutation(txn.engineOpts, mutation.ref)
 
     if (currentMutation) {
-        if (
-            currentMutation &&
-            (mutation as { appliedAt?: unknown }).appliedAt === txn.timestamp
-        ) {
+        if (currentMutation && mutation.appliedAt === txn.timestamp) {
             await saveMutation(txn, mutation)
         } else if (
             currentMutation &&

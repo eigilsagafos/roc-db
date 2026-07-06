@@ -3,6 +3,7 @@ import type { Mutation } from "./Mutation"
 import type { Ref } from "./Ref"
 import type { RocDBRequest } from "./RocDBRequest"
 import type { Transaction } from "./Transaction"
+import type { WriteRequest } from "./WriteRequest"
 
 // --- Optional lifecycle hooks. Core falls back to a default (begin/beginRequest)
 // or simply skips the hook (end/onChangeSetInit/onChangeSetApplied) when absent. ---
@@ -45,7 +46,8 @@ export type CommitFunction<EngineOpts extends any = any> = (
 ) => any
 
 export type FindDebounceMutationFunction<EngineOpts extends any = any> = (
-    request: RocDBRequest,
+    // Debounce is a write-only concern; core only calls this for write requests.
+    request: WriteRequest,
     engineOpts: EngineOpts,
     now: Date,
     operationName: string,

@@ -13,10 +13,7 @@ export const saveMutation: SaveMutationFunction = ((
         "mutations",
     )
     let request
-    if (
-        finalizedMutation.debounceCount > 0 ||
-        (finalizedMutation as { appliedAt?: unknown }).appliedAt
-    ) {
+    if (finalizedMutation.debounceCount > 0 || finalizedMutation.appliedAt) {
         request = objectStore.put(finalizedMutation)
     } else {
         request = objectStore.add(finalizedMutation)

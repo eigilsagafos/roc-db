@@ -17,7 +17,7 @@ export const pageEntities: PageEntitiesFunction<InMemoryEngine> = (
             if (childrenOf && childrenOf.length > 0) {
                 if (
                     !childrenOf.some((childRef: Ref) =>
-                        (doc as any).__.parentRefs.includes(childRef),
+                        doc.__?.parentRefs?.includes(childRef),
                     )
                 ) {
                     continue

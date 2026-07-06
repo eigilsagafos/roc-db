@@ -4,7 +4,7 @@ import type { ValdresEngine, ValdresTxnEngine } from "../types/ValdresEngine"
 export const findDebounceMutation: FindDebounceMutationFunction<
     ValdresEngine
 > = (request, engineOpts, now, mutationName, identityRef) => {
-    const debounceTime = (request.operation as { debounce?: number }).debounce
+    const debounceTime = request.operation.debounce
     if (debounceTime === undefined) return
     // TODO: Make this more efficient. We could store a list of mutation refs pr operation seperatly if the operation supports debounce
     // const threshold = now - debounceTime * 1000
@@ -21,7 +21,7 @@ export const findDebounceMutation: FindDebounceMutationFunction<
             mutation.operation.name === mutationName &&
             mutation.timestamp > thresholdTime &&
             mutation.payload?.ref === payloadRef &&
-            (mutation as { identityRef?: string }).identityRef === identityRef
+            mutation.identityRef === identityRef
         ) {
             return true
         }

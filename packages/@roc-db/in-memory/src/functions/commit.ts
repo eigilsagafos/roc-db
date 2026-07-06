@@ -27,10 +27,7 @@ export const commit: CommitFunction<InMemoryEngine> = (
     const { mutations } = txn.engineOpts
     const currentMutation = mutations.get(txn.mutation.ref)
     if (currentMutation) {
-        if (
-            currentMutation &&
-            (mutation as { appliedAt?: unknown }).appliedAt === txn.timestamp
-        ) {
+        if (currentMutation && mutation.appliedAt === txn.timestamp) {
             saveMutation(txn, mutation)
         } else if (
             currentMutation &&

@@ -13,10 +13,7 @@ export const commit: CommitFunction<IndexedDBEngine> = async (
 ) => {
     const currentMutation = await txn.readMutation(txn.mutation.ref, false)
     if (currentMutation) {
-        if (
-            currentMutation &&
-            (mutation as { appliedAt?: unknown }).appliedAt === txn.timestamp
-        ) {
+        if (currentMutation && mutation.appliedAt === txn.timestamp) {
             await saveMutation(txn, mutation)
         } else if (
             currentMutation &&

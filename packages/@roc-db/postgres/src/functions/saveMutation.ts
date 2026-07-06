@@ -27,12 +27,7 @@ export const saveMutation: SaveMutationFunction = (async (
         sessionRef,
         appliedAt,
         persistedAt,
-    } = finalizedMutation as Mutation & {
-        identityRef: any
-        sessionRef: any
-        appliedAt: any
-        persistedAt: any
-    }
+    } = finalizedMutation
     const id = idFromRef(ref)
     const [changeSetId, changeSetKind] = changeSetRef
         ? parseRef(changeSetRef)

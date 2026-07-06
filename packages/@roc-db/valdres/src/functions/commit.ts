@@ -36,10 +36,7 @@ export const commit: CommitFunction<ValdresEngine> = (
     const atom = mutationAtom(txn.mutation.ref)
     const currentMutation = rootTxn.get(atom)
     if (currentMutation) {
-        if (
-            currentMutation &&
-            (mutation as { appliedAt?: unknown }).appliedAt === txn.timestamp
-        ) {
+        if (currentMutation && mutation.appliedAt === txn.timestamp) {
             saveMutation(txn, mutation)
         } else if (
             currentMutation &&

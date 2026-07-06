@@ -13,4 +13,11 @@ export type Mutation = {
     payload: any
     changeSetRef?: Ref
     log: any
+    // Set by generateMutationDoc from the adapter session.
+    identityRef: string
+    sessionRef: Ref | null
+    // null while optimistic; the persisted timestamp once written.
+    persistedAt: string | null
+    // Set by finalizeMutation when a changeSet is applied.
+    appliedAt?: string
 }

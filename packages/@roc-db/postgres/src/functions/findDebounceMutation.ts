@@ -14,13 +14,13 @@ export const findDebounceMutation: FindDebounceMutationFunction = (async (
     mutationName: string,
     identityRef: string,
 ) => {
-    const debounceTime = (request.operation as { debounce: number }).debounce
+    const debounceTime = request.operation.debounce
 
     const thresholdTime = new Date(
         now.getTime() - debounceTime * 1000,
     ).toISOString()
     const { sqlTxn, mutationsTableName } = engineOpts
-    const payloadRef = (request.payload as { ref?: any } | undefined)?.ref
+    const payloadRef = request.payload?.ref
 
     const res = await (
         payloadRef === undefined
