@@ -776,4 +776,42 @@ describe("duplicateChangeSetMutations", () => {
         // The base was never materialized into the live store.
         expect(adapter._engineOpts.entities.has(basePost.ref)).toBe(false)
     })
+
+    // Sibling of the test above, but for the *initializeChangeSet* seeding site
+    // (a normal changeSet read) rather than the duplicate scratch-cache path.
+    // in-memory has no onChangeSetInit, so this exercises the core path.
+    test("initializeChangeSet seeds the base from the version snapshot on a normal changeSet read", () => {
+        const adapter = makeAdapter()
+        // Base entity lives ONLY in the version snapshot, never in the live store.
+        const basePost = makeDoc("Post/910000000000", "Post", {
+            data: { title: "Base", tags: [] },
+            children: { blocks: [] },
+        })
+        const versionRef = "PostVersion/910000000001"
+        adapter._engineOpts.entities.set(
+            versionRef,
+            makeDoc(versionRef, "PostVersion", {
+                data: { version: 1, snapshot: [basePost] },
+                parents: { post: basePost.ref },
+            }),
+        )
+        const draftRef = "Draft/910000000002"
+        adapter._engineOpts.entities.set(
+            draftRef,
+            makeDoc(draftRef, "Draft", {
+                parents: { post: basePost.ref, version: versionRef },
+            }),
+        )
+        expect(adapter._engineOpts.entities.has(basePost.ref)).toBe(false)
+
+        // A changeSet write that reads the snapshot-only base succeeds only if
+        // initializeChangeSet seeded it (otherwise createBlockRow's
+        // readEntity(basePost) throws NotFoundError).
+        const [{ block }] = adapter
+            .changeSet(draftRef)
+            .createBlockRow({ parentRef: basePost.ref })
+        expect(block.parents.parent).toBe(basePost.ref)
+        // A changeSet write does not materialize the base into the live store.
+        expect(adapter._engineOpts.entities.has(basePost.ref)).toBe(false)
+    })
 })
