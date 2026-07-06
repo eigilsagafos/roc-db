@@ -1,4 +1,5 @@
 import type { z, ZodSchema } from "zod"
+import type { WriteTransaction } from "../lib/WriteTransaction"
 
 export type WriteOperation<
     Name extends string = string,
@@ -11,6 +12,9 @@ export type WriteOperation<
     readonly version: number
     readonly debounce: number
     readonly changeSetOnly: boolean
-    readonly callback: (txn: any, session?: any) => any
+    readonly callback: (
+        txn: WriteTransaction<any, z.output<PayloadSchema>>,
+        session?: any,
+    ) => any
     readonly mutationSchema: ZodSchema
 }

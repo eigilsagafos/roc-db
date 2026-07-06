@@ -46,12 +46,13 @@ const persistOptimisticMutationsSync = (
             }
             const operation = findOperation(operations, mutation)
             validatePayload(operation, mutation)
-            const request = {
+            const request: WriteRequest = {
+                type: "write",
                 operation,
                 payload: mutation.payload,
-                changeSetRef: mutation.changeSetRef,
+                changeSetRef: mutation.changeSetRef ?? null,
                 optimisticMutation: { ...mutation, persistedAt },
-            } as unknown as WriteRequest
+            }
 
             const [, persistedMutation] = beginRequest(
                 request,
@@ -111,12 +112,13 @@ const persistOptimisticMutationsAsync = async (
             }
             const operation = findOperation(operations, mutation)
             validatePayload(operation, mutation)
-            const request = {
+            const request: WriteRequest = {
+                type: "write",
                 operation,
                 payload: mutation.payload,
-                changeSetRef: mutation.changeSetRef,
+                changeSetRef: mutation.changeSetRef ?? null,
                 optimisticMutation: { ...mutation, persistedAt },
-            } as unknown as WriteRequest
+            }
             const [, persistedMutation] = await beginRequest(
                 request,
                 engineOptsTxn,

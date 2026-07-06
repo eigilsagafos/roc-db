@@ -44,13 +44,14 @@ const loadMutationsSync = (
                 }
             }
             const operation = findOperation(operations, mutation)
-            const request = {
+            const request: WriteRequest & { isBatch: boolean } = {
+                type: "write",
                 operation,
                 payload: mutation.payload,
-                changeSetRef: mutation.changeSetRef,
+                changeSetRef: mutation.changeSetRef ?? null,
                 optimisticMutation: mutation,
                 isBatch: true,
-            } as unknown as WriteRequest
+            }
 
             const result = beginRequest(
                 request,
@@ -98,13 +99,14 @@ const loadMutationsAsync = async (
                 }
             }
             const operation = findOperation(operations, mutation)
-            const request = {
+            const request: WriteRequest & { isBatch: boolean } = {
+                type: "write",
                 operation,
                 payload: mutation.payload,
-                changeSetRef: mutation.changeSetRef,
+                changeSetRef: mutation.changeSetRef ?? null,
                 optimisticMutation: mutation,
                 isBatch: true,
-            } as unknown as WriteRequest
+            }
             const result = await beginRequest(
                 request,
                 engineOptsTxn,

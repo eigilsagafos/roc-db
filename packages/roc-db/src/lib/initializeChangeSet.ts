@@ -22,11 +22,12 @@ export const initializeChangeSet = (txn: Transaction) => {
 
 const prepareInitTransaction = (txn: Transaction, mutation: Mutation) => {
     const operation = findOperation(txn.adapter.operations, mutation)
-    const request = {
+    const request: WriteRequest = {
+        type: "write",
         operation,
         payload: mutation.payload,
-        changeSetRef: txn.changeSetRef,
-    } as unknown as WriteRequest
+        changeSetRef: txn.changeSetRef ?? null,
+    }
     const payload = parseRequestPayload(request)
     return new WriteTransaction(
         request,
