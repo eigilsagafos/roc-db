@@ -1,3 +1,4 @@
+import { createIndexedDBAdapter } from "@roc-db/indexed-db"
 import { createInMemoryAdapter } from "@roc-db/in-memory"
 import { DraftRefSchema, entities, operations } from "@roc-db/test-utils"
 import { describe, expect, test } from "bun:test"
@@ -79,6 +80,39 @@ describe("applyChangeSet", () => {
         expect(caught).toBeInstanceOf(Error)
         expect(caught.message).toContain(String(throwingMutation.ref))
         expect(caught.message).toContain("throwingChangeSetOp")
+        expect(caught.message).toContain(String(throwingMutation.timestamp))
+        expect(caught.cause).toBeInstanceOf(Error)
+        expect((caught.cause as Error).message).toBe(
+            "simulated callback failure",
+        )
+    })
+
+    test("async path: error during applyChangeSet includes mutation context, preserves original error as cause", async () => {
+        const adapter = createIndexedDBAdapter({
+            operations: [...operations, applyDraftTest, throwingChangeSetOp],
+            entities,
+            session: { identityRef: "User/42" },
+            dbName: crypto.randomUUID().slice(0, 8),
+            snowflake: new Snowflake(11, 11),
+        })
+
+        const [post] = await adapter.createPost({ title: "Post 1" })
+        const [draft] = await adapter.createDraft({ postRef: post.ref })
+
+        const draftAdapter = adapter.changeSet(draft.ref)
+        const [, throwingMutation] = await draftAdapter.throwingChangeSetOp({})
+
+        let caught: any
+        try {
+            await adapter.applyDraftTest(draft.ref)
+        } catch (err) {
+            caught = err
+        }
+
+        expect(caught).toBeInstanceOf(Error)
+        expect(caught.message).toContain(String(throwingMutation.ref))
+        expect(caught.message).toContain("throwingChangeSetOp")
+        expect(caught.message).toContain(String(throwingMutation.timestamp))
         expect(caught.cause).toBeInstanceOf(Error)
         expect((caught.cause as Error).message).toBe(
             "simulated callback failure",

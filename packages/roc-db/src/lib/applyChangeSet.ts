@@ -29,10 +29,7 @@ const applyChangeSetSync = (txn: WriteTransaction, ref: Ref) => {
                     applyTxn.request.operation.callback(applyTxn),
                 )
             } catch (cause) {
-                throw new Error(
-                    `applyChangeSet failed at mutation ${mutation.ref} (operation: ${mutation.operation.name}, timestamp: ${mutation.timestamp}): ${cause instanceof Error ? cause.message : String(cause)}`,
-                    { cause },
-                )
+                throwMutationContext(mutation, cause)
             }
         }
     }
@@ -55,16 +52,20 @@ const applyChangeSetAsync = async (txn: WriteTransaction, ref: Ref) => {
                     applyTxn.request.operation.callback(applyTxn),
                 )
             } catch (cause) {
-                throw new Error(
-                    `applyChangeSet failed at mutation ${mutation.ref} (operation: ${mutation.operation.name}, timestamp: ${mutation.timestamp}): ${cause instanceof Error ? cause.message : String(cause)}`,
-                    { cause },
-                )
+                throwMutationContext(mutation, cause)
             }
         }
     }
     if (txn.adapter.functions.onChangeSetApplied) {
         await txn.adapter.functions.onChangeSetApplied(txn, ref)
     }
+}
+
+const throwMutationContext = (mutation: Mutation, cause: unknown): never => {
+    throw new Error(
+        `applyChangeSet failed at mutation ${mutation.ref} (operation: ${mutation.operation.name}, timestamp: ${mutation.timestamp}): ${cause instanceof Error ? cause.message : String(cause)}`,
+        { cause },
+    )
 }
 
 const prepareTransaction = (txn: WriteTransaction, mutation: Mutation) => {
