@@ -143,6 +143,34 @@ const duplicateIntoDropUpdates = writeOperation(
         ),
 )
 
+// Operation whose payload schema applies a default. Used to check that a
+// transformPayload output the schema legally normalizes (here: fills in a
+// defaulted field) is accepted, not rejected for differing from the raw output.
+const tagPostDefault = writeOperation(
+    "tagPostDefault",
+    z.object({ ref: z.string(), tags: z.array(z.string()).default([]) }).strict(),
+    txn => {
+        const { ref, tags } = txn.payload
+        return Query(() => txn.patchEntity(ref, { data: { tags } }))
+    },
+)
+// Drops `tags`; the schema's `.default([])` restores it, so the parsed payload
+// differs from the transform output.
+const dupStripTags = writeOperation("dupStripTags", PayloadSchema, txn =>
+    Query(() =>
+        txn.duplicateChangeSetMutations(
+            txn.payload.sourceRef,
+            txn.payload.targetRef,
+            {
+                transformPayload: (p: any) => {
+                    const { tags, ...rest } = p
+                    return rest
+                },
+            },
+        ),
+    ),
+)
+
 const localOps = [
     applyDraftTest,
     duplicateInto,
@@ -152,6 +180,8 @@ const localOps = [
     duplicateIntoTag,
     duplicateIntoRewriteEmbedded,
     duplicateIntoBadTransform,
+    tagPostDefault,
+    dupStripTags,
 ]
 
 const makeEngine = () => ({
@@ -394,6 +424,28 @@ describe("duplicateChangeSetMutations", () => {
             (m: any) => m.operation.name === "createBlockParagraph",
         )
         expect(para.payload.content).toBe("Hello!")
+    })
+
+    test("accepts a transformPayload output the schema normalizes via defaults", () => {
+        const adapter = makeAdapter()
+        const [post] = adapter.createPost({ title: "P", tags: ["x"] })
+        const [draft] = adapter.createDraft({ postRef: post.ref })
+        adapter
+            .changeSet(draft.ref)
+            .tagPostDefault({ ref: post.ref, tags: ["a", "b"] })
+        const [target] = adapter.createDraft({ postRef: post.ref })
+
+        // transformPayload drops `tags`; `.default([])` restores it, so the
+        // parsed payload legally differs from the transform output. This must be
+        // accepted (and the parsed payload persisted), not rejected.
+        const [{ mutations }] = adapter.dupStripTags({
+            sourceRef: draft.ref,
+            targetRef: target.ref,
+        })
+        const m = mutations.find(
+            (x: any) => x.operation.name === "tagPostDefault",
+        )
+        expect(m.payload.tags).toEqual([])
     })
 
     test("returned mutations are the persisted records on the target", () => {

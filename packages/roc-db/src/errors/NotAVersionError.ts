@@ -12,7 +12,7 @@ export class NotAVersionError extends BadRequestError {
     entityKind: string
     constructor(versionRef: Ref, entityKind: string) {
         super(
-            `version ref '${versionRef}' resolves to entity '${entityKind}', which is not declared as a version (version: true).`,
+            `version reference '${versionRef}' targets entity '${entityKind}', which is not declared as a version (version: true).`,
         )
         this.name = "NotAVersionError"
         this.versionRef = versionRef

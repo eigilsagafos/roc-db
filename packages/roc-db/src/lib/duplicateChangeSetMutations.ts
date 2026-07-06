@@ -5,7 +5,6 @@ import { NotFoundError } from "../errors/NotFoundError"
 import { SingletonDuplicationError } from "../errors/SingletonDuplicationError"
 import type { Mutation } from "../types/Mutation"
 import type { Ref } from "../types/Ref"
-import { deepEqual } from "../utils/deepPatch"
 import { entityFromRef } from "../utils/entityFromRef"
 import { generateRef } from "../utils/generateRef"
 import { sortMutations } from "../utils/sortMutations"
@@ -155,13 +154,18 @@ const buildClonePlans = (
             // arbitrary, so validate its output against the operation schema (a
             // bad transform would otherwise blow up mid-replay). The hook gets
             // the entity refMap, matching its documented contract.
-            payload = options.transformPayload(remappedPayload, refMap)
-            const parsed = operation.payloadSchema.safeParse(payload)
-            if (!parsed.success || !deepEqual(parsed.data, payload)) {
+            const transformed = options.transformPayload(remappedPayload, refMap)
+            const parsed = operation.payloadSchema.safeParse(transformed)
+            if (!parsed.success) {
                 throw new BadRequestError(
                     `transformPayload produced an invalid payload for operation '${mutation.operation.name}'`,
                 )
             }
+            // Persist the parsed payload (schema defaults/transforms applied),
+            // matching how normal mutations store their payload — rather than
+            // rejecting a payload the schema legally normalizes (e.g.
+            // `.default([])`, which would make the raw output differ from parsed).
+            payload = parsed.data
         }
         const pinningLog = createdRefsOf(mutation).map(
             (oldRef): [Ref, "create"] => [refMap.get(oldRef)!, "create"],
