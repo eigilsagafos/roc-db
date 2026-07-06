@@ -8,7 +8,8 @@
  *   4. No scripts or devDependencies in prepacked package.json
  *   5. version field is present
  *
- * Always restores original package.json via postpublish, even on failure.
+ * Always restores the original package.json (and deletes any leftover
+ * package.tmp.json) even on failure.
  *
  * Publishable packages must not use the `workspace:` protocol in
  * dependencies / peerDependencies / optionalDependencies — changesets doesn't
@@ -85,7 +86,13 @@ for (const pkg of PUBLIC_PACKAGES) {
 
     if (prepackResult.exitCode !== 0) {
         error(pkgName, `prepack failed: ${prepackResult.stderr.toString()}`)
-        // Restore original
+        // prepack may have written package.tmp.json before failing; delete it
+        // so the next prepack (this run or a later one) doesn't throw on the
+        // "package.tmp.json already exists" guard. Then restore the original.
+        const tmpFile = Bun.file(`${pkgDir}/package.tmp.json`)
+        if (await tmpFile.exists()) {
+            await tmpFile.delete()
+        }
         await Bun.write(pkgJsonPath, originalContent)
         continue
     }
@@ -167,7 +174,7 @@ for (const pkg of PUBLIC_PACKAGES) {
                     const typesPath = `${pkgDir}/${exp.types}`
                     const file = Bun.file(typesPath)
                     if (!(await file.exists())) {
-                        warn(
+                        error(
                             pkgName,
                             `export "${exportPath}" types file missing: ${exp.types}`,
                         )

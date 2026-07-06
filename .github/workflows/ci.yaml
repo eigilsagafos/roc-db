@@ -167,12 +167,10 @@ jobs:
             - name: Install dependencies
               run: bun install
 
-            - name: Build all packages
-              run: bun run build
-
-            - name: Build types
-              run: bun run build:types
-
+            # verify-publish runs `bun run build` + `bun run build:types`
+            # internally and leaves dist/ in place, so the subsequent
+            # ci-publish.sh has the built artifacts to pack — no separate build
+            # step needed here.
             - name: Verify publish pipeline
               run: bun run verify-publish
 
