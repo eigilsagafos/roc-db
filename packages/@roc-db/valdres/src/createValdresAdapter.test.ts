@@ -166,6 +166,98 @@ const prepareChangeSetTest = () => {
     }
 }
 
+test("duplicateDraft (txn.duplicateChangeSetMutations) clones a changeSet with remapped refs", () => {
+    const { adapter, post, draft, changeSetAdapter } = prepareChangeSetTest()
+    const [{ block: row }] = changeSetAdapter.createBlockRow({
+        parentRef: post.ref,
+    })
+    const [{ block: para }] = changeSetAdapter.createBlockParagraph({
+        parentRef: row.ref,
+        content: "Hello",
+    })
+
+    // One transaction: create the new draft + copy the source's mutations.
+    const [{ draftRef: newDraftRef, mutations, refMap }] =
+        adapter.duplicateDraft({ sourceRef: draft.ref, postRef: post.ref })
+
+    expect(mutations).toHaveLength(2)
+    const newRow = refMap.get(row.ref)
+    const newPara = refMap.get(para.ref)
+    expect(newRow).toBeDefined()
+    expect(newPara).toBeDefined()
+    expect(newRow).not.toBe(row.ref)
+    expect(newPara).not.toBe(para.ref)
+
+    // The copies resolve in the new draft scope, and the cross-reference
+    // (paragraph -> its parent row) was remapped to the new row ref.
+    const targetCs = adapter.changeSet(newDraftRef)
+    expect(targetCs.readEntity(newRow).ref).toBe(newRow)
+    expect(targetCs.readEntity(newPara).parents.parent).toBe(newRow)
+
+    // Source changeSet still resolves to its original refs.
+    expect(changeSetAdapter.readEntity(para.ref).parents.parent).toBe(row.ref)
+})
+
+test("onChangeSetInit seeds the base from the version snapshot", () => {
+    const rootStore = store()
+    const entityFamily = atomFamily(null)
+    const adapter = createValdresAdapter({
+        store: rootStore,
+        entityAtom: entityFamily,
+        mutationAtom: atomFamily(null),
+        entityUniqueAtom: atomFamily(null),
+        entityIndexAtom: atomFamily([]),
+        operations,
+        entities,
+        session: { identityRef: "User/42" },
+    })
+    const [post] = adapter.createPost({ title: "Host" })
+    const [draft] = adapter.createDraft({ postRef: post.ref })
+
+    // Base entity lives ONLY in the version snapshot, never in the live store.
+    const TS = "2020-01-01T00:00:00.000Z"
+    const meta = { mutationRef: "Mutation/1", timestamp: TS }
+    const basePost = {
+        ref: "Post/920000000000",
+        entity: "Post",
+        created: meta,
+        updated: meta,
+        data: { title: "Base", tags: [] },
+        children: { blocks: [] },
+        parents: {},
+        ancestors: {},
+    }
+    const versionRef = "PostVersion/920000000001"
+    rootStore.set(entityFamily(versionRef), {
+        ref: versionRef,
+        entity: "PostVersion",
+        created: meta,
+        updated: meta,
+        data: { version: 1, snapshot: [basePost] },
+        children: {},
+        parents: { post: basePost.ref },
+        ancestors: {},
+    })
+    // Point the draft's version parent at the snapshot.
+    const draftDoc = rootStore.get(entityFamily(draft.ref)) as any
+    rootStore.set(entityFamily(draft.ref), {
+        ...draftDoc,
+        parents: { ...draftDoc.parents, version: versionRef },
+    })
+    // The base is not in the live root store.
+    expect(rootStore.get(entityFamily(basePost.ref))).toBeNull()
+
+    // .changeSet() runs onChangeSetInit, which seeds the version snapshot into
+    // the scoped store. Read that scoped store directly (not via readEntity,
+    // which would re-seed through roc-db's initializeChangeSet) so this isolates
+    // onChangeSetInit's seeding specifically.
+    const cs = adapter.changeSet(draft.ref)
+    const seeded = cs._engineOpts.scopedStore.get(entityFamily(basePost.ref))
+    expect(seeded).not.toBeNull()
+    expect(seeded.ref).toBe(basePost.ref)
+    expect(seeded.data.title).toBe("Base")
+})
+
 test("initChangeSet not called on operations in changeSet", () => {
     const { changeSetAdapter, post } = prepareChangeSetTest()
     const initializeChangeSetSpy = spyOn(

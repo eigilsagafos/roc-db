@@ -1,5 +1,7 @@
 import { z } from "zod"
+import { assertChangeSetKind } from "./lib/assertChangeSetKind"
 import { execute } from "./lib/execute"
+import { validateChangeSetVersionParents } from "./lib/validateChangeSetVersionParents"
 import { loadMutations } from "./lib/loadMutations"
 import { persistOptimisticMutations } from "./lib/persistOptimisticMutations"
 import { createPageEntitiesOperation } from "./operations/createPageEntitiesOperation"
@@ -68,6 +70,7 @@ export const createAdapter = <
     adapterOptions.models = Object.fromEntries(
         adapterOptions.entities.map(model => [model.name, model]),
     )
+    validateChangeSetVersionParents(adapterOptions)
 
     const operationsMap: FunctionMap = Object.fromEntries(
         allOperations.map(
@@ -123,6 +126,7 @@ export const createAdapter = <
                 new Date().toISOString(),
             ),
         changeSet: (changeSetRef: Ref) => {
+            assertChangeSetKind(adapterOptions, changeSetRef)
             const { onChangeSetInit } = adapterOptions.functions
             return createAdapter(
                 { ...adapterOptions, changeSetRef },

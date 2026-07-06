@@ -34,27 +34,27 @@ export class Snowflake {
         if (typeof currentTimestamp !== "number") {
             currentTimestamp = new Date(currentTimestamp).getTime()
         }
-        if (currentTimestamp.valueOf() === this.lastTimestamp.valueOf()) {
+        // Never let the logical clock run backwards: if the supplied timestamp
+        // is older than the last one we used (or we've already rolled ahead of
+        // it), keep using the later timestamp so ids stay monotonic.
+        let timestamp = Math.max(currentTimestamp, this.lastTimestamp)
+        if (timestamp === this.lastTimestamp) {
             this.sequence = (this.sequence + 1) & 0xfff // 12 bits for sequence
 
-            // this.sequence
             if (this.sequence === 0) {
-                //TODO: Wait for next millisecond
-                throw new Error("Error! Sequence overflow")
-                // while (currentTimestamp <= this.lastTimestamp) {
-                //     currentTimestamp = Date.now()
-                // }
+                // Sequence exhausted for this millisecond — roll into the next
+                // one instead of throwing. The caller often supplies a fixed
+                // timestamp (e.g. one transaction's), so we can't wait for the
+                // wall clock to advance; rolling the logical timestamp forward
+                // keeps ids unique and monotonic when many are generated under
+                // a single timestamp (e.g. duplicating a very large changeSet).
+                timestamp += 1
             }
         } else {
-            // debugLog.push({
-            //     s: this.sequence,
-            //     current: currentTimestamp.valueOf(),
-            //     last: this.lastTimestamp.valueOf(),
-            // })
             this.sequence = 0
         }
 
-        this.lastTimestamp = currentTimestamp
+        this.lastTimestamp = timestamp
 
         // timestamp in milliseconds
         // 8 bit group (2^8 - 0-255) 128 - intern/128 - realtime
@@ -65,7 +65,7 @@ export class Snowflake {
         // 1234718234712834 | 0-127 | 0-16383 | 0-1023
 
         // 00000000000000000000000000000000000000000000000000000000000000000
-        const seconds = currentTimestamp - this.epoch
+        const seconds = timestamp - this.epoch
         if (seconds < 0) throw new Error("Timestamp is before epoch")
         const id = (
             (BigInt(seconds) << 34n) |

@@ -1,6 +1,7 @@
 import type { Mutation } from "../types/Mutation"
 import type { Ref } from "../types/Ref"
 import type { WriteRequest } from "../types/WriteRequest"
+import { assertChangeSetKind } from "./assertChangeSetKind"
 import { findOperation } from "./findOperation"
 import { parseRequestPayload } from "./parseRequestPayload"
 import { runAsyncFunctionChain } from "./runAsyncFunctionChain"
@@ -9,6 +10,7 @@ import { sortMutations } from "../utils/sortMutations"
 import { WriteTransaction } from "./WriteTransaction"
 
 export const applyChangeSet = (txn: WriteTransaction, ref) => {
+    assertChangeSetKind(txn.adapter, ref)
     if (txn.adapter.async) {
         return applyChangeSetAsync(txn, ref)
     } else {

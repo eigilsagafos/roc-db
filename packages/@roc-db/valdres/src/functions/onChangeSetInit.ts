@@ -2,6 +2,7 @@ import {
     sortMutations,
     validateAndIndexDocument,
     findOperation,
+    loadChangeSetBase,
     parseRequestPayload,
     WriteTransaction,
     runSyncFunctionChain,
@@ -66,15 +67,21 @@ export const onChangeSetInit = (engineOpts, adapterOptions, changeSetRef) => {
 
     store.txn(rootTxn => {
         const versionRef = changeSet?.parents?.version
-        const version = rootTxn.get(entityAtom(versionRef))
         rootTxn.scope(changeSetRef, scopedTxn => {
             const cache = generateTransactionCache()
             if (versionRef && !scopedTxn.data.versionRefLoaded) {
-                if (version?.data?.snapshot) {
-                    for (const doc of version.data.snapshot) {
-                        cache.entities.set(doc.ref, doc)
-                    }
-                }
+                // Seed the base snapshot via the shared helper so all three
+                // seeding sites resolve `parents.version` -> `data.snapshot`
+                // identically (and pick up the assertVersionKind guardrail).
+                // valdres init is synchronous; read via the root txn.
+                loadChangeSetBase(
+                    {
+                        adapter: adapterOptions,
+                        readEntity: (ref: any) => rootTxn.get(entityAtom(ref)),
+                    } as any,
+                    changeSet,
+                    cache,
+                )
                 scopedTxn.data.versionRefLoaded = versionRef
             }
 

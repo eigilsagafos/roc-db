@@ -12,6 +12,7 @@ import { deleteBlocks } from "./deleteBlocks"
 import { deleteDraft } from "./deleteDraft"
 import { deleteOrgSettings } from "./deleteOrgSettings"
 import { deletePost } from "./deletePost"
+import { duplicateDraft } from "./duplicateDraft"
 import { moveBlocks } from "./moveBlocks"
 import { pageBlocks } from "./pageBlocks"
 import { pageEmptyEntitiesArray } from "./pageEmptyEntitiesArray"
@@ -49,6 +50,7 @@ export const operations: any[] = [
     deleteDraft,
     deleteOrgSettings,
     deletePost,
+    duplicateDraft,
     readPostBySlug,
     moveBlocks,
     pagePostsByTag,

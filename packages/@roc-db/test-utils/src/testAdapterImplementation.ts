@@ -346,9 +346,9 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
             expect(orgSettings.data.name).toBe("Acme")
         })
         test("second create throws ConflictError", async () => {
-            expect(() =>
-                adapter.createOrgSettings({ name: "Other" }),
-            ).toThrow(ConflictError)
+            expect(() => adapter.createOrgSettings({ name: "Other" })).toThrow(
+                ConflictError,
+            )
         })
         test("patch + debounce collapses mutations", async () => {
             const [, mutation1] = await adapter.updateOrgSettingsName({
@@ -400,12 +400,13 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
             expect(orgSettings.data.name).toBe("NewOrg")
         })
         test("constructor rejects singleton + uniqueDataKeys", () => {
-            expect(() =>
-                new Entity("Bad", {
-                    singleton: true,
-                    data: z.object({ name: z.string() }),
-                    uniqueDataKeys: ["name"],
-                }),
+            expect(
+                () =>
+                    new Entity("Bad", {
+                        singleton: true,
+                        data: z.object({ name: z.string() }),
+                        uniqueDataKeys: ["name"],
+                    }),
             ).toThrow(/singleton/)
         })
         test("createRef throws on unregistered entity", async () => {
@@ -577,6 +578,56 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
             expect(() =>
                 changeSetAdapter.createPost({ title: "Title 1" }),
             ).toThrow(BadRequestError)
+        })
+
+        test("duplicateDraft (txn.duplicateChangeSetMutations) produces an independent copy with remapped refs", async () => {
+            const [post] = await adapter1.createPost({
+                title: "Title 1",
+                slug: faker.lorem.slug(5),
+            })
+            const [sourceDraft] = await adapter1.createDraft({
+                postRef: post.ref,
+            })
+            const sourceCs = adapter1.changeSet(sourceDraft.ref)
+            const [{ block: row }] = await sourceCs.createBlockRow({
+                parentRef: post.ref,
+            })
+            const [{ block: para }] = await sourceCs.createBlockParagraph({
+                parentRef: row.ref,
+                content: "Hello",
+            })
+
+            // One transaction: create the new draft and copy the source's
+            // mutations into it via the txn primitive.
+            const [{ draftRef: newDraftRef, mutations, refMap }] =
+                await adapter1.duplicateDraft({
+                    sourceRef: sourceDraft.ref,
+                    postRef: post.ref,
+                })
+
+            expect(mutations).toHaveLength(2)
+            const newRow = refMap.get(row.ref)
+            const newPara = refMap.get(para.ref)
+            expect(newRow).toBeDefined()
+            expect(newPara).toBeDefined()
+            expect(newRow).not.toBe(row.ref)
+            expect(newPara).not.toBe(para.ref)
+            // No overlap between source and target created refs.
+            expect([...refMap.values()]).not.toContain(row.ref)
+            expect([...refMap.values()]).not.toContain(para.ref)
+
+            // The copies resolve in the new draft, with the cross-reference
+            // (paragraph -> row) remapped to the new row ref.
+            const targetCs = adapter1.changeSet(newDraftRef)
+            expect((await targetCs.readEntity(newRow)).ref).toBe(newRow)
+            expect((await targetCs.readEntity(newPara)).parents.parent).toBe(
+                newRow,
+            )
+
+            // Source changeSet is untouched.
+            expect((await sourceCs.readEntity(para.ref)).parents.parent).toBe(
+                row.ref,
+            )
         })
 
         test("deleteBlocks (patch running 2 times removing on array element every time)", async () => {

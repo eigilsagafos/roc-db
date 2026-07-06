@@ -2,7 +2,10 @@ import { createUniqueConstraintConflictError } from "../errors/createUniqueConst
 import type { Entity } from "../types/Entity"
 import type { Ref } from "../types/Ref"
 import { deepEqual, deepMergePatchSet, deepPatch } from "../utils/deepPatch"
-import { validateAndIndexDocument } from "../utils/validateAndIndexDocument"
+import {
+    indexEntriesForDocument,
+    validateAndIndexDocument,
+} from "../utils/validateAndIndexDocument"
 import type { WriteTransaction } from "./WriteTransaction"
 
 export const patchEntity = (txn: WriteTransaction, ref: Ref, body: any) => {
@@ -81,10 +84,12 @@ const handlePatch = (
     const [updatedDocument, reversePatch] = deepPatch(currentEntity, patch)
     const model = txn.adapter.models[updatedDocument.entity]
     const validatedDocument = validateAndIndexDocument(model, updatedDocument)
-    const existingDocument = txn.readEntity(ref)
+    // `currentEntity` is the pre-patch state and was already validated when it
+    // was stored, so recompute only its index/unique entries (cheap) rather than
+    // re-running a full schema validation just to maintain the index maps.
     updateChangeIndexEntries(
         txn.changeSet,
-        validateAndIndexDocument(model, existingDocument),
+        { __: indexEntriesForDocument(model, currentEntity) },
         validatedDocument,
     )
     txn.changeSet.entities.set(ref, validatedDocument)

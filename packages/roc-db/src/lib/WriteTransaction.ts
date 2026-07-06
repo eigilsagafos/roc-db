@@ -11,6 +11,10 @@ import { commit } from "./commit"
 import { createEntity } from "./createEntity"
 import { createRef } from "./createRef"
 import { deleteChangeSet } from "./deleteChangeSet"
+import {
+    duplicateChangeSetMutations,
+    type DuplicateChangeSetMutationsOptions,
+} from "./duplicateChangeSetMutations"
 import { deleteEntity } from "./deleteEntity"
 import { finalizeMutation } from "./finalizeMutation"
 import { findDependents } from "./findDependents"
@@ -32,6 +36,7 @@ export class WriteTransaction<
     mutationFinalized: boolean
     optimisticCreateRefs: string[]
     log: Log
+    timestamp: string
 
     constructor(
         public request: RocDBRequest,
@@ -61,6 +66,17 @@ export class WriteTransaction<
     deleteEntity = (ref: Ref, cascade = false) =>
         deleteEntity(this, ref, cascade)
     deleteChangeSet = (changeSetRef: Ref) => deleteChangeSet(this, changeSetRef)
+    duplicateChangeSetMutations = (
+        sourceChangeSetRef: Ref,
+        targetChangeSetRef: Ref,
+        options: DuplicateChangeSetMutationsOptions = {},
+    ) =>
+        duplicateChangeSetMutations(
+            this,
+            sourceChangeSetRef,
+            targetChangeSetRef,
+            options,
+        )
     finalizedMutation = (isChangeSetApply = false) => {
         if (this.mutationFinalized)
             throw new Error("Mutation already finalized")
@@ -69,7 +85,10 @@ export class WriteTransaction<
     }
     findDependents = (ref: Ref): Ref[] => findDependents(this, ref) as Ref[]
     patchEntity = (ref: Ref, args: any) => patchEntity(this, ref, args)
-    readEntity = <R extends Ref>(ref: R, throwIfMissing = true): ReadEntityResult<R> =>
+    readEntity = <R extends Ref>(
+        ref: R,
+        throwIfMissing = true,
+    ): ReadEntityResult<R> =>
         readEntity(this, ref, throwIfMissing) as ReadEntityResult<R>
     undo = (mutationRef: MutationRef) => undo(this, mutationRef)
     updateEntity = (ref: Ref, body: any) => updateEntity(this, ref, body)

@@ -25,7 +25,7 @@ export const saveMutation = async (
         : [null, null]
     const { sqlTxn, mutationsTableName } = txn.engineOpts
 
-    if (txn.mutation.debounceCount > 0 || appliedAt) {
+    if (debounceCount > 0 || appliedAt) {
         const [row] = await sqlTxn`
             UPDATE ${sqlTxn(mutationsTableName)}
             SET (
@@ -36,7 +36,7 @@ export const saveMutation = async (
                 persisted_at
             ) = (
                 ${new Date(timestamp)},
-                ${txn.mutation.debounceCount},
+                ${debounceCount},
                 ${payload ?? null},
                 ${appliedAt ? appliedAt : null},
                 ${persistedAt ? persistedAt : null}

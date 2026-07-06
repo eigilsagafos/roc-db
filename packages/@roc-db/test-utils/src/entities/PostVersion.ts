@@ -3,6 +3,7 @@ import { z } from "zod"
 import { PostRefSchema } from "../schemas"
 
 export const PostVersion = new Entity("PostVersion", {
+    version: true,
     data: z.object({
         version: z.number(),
         snapshot: z.array(z.any()),

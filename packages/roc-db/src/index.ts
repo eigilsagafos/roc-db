@@ -7,6 +7,11 @@ export { Entity } from "./Entity"
 export { BadRequestError } from "./errors/BadRequestError"
 export { ConflictError } from "./errors/ConflictError"
 export { NotFoundError } from "./errors/NotFoundError"
+export { ChangeSetIntegrityError } from "./errors/ChangeSetIntegrityError"
+export { ChangeSetNotEmptyError } from "./errors/ChangeSetNotEmptyError"
+export { NotAChangeSetError } from "./errors/NotAChangeSetError"
+export { NotAVersionError } from "./errors/NotAVersionError"
+export { SingletonDuplicationError } from "./errors/SingletonDuplicationError"
 export { createUniqueConstraintConflictError } from "./errors/createUniqueConstraintConflictError"
 
 // schemas
@@ -30,6 +35,10 @@ export type {
 } from "./types/AdapterFunctions"
 // export type { Entity } from "./types/Entity"
 export type { Mutation } from "./types/Mutation"
+export type {
+    DuplicateChangeSetMutationsOptions,
+    DuplicateChangeSetMutationsResult,
+} from "./lib/duplicateChangeSetMutations"
 export type { MutationRef } from "./types/MutationRef"
 export type { Operation } from "./types/Operation"
 export type { ReadRequest } from "./types/ReadRequest"
@@ -45,6 +54,7 @@ export type { WriteRequest } from "./types/WriteRequest"
 export { deepPatch } from "./utils/deepPatch"
 export { DELETED_IN_CHANGE_SET_SYMBOL } from "./utils/DELETED_IN_CHANGE_SET_SYMBOL"
 export { entityFromRef } from "./utils/entityFromRef"
+export { entityKindsFromRefSchema } from "./utils/entityKindsFromRefSchema"
 export { generateRef } from "./utils/generateRef"
 export { idFromRef } from "./utils/idFromRef"
 export { parseRef } from "./utils/parseRef"
@@ -62,6 +72,7 @@ export { sortMutations } from "./utils/sortMutations"
 
 // lib - temporarily exposed for valdres integration until a better solution is found
 export { findOperation } from "./lib/findOperation"
+export { loadChangeSetBase } from "./lib/loadChangeSetBase"
 export { parseRequestPayload } from "./lib/parseRequestPayload"
 export { WriteTransaction } from "./lib/WriteTransaction"
 export { runSyncFunctionChain } from "./lib/runSyncFunctionChain"
