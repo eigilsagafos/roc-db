@@ -1,6 +1,6 @@
 import { createInMemoryAdapter } from "@roc-db/in-memory"
 import { entities, operations } from "@roc-db/test-utils"
-import { describe, expect, spyOn, test } from "bun:test"
+import { describe, expect, test } from "bun:test"
 import { z } from "zod"
 import { NotAChangeSetError } from "../errors/NotAChangeSetError"
 import { NotAVersionError } from "../errors/NotAVersionError"
@@ -16,47 +16,17 @@ const dupLoose = writeOperation("dupLoose", z.any(), (txn: any) =>
     ),
 )
 
-const makeAdapter = (strictChangeSets = false) =>
+const makeAdapter = () =>
     createInMemoryAdapter({
         operations: [...operations, dupLoose],
         entities,
         session: { identityRef: "User/42" },
         snowflake: new Snowflake(10, 10),
-        strictChangeSets,
     })
 
 describe("changeSet-kind guardrail", () => {
-    test("warns (once per kind) when a non-changeSet ref is used as a changeSetRef", () => {
+    test("throws NotAChangeSetError when a non-changeSet ref is used as a changeSetRef", () => {
         const adapter = makeAdapter()
-        const [post] = adapter.createPost({ title: "P" })
-        const warn = spyOn(console, "warn").mockImplementation(() => {})
-        try {
-            expect(() => adapter.changeSet(post.ref)).not.toThrow()
-            adapter.changeSet(post.ref) // second time: no extra warn
-            expect(warn).toHaveBeenCalledTimes(1)
-            expect(warn.mock.calls[0][0]).toContain(
-                "not declared as a changeSet",
-            )
-        } finally {
-            warn.mockRestore()
-        }
-    })
-
-    test("a declared changeSet (Draft) does not warn", () => {
-        const adapter = makeAdapter()
-        const [post] = adapter.createPost({ title: "P" })
-        const [draft] = adapter.createDraft({ postRef: post.ref })
-        const warn = spyOn(console, "warn").mockImplementation(() => {})
-        try {
-            adapter.changeSet(draft.ref)
-            expect(warn).not.toHaveBeenCalled()
-        } finally {
-            warn.mockRestore()
-        }
-    })
-
-    test("strictChangeSets throws NotAChangeSetError instead of warning", () => {
-        const adapter = makeAdapter(true)
         const [post] = adapter.createPost({ title: "P" })
         let err: any
         try {
@@ -69,8 +39,15 @@ describe("changeSet-kind guardrail", () => {
         expect(err.changeSetRef).toBe(post.ref)
     })
 
-    test("duplicateChangeSetMutations guards its source/target (strict)", () => {
-        const adapter = makeAdapter(true)
+    test("a declared changeSet (Draft) is accepted", () => {
+        const adapter = makeAdapter()
+        const [post] = adapter.createPost({ title: "P" })
+        const [draft] = adapter.createDraft({ postRef: post.ref })
+        expect(() => adapter.changeSet(draft.ref)).not.toThrow()
+    })
+
+    test("duplicateChangeSetMutations guards its source/target", () => {
+        const adapter = makeAdapter()
         const [post] = adapter.createPost({ title: "P" })
         const [draft] = adapter.createDraft({ postRef: post.ref })
         let err: any
@@ -84,8 +61,8 @@ describe("changeSet-kind guardrail", () => {
         expect(err.entityKind).toBe("Post")
     })
 
-    test("loadChangeSetBase rejects a version parent that is not a version entity (strict)", () => {
-        const adapter = makeAdapter(true)
+    test("loadChangeSetBase rejects a version parent that is not a version entity", () => {
+        const adapter = makeAdapter()
         const [post] = adapter.createPost({ title: "P" })
         // A changeSet (Draft) whose version parent points at a Post, not a
         // version entity — the base can't be resolved from it.

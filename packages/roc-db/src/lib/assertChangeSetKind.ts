@@ -3,9 +3,9 @@ import { NotAVersionError } from "../errors/NotAVersionError"
 import type { Ref } from "../types/Ref"
 import { entityFromRef } from "../utils/entityFromRef"
 
-// Warn-then-enforce role guard, shared by the changeSet and version checks: warn
-// once per kind by default (so unmigrated apps keep working), or throw `error`
-// when `adapter.strictChangeSets` is set.
+// Role guard shared by the changeSet and version checks: the ref's entity kind
+// must be declared with the matching role flag (changeSet: true / version:
+// true), otherwise we throw. Enforcement is unconditional.
 const assertRole = (
     adapter: any,
     ref: Ref,
@@ -15,18 +15,10 @@ const assertRole = (
     if (!ref) return
     const kind = entityFromRef(ref)
     if (adapter.models?.[kind]?.[role]) return
-    if (adapter.strictChangeSets) throw error()
-    const key = `${role}:${kind}`
-    const warned: Set<string> = (adapter._warnedRoleKinds ??= new Set())
-    if (!warned.has(key)) {
-        warned.add(key)
-        console.warn(
-            `roc-db: ref '${ref}' resolves to entity '${kind}', which is not declared as a ${role} (${role}: true). This will become an error in a future version.`,
-        )
-    }
+    throw error()
 }
 
-// Guardrail: a ref used as a changeSetRef should resolve to a changeSet kind.
+// Guardrail: a ref used as a changeSetRef must resolve to a changeSet kind.
 export const assertChangeSetKind = (adapter: any, changeSetRef: Ref) =>
     assertRole(
         adapter,
@@ -35,7 +27,7 @@ export const assertChangeSetKind = (adapter: any, changeSetRef: Ref) =>
         () => new NotAChangeSetError(changeSetRef, entityFromRef(changeSetRef)),
     )
 
-// Guardrail: a changeSet's version parent should resolve to a version kind.
+// Guardrail: a changeSet's version parent must resolve to a version kind.
 export const assertVersionKind = (adapter: any, versionRef: Ref) =>
     assertRole(
         adapter,

@@ -1,6 +1,6 @@
 import { createInMemoryAdapter } from "@roc-db/in-memory"
 import { entities } from "@roc-db/test-utils"
-import { describe, expect, spyOn, test } from "bun:test"
+import { describe, expect, test } from "bun:test"
 import { z } from "zod"
 import { Entity } from "../Entity"
 import { NotAVersionError } from "../errors/NotAVersionError"
@@ -36,49 +36,23 @@ describe("validateChangeSetVersionParents", () => {
         parents: z.object({ version: refSchemaGenerator("Post") }),
     })
 
-    test("well-formed entities (Draft.version -> PostVersion) do not warn", () => {
-        const warn = spyOn(console, "warn").mockImplementation(() => {})
-        try {
+    test("well-formed entities (Draft.version -> PostVersion) construct without error", () => {
+        expect(() =>
             createInMemoryAdapter({
                 operations: [],
                 entities,
                 session: { identityRef: "User/42" },
-            })
-            const versionWarns = warn.mock.calls.filter(c =>
-                String(c[0]).includes("version parent referencing"),
-            )
-            expect(versionWarns).toHaveLength(0)
-        } finally {
-            warn.mockRestore()
-        }
+            }),
+        ).not.toThrow()
     })
 
-    test("a version parent pointing at a non-version entity throws (strict)", () => {
+    test("a version parent pointing at a non-version entity throws at construction", () => {
         expect(() =>
             createInMemoryAdapter({
                 operations: [],
                 entities: [...entities, BadDraft] as any,
                 session: { identityRef: "User/42" },
-                strictChangeSets: true,
             }),
         ).toThrow(NotAVersionError)
-    })
-
-    test("...and warns when not strict", () => {
-        const warn = spyOn(console, "warn").mockImplementation(() => {})
-        try {
-            createInMemoryAdapter({
-                operations: [],
-                entities: [...entities, BadDraft] as any,
-                session: { identityRef: "User/42" },
-            })
-            expect(
-                warn.mock.calls.some(c =>
-                    String(c[0]).includes("version parent referencing 'Post'"),
-                ),
-            ).toBe(true)
-        } finally {
-            warn.mockRestore()
-        }
     })
 })

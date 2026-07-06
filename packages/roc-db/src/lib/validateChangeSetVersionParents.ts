@@ -6,7 +6,8 @@ import { entityKindsFromRefSchema } from "../utils/entityKindsFromRefSchema"
 // validate this up front — before any runtime resolution — because
 // refSchemaGenerator tags the parent ref schema with its kinds.
 //
-// Warn-then-enforce, sharing `adapter.strictChangeSets`. Runs once per adapter.
+// Enforcement is unconditional; a misconfigured schema throws at adapter
+// construction. Runs once per adapter.
 export const validateChangeSetVersionParents = (adapter: any) => {
     if (adapter._versionParentsValidated) return
     adapter._versionParentsValidated = true
@@ -18,17 +19,7 @@ export const validateChangeSetVersionParents = (adapter: any) => {
         if (!versionParent) continue
         for (const kind of entityKindsFromRefSchema(versionParent)) {
             if (models[kind]?.version) continue
-            if (adapter.strictChangeSets) {
-                throw new NotAVersionError(`${name}.parents.version`, kind)
-            }
-            const warned: Set<string> = (adapter._warnedRoleKinds ??= new Set())
-            const key = `regversion:${name}:${kind}`
-            if (!warned.has(key)) {
-                warned.add(key)
-                console.warn(
-                    `roc-db: changeSet entity '${name}' has a version parent referencing '${kind}', which is not declared as a version (version: true).`,
-                )
-            }
+            throw new NotAVersionError(`${name}.parents.version`, kind)
         }
     }
 }
