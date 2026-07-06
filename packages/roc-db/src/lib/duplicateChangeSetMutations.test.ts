@@ -128,11 +128,27 @@ const duplicateIntoBadTransform = writeOperation(
         ),
 )
 
+// Keeps everything except updateBlockParagraph mutations — used to drop a
+// mutation whose *ref* is referenced by a kept `undo` payload.
+const duplicateIntoDropUpdates = writeOperation(
+    "duplicateIntoDropUpdates",
+    PayloadSchema,
+    txn =>
+        Query(() =>
+            txn.duplicateChangeSetMutations(
+                txn.payload.sourceRef,
+                txn.payload.targetRef,
+                { filter: m => m.operation.name !== "updateBlockParagraph" },
+            ),
+        ),
+)
+
 const localOps = [
     applyDraftTest,
     duplicateInto,
     duplicateIntoKeepRows,
     duplicateIntoDropRows,
+    duplicateIntoDropUpdates,
     duplicateIntoTag,
     duplicateIntoRewriteEmbedded,
     duplicateIntoBadTransform,
@@ -327,6 +343,41 @@ describe("duplicateChangeSetMutations", () => {
         }
         expect(err).toBeInstanceOf(ChangeSetIntegrityError)
         expect(err.danglingRef).toBe(rowRef)
+    })
+
+    test("filtering out a mutation a kept undo depends on throws ChangeSetIntegrityError", () => {
+        const adapter = makeAdapter()
+        const [post] = adapter.createPost({ title: "P" })
+        const [draft] = adapter.createDraft({ postRef: post.ref })
+        const cs = adapter.changeSet(draft.ref)
+        // A paragraph is created, then updated, then the update is undone. The
+        // undo's payload is the update mutation's ref, and its log touches only
+        // the paragraph (created by a *kept* mutation) — so nothing the undo
+        // depends on is a dropped *entity*, only a dropped *mutation*. (The old
+        // integrity check reasoned about entity refs only and missed this.)
+        const [{ block: para }] = cs.createBlockParagraph({
+            parentRef: post.ref,
+            content: "Hello",
+        })
+        const [, updateMutation] = cs.updateBlockParagraph({
+            ref: para.ref,
+            content: "Updated",
+        })
+        cs.undo(updateMutation.ref)
+        const [target] = adapter.createDraft({ postRef: post.ref })
+
+        let err: any
+        try {
+            // drop the update (keeping the undo that points at it)
+            adapter.duplicateIntoDropUpdates({
+                sourceRef: draft.ref,
+                targetRef: target.ref,
+            })
+        } catch (e) {
+            err = e
+        }
+        expect(err).toBeInstanceOf(ChangeSetIntegrityError)
+        expect(err.danglingRef).toBe(updateMutation.ref)
     })
 
     test("transformPayload output is what gets persisted", () => {

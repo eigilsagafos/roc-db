@@ -93,26 +93,33 @@ const buildClonePlans = (
     const kept = options.filter ? sorted.filter(options.filter) : sorted
     const keptSet = new Set(kept)
 
-    // Referential integrity: a ref created only by a dropped mutation must not
-    // be referenced by a kept one (replay would hit a non-existent entity).
+    // Referential integrity: every ref a kept mutation depends on must be
+    // (re)created within the kept set, else the clone would silently reference
+    // the *source* changeSet. Two ref kinds can dangle after a filter:
+    //   - an entity ref created only by a dropped mutation, and
+    //   - a dropped mutation's own ref, if a kept mutation's payload points at
+    //     it (e.g. an `undo`/`redo` kept while its target mutation was dropped).
+    // A dropped mutation's ref is never re-created, so any reference to it is a
+    // dangling dependency.
     const keptCreated = new Set<Ref>()
     for (const mutation of kept) {
         for (const ref of createdRefsOf(mutation)) keptCreated.add(ref)
     }
-    const droppedCreated = new Set<Ref>()
+    const droppedRefs = new Set<Ref>()
     for (const mutation of sorted) {
         if (keptSet.has(mutation)) continue
+        droppedRefs.add(mutation.ref)
         for (const ref of createdRefsOf(mutation)) {
-            if (!keptCreated.has(ref)) droppedCreated.add(ref)
+            if (!keptCreated.has(ref)) droppedRefs.add(ref)
         }
     }
-    if (droppedCreated.size) {
+    if (droppedRefs.size) {
         for (const mutation of kept) {
             const referenced = new Set<string>()
             collectStrings(mutation.payload, referenced)
             for (const entry of mutation.log ?? []) referenced.add(entry[0])
             for (const ref of referenced) {
-                if (droppedCreated.has(ref)) {
+                if (droppedRefs.has(ref)) {
                     throw new ChangeSetIntegrityError(ref, mutation.ref)
                 }
             }
