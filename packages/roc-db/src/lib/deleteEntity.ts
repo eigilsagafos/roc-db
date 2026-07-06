@@ -27,7 +27,6 @@ const removeIndexEntriesFromMap = (document: any, indexMap: any) => {
 const removeUniqueEntriesFromMap = (document: any, uniqueMap: any) => {
     for (const [key, value] of document.__.unique) {
         const entry = `${document.entity}:${key}:${JSON.stringify(value)}`
-        console.log("removing unique entry", entry)
         uniqueMap.set(entry, DELETED_IN_CHANGE_SET_SYMBOL)
     }
 }

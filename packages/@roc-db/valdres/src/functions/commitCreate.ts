@@ -1,24 +1,9 @@
 import type { CreateEntityFunction } from "roc-db"
-import type { ValdresEngine, ValdresTxnEngine } from "../types/ValdresEngine"
+import type { ValdresEngine } from "../types/ValdresEngine"
 
-export const commitCreate: CreateEntityFunction<ValdresEngine> = (
-    txn,
-    ref,
-    document,
-) => {
+// TODO: not implemented and currently unused — valdres commits create/update/
+// delete inline in commit.ts. Kept as a typed stub; the previous body was dead
+// unreachable code (behind the throw).
+export const commitCreate: CreateEntityFunction<ValdresEngine> = () => {
     throw new Error("commitCreate is not implemented")
-    const { entity } = document
-    console.log("commitCreate", ref, document)
-    const {
-        entityAtom,
-        entityRefListAtom,
-        txn: valdresTxn,
-    } = txn.engineOpts as ValdresTxnEngine
-    valdresTxn.set(entityAtom(ref), document)
-    if (entityRefListAtom) {
-        const refListAtom = entityRefListAtom as NonNullable<
-            typeof entityRefListAtom
-        >
-        valdresTxn.set(refListAtom(entity), (curr: string[]) => [...curr, ref])
-    }
 }

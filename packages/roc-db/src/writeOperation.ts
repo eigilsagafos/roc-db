@@ -1,5 +1,6 @@
-import { z, type ZodSchema } from "zod"
+import { z, type ZodSchema, type ZodType } from "zod"
 import { WriteTransaction } from "./lib/WriteTransaction"
+import { MutationLogSchema } from "./schemas/MutationLogSchema"
 import { mutationSchemaGenerator } from "./schemas/generators/mutationSchemaGenerator"
 import type { WriteOperation } from "./types/WriteOperation"
 import type { WriteOperationSettings } from "./types/WriteOperationSettings"
@@ -33,7 +34,7 @@ export const writeOperation = <
         mutationSchema: mutationSchemaGenerator(
             name,
             payloadSchema,
-            mutationLogSchema as any,
+            mutationLogSchema as ZodType<z.infer<typeof MutationLogSchema>>,
             changeSetOnly,
         ),
     })
