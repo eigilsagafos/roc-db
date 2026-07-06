@@ -26,7 +26,7 @@
         "valdres": "0.2.0-pre.18"
     },
     "peerDependencies": {
-        "roc-db": "0.2.0-pre.98",
+        "roc-db": ">=0.2.0-pre.98 <1.0.0",
         "valdres": "0.2.0-pre.18",
         "zod": ">=4.0.0"
     },
