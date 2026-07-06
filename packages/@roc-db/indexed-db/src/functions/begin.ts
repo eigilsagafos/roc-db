@@ -37,7 +37,16 @@ const openDatabase = engineOpts => {
         }
 
         idbRequest.onsuccess = () => {
-            resolve(idbRequest.result)
+            const db = idbRequest.result
+            // The connection is cached and long-lived. If another connection
+            // requests a version upgrade, close ours and drop it from the
+            // cache so the upgrade isn't blocked and we don't reuse a stale
+            // handle.
+            db.onversionchange = () => {
+                db.close()
+                DB_CACHE.delete(engineOpts)
+            }
+            resolve(db)
         }
         idbRequest.onerror = () => {
             DB_CACHE.delete(engineOpts)
@@ -73,7 +82,7 @@ export const begin = async (engineOpts, callback) => {
         txn.onerror = event => {
             if (settled) return
             settled = true
-            reject(event.target.error)
+            reject(txn.error ?? event.target?.error)
         }
         txn.onabort = () => {
             if (settled) return

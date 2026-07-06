@@ -32,17 +32,15 @@ export const findDebounceMutation = async (
                 }
                 cursor.continue()
             } else {
-                if (results.length) {
-                    if (results.length > 1) {
-                        throw new Error(
-                            "Unhandled multiple debounced mutations",
-                        )
-                    }
-                    resolve(results[0])
-                } else {
-                    resolve(undefined)
+                if (results.length > 1) {
+                    reject(new Error("Unhandled multiple debounced mutations"))
+                    return
                 }
+                resolve(results[0])
             }
+        }
+        idbRequest.onerror = () => {
+            reject(idbRequest.error)
         }
     })
 }
