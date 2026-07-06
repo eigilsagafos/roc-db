@@ -9,5 +9,9 @@
     "@roc-db/valdres": "0.2.0-pre.98",
     "roc-db": "0.2.0-pre.98"
   },
-  "changesets": []
+  "changesets": [
+    "duplicate-changeset-mutations",
+    "fix-type-declaration-emit",
+    "indexed-db-conformance"
+  ]
 }
