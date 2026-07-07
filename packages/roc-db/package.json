@@ -11,7 +11,8 @@
     "sideEffects": false,
     "scripts": {
         "build": "NODE_ENV=production bun run scripts/build.ts",
-        "build:types": "rm -rf dist/types && bun run tsc --noCheck",
+        "build:types": "rm -rf dist/types && bun run tsc",
+        "typecheck": "bun run tsc --noEmit",
         "docker:postgres": "docker run -e POSTGRES_PASSWORD=password -p 5432:5432 postgres:17.2",
         "test": "bun test"
     },

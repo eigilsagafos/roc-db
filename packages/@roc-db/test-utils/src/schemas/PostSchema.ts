@@ -1,10 +1,8 @@
 import { entitySchemaGenerator } from "roc-db"
 import { z } from "zod"
-import { PostRefSchema } from "./PostRefSchema"
 import { UserRefSchema } from "./UserRefSchema"
 
 export const PostSchema = entitySchemaGenerator("Post", {
-    ref: PostRefSchema,
     data: z.object({
         title: z.string(),
         text: z.string().optional(),

@@ -154,7 +154,10 @@ const buildClonePlans = (
             // arbitrary, so validate its output against the operation schema (a
             // bad transform would otherwise blow up mid-replay). The hook gets
             // the entity refMap, matching its documented contract.
-            const transformed = options.transformPayload(remappedPayload, refMap)
+            const transformed = options.transformPayload(
+                remappedPayload,
+                refMap,
+            )
             const parsed = operation.payloadSchema.safeParse(transformed)
             if (!parsed.success) {
                 throw new BadRequestError(

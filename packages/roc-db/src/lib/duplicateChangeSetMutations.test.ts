@@ -148,7 +148,9 @@ const duplicateIntoDropUpdates = writeOperation(
 // defaulted field) is accepted, not rejected for differing from the raw output.
 const tagPostDefault = writeOperation(
     "tagPostDefault",
-    z.object({ ref: z.string(), tags: z.array(z.string()).default([]) }).strict(),
+    z
+        .object({ ref: z.string(), tags: z.array(z.string()).default([]) })
+        .strict(),
     txn => {
         const { ref, tags } = txn.payload
         return Query(() => txn.patchEntity(ref, { data: { tags } }))

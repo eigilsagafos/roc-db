@@ -1,13 +1,15 @@
 import {
     createUniqueConstraintConflictError,
-    type Entity,
-    type Mutation,
+    type CommitFunction,
     type Ref,
-    type WriteTransaction,
 } from "roc-db"
+import type { InMemoryEngine } from "../types/InMemoryEngine"
 import { saveMutation } from "./saveMutation"
 
-const findAddedAndRemovedEntries = (oldArr, newArr) => {
+const findAddedAndRemovedEntries = (
+    oldArr: [string, any][],
+    newArr: [string, any][],
+) => {
     const removed = newArr?.filter(
         ([k1, v1]) => !oldArr.some(([k2, v2]) => k1 === k2 && v1 === v2),
     )
@@ -17,14 +19,10 @@ const findAddedAndRemovedEntries = (oldArr, newArr) => {
     return [added, removed]
 }
 
-export const commit = (
-    txn: WriteTransaction,
-    mutation: Mutation,
-    {
-        created,
-        updated,
-        deleted,
-    }: { created: Entity[]; updated: Entity[]; deleted: Ref[] },
+export const commit: CommitFunction<InMemoryEngine> = (
+    txn,
+    mutation,
+    { created, updated, deleted },
 ) => {
     const { mutations } = txn.engineOpts
     const currentMutation = mutations.get(txn.mutation.ref)
@@ -53,7 +51,7 @@ export const commit = (
             throw createUniqueConstraintConflictError(doc.entity)
         }
         if (doc.__.unique?.length) {
-            doc.__.unique.forEach(([key, value]) => {
+            doc.__.unique.forEach(([key, value]: [string, any]) => {
                 const uniqueKey = `${doc.entity}:${key}:${JSON.stringify(value)}`
                 if (txn.engineOpts.entitiesUnique.has(uniqueKey))
                     throw createUniqueConstraintConflictError(doc.entity)
@@ -61,7 +59,7 @@ export const commit = (
             })
         }
         if (doc.__.index?.length) {
-            doc.__.index.forEach(([key, value]) => {
+            doc.__.index.forEach(([key, value]: [string, any]) => {
                 const indexKey = `${doc.entity}:${key}:${JSON.stringify(value)}`
                 const arr = txn.engineOpts.entitiesIndex.get(indexKey) ?? []
                 txn.engineOpts.entitiesIndex.set(indexKey, [...arr, doc.ref])
@@ -72,7 +70,7 @@ export const commit = (
     for (const updatedDocument of updated) {
         const existingDocument = txn.engineOpts.entities.get(
             updatedDocument.ref,
-        )
+        ) as any
         if (
             updatedDocument.__.unique?.length ||
             existingDocument.__.unique?.length
@@ -103,9 +101,9 @@ export const commit = (
                 updatedDocument.__.index,
                 existingDocument.__.index,
             )
-            removed.forEach(([key, value]) => {
+            removed.forEach(([key, value]: [string, any]) => {
                 const indexKey = `${updatedDocument.entity}:${key}:${JSON.stringify(value)}`
-                const arr = txn.engineOpts.entitiesIndex.get(indexKey)
+                const arr = txn.engineOpts.entitiesIndex.get(indexKey) as Ref[]
                 txn.engineOpts.entitiesIndex.set(
                     indexKey,
                     arr.filter(ref => ref !== updatedDocument.ref),
@@ -128,22 +126,27 @@ export const commit = (
         if (ref.startsWith("Mutation/")) {
             txn.engineOpts.mutations.delete(ref)
         } else {
-            const existingDocument = txn.engineOpts.entities.get(ref)
+            const existingDocument = txn.engineOpts.entities.get(ref) as any
             if (existingDocument.__.unique?.length) {
-                existingDocument.__.unique.forEach(([key, value]) => {
-                    const uniqueKey = `${existingDocument.entity}:${key}:${JSON.stringify(value)}`
-                    txn.engineOpts.entitiesUnique.delete(uniqueKey)
-                })
+                existingDocument.__.unique.forEach(
+                    ([key, value]: [string, any]) => {
+                        const uniqueKey = `${existingDocument.entity}:${key}:${JSON.stringify(value)}`
+                        txn.engineOpts.entitiesUnique.delete(uniqueKey)
+                    },
+                )
             }
             if (existingDocument.__.index?.length) {
-                existingDocument.__.index.forEach(([key, value]) => {
-                    const indexKey = `${existingDocument.entity}:${key}:${JSON.stringify(value)}`
-                    const arr = txn.engineOpts.entitiesIndex.get(indexKey) ?? []
-                    txn.engineOpts.entitiesIndex.set(
-                        indexKey,
-                        arr.filter(ref => ref !== existingDocument.ref),
-                    )
-                })
+                existingDocument.__.index.forEach(
+                    ([key, value]: [string, any]) => {
+                        const indexKey = `${existingDocument.entity}:${key}:${JSON.stringify(value)}`
+                        const arr =
+                            txn.engineOpts.entitiesIndex.get(indexKey) ?? []
+                        txn.engineOpts.entitiesIndex.set(
+                            indexKey,
+                            arr.filter(ref => ref !== existingDocument.ref),
+                        )
+                    },
+                )
             }
             txn.engineOpts.entities.delete(ref)
         }

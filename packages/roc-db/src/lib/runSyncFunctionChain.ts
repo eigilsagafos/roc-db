@@ -4,7 +4,7 @@ import { QueryClass } from "../utils/QueryClass"
 import { QueryObjectClass } from "../utils/QueryObjectClass"
 import { QueryArrayClass } from "../utils/QueryArrayClass"
 
-export const runSyncFunctionChain = (query, args = []) => {
+export const runSyncFunctionChain = (query: any, args: any[] = []): any => {
     if (query instanceof QueryChainClass) {
         let results: any[] = []
         let lastRes: any = undefined

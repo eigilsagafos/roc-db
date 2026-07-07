@@ -30,10 +30,29 @@ export type { ReadEntityResult } from "./types/ReadEntityResult"
 export type { Adapter } from "./types/Adapter"
 export type {
     AdapterFunctions,
+    BeginFunction,
+    BeginRequestFunction,
+    CommitFunction,
     CreateEntityFunction,
     EndFunction,
+    FindDebounceMutationFunction,
+    GetChangeSetMutationsFunction,
+    OnChangeSetAppliedFunction,
+    OnChangeSetInitFunction,
+    PageEntitiesByIndexFunction,
+    PageEntitiesFunction,
+    PageMutationsFunction,
+    PatchEntityFunction,
+    ReadEntityFunctiun,
+    ReadMutationFunction,
+    RefByUniqueFieldFunction,
+    SaveMutationFunction,
+    UpdateEntityFunction,
 } from "./types/AdapterFunctions"
-// export type { Entity } from "./types/Entity"
+// The `Entity` name is the model-builder class (exported above). The document
+// shape produced/stored at runtime (z.infer of EntitySchema) is exported here
+// under a distinct name to avoid the collision.
+export type { Entity as EntityDocument } from "./types/Entity"
 export type { Mutation } from "./types/Mutation"
 export type {
     DuplicateChangeSetMutationsOptions,

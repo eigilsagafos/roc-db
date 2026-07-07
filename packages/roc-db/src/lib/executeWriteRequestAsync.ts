@@ -36,7 +36,16 @@ export const executeWriteRequestAsyncInternal = async (
     const functions = request.operation.callback(txn, adapter.session)
     const res = await runAsyncFunctionChain(functions)
     if (request.operation.outputSchema) {
-        validateOutput(res, request)
+        validateOutput(
+            res,
+            request as WriteRequest & {
+                operation: {
+                    outputSchema: NonNullable<
+                        WriteRequest["operation"]["outputSchema"]
+                    >
+                }
+            },
+        )
     }
     const savedMutation = await txn.commit()
 
@@ -55,7 +64,7 @@ export const executeWriteRequestAsync = async <
 ) => {
     const payload = validateWriteRequestAndParsePayload(request)
     const begin = adapter.functions.begin || defaultBeginTransaction
-    return begin(engineOpts, async (engineOptsTxn: EngineOpts) => {
+    return begin(engineOpts, (async (engineOptsTxn: EngineOpts) => {
         const beginRequest =
             adapter.functions.beginRequest || defaultBeginRequest
         const result = await beginRequest(
@@ -73,5 +82,5 @@ export const executeWriteRequestAsync = async <
         )
 
         return result
-    })
+    }) as any)
 }

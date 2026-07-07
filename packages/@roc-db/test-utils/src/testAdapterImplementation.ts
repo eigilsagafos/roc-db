@@ -15,15 +15,15 @@ import {
     UpdatePostTitleMutationSchema,
 } from "./schemas"
 import { entities } from "./entities"
-// import type { Post } from "./schemas/PostSchema"
-import type { BlockParagraph } from "./schemas/BlockParagraphSchema"
+import type { Post } from "./schemas/PostSchema"
+import type { BlockParagraph as BlockParagraphType } from "./schemas/BlockParagraphSchema"
 import type { BlockRow } from "./schemas/BlockRowSchema"
 import { PostEntity } from "./entities/PostEntity"
-import { BlockParagraph, BlockParagraph } from "./entities/BlockParagraph"
+import { BlockParagraph } from "./entities/BlockParagraph"
 
 const snowflake = new Snowflake(10, 10)
 
-const prepareChangeSetTest = async (adapter, adapter2) => {
+const prepareChangeSetTest = async (adapter: any, adapter2?: any) => {
     const [post, createPostMutation] = await adapter.createPost({
         title: "Title 1",
         slug: faker.lorem.slug(5),
@@ -80,7 +80,7 @@ const prepareChangeSetTest = async (adapter, adapter2) => {
 }
 
 export const testAdapterImplementation = async <EngineOptions extends {}>(
-    adapterConstructor,
+    adapterConstructor: any,
     generateArgs: () => EngineOptions,
 ) => {
     let createAdapter = async ({
@@ -102,7 +102,7 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
         })
     }
 
-    let adapter1, adapter2
+    let adapter1: any, adapter2: any
     beforeAll(async () => {
         adapter1 = await createAdapter()
         adapter2 = await createAdapter()
@@ -324,7 +324,7 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
     })
 
     describe("OrgSettings singleton", () => {
-        let adapter
+        let adapter: any
         beforeAll(async () => {
             adapter = await createAdapter()
         })
@@ -417,8 +417,8 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
     })
 
     describe("paging", () => {
-        let adapter
-        let post1ref
+        let adapter: any
+        let post1ref: any
         beforeAll(async () => {
             adapter = await createAdapter()
             const [post1] = await adapter.createPost({ title: "Post 1" })
@@ -482,11 +482,11 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
     describe("changeSet", () => {
         let postRef: string,
             draftRef: string,
-            changeSetAdapter,
-            blockParagraph1: BlockParagraph,
+            changeSetAdapter: any,
+            blockParagraph1: BlockParagraphType,
             post: Post,
             blockRow: BlockRow,
-            blockParagraph2: BlockParagraph,
+            blockParagraph2: BlockParagraphType,
             draft
         beforeAll(async () => {
             ;({
@@ -563,14 +563,18 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
                 changeSetRef: draftRef,
             })
             expect(res.length).toBeGreaterThan(0)
-            expect(res.every(m => m.changeSetRef === draftRef)).toBeTrue()
+            expect(
+                res.every((m: any) => m.changeSetRef === draftRef),
+            ).toBeTrue()
         })
         test("pageMutations run again", async () => {
             const res = await changeSetAdapter.pageMutations({
                 changeSetRef: draftRef,
             })
             expect(res.length).toBeGreaterThan(0)
-            expect(res.every(m => m.changeSetRef === draftRef)).toBeTrue()
+            expect(
+                res.every((m: any) => m.changeSetRef === draftRef),
+            ).toBeTrue()
         })
 
         test("invalid changeSetRef throws error", async () => {

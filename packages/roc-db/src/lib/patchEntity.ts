@@ -16,29 +16,31 @@ export const patchEntity = (txn: WriteTransaction, ref: Ref, body: any) => {
     }
 }
 
-const findAddedAndRemovedEntries = (oldArr, newArr) => {
+const findAddedAndRemovedEntries = (oldArr: any, newArr: any) => {
     const removed = newArr?.filter(
-        ([k1, v1]) => !oldArr.some(([k2, v2]) => k1 === k2 && v1 === v2),
+        ([k1, v1]: any) =>
+            !oldArr.some(([k2, v2]: any) => k1 === k2 && v1 === v2),
     )
     const added = oldArr?.filter(
-        ([k1, v1]) => !newArr.some(([k2, v2]) => k1 === k2 && v1 === v2),
+        ([k1, v1]: any) =>
+            !newArr.some(([k2, v2]: any) => k1 === k2 && v1 === v2),
     )
     return [added, removed]
 }
 
-const updateChangeIndexEntries = (changeSet, oldDoc, newDoc) => {
+const updateChangeIndexEntries = (changeSet: any, oldDoc: any, newDoc: any) => {
     if (newDoc.__.unique?.length || oldDoc.__.unique?.length) {
         const { ref, entity } = newDoc
         const [added, removed] = findAddedAndRemovedEntries(
             newDoc.__.unique,
             oldDoc.__.unique,
         )
-        removed.forEach(([key, value]) => {
+        removed.forEach(([key, value]: any) => {
             const uniqueKey = `${newDoc.entity}:${key}:${JSON.stringify(value)}`
             changeSet.entitiesUnique.delete(uniqueKey)
         })
 
-        added.forEach(([key, value]) => {
+        added.forEach(([key, value]: any) => {
             const uniqueKey = `${newDoc.entity}:${key}:${JSON.stringify(value)}`
             if (changeSet.entitiesUnique.has(uniqueKey))
                 throw createUniqueConstraintConflictError(entity)
@@ -51,16 +53,16 @@ const updateChangeIndexEntries = (changeSet, oldDoc, newDoc) => {
             newDoc.__.index,
             oldDoc.__.index,
         )
-        removed.forEach(([key, value]) => {
+        removed.forEach(([key, value]: any) => {
             const indexKey = `${entity}:${key}:${JSON.stringify(value)}`
             const arr = changeSet.entitiesIndex.get(indexKey) ?? []
             changeSet.entitiesIndex.set(
                 indexKey,
-                arr.filter(ref => ref !== ref),
+                arr.filter((r: any) => r !== ref),
             )
         })
 
-        added.forEach(([key, value]) => {
+        added.forEach(([key, value]: any) => {
             const indexKey = `${entity}:${key}:${JSON.stringify(value)}`
             const arr = changeSet.entitiesIndex.get(indexKey) ?? []
             changeSet.entitiesIndex.set(indexKey, [...arr, ref])
@@ -95,13 +97,15 @@ const handlePatch = (
     txn.changeSet.entities.set(ref, validatedDocument)
     if (txn.changeSet.initialized) {
         if (txn.log.has(ref)) {
-            const [prevAction] = txn.log.get(ref)
+            const [prevAction] = txn.log.get(ref) as unknown as any[]
             if (prevAction === "create") {
                 txn.log.set(ref, ["create", validatedDocument])
             } else if (prevAction === "delete") {
                 throw new Error("Cannot update a deleted entity")
             } else if (prevAction === "update") {
-                const [, , , prevPatch, { __, ...original }] = txn.log.get(ref)
+                const [, , , prevPatch, { __, ...original }] = txn.log.get(
+                    ref,
+                ) as unknown as any[]
                 const mergedPatch = deepMergePatchSet(prevPatch, patch)
                 const [updatedEntity2, reversePatch2] = deepPatch(
                     original,

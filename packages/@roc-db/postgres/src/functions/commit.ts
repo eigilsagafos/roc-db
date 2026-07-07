@@ -1,11 +1,17 @@
 import { createUniqueConstraintConflictError } from "roc-db"
+import type { CommitFunction } from "roc-db"
+import type { PostgresEngineOpts } from "../types/PostgresEngineOpts"
 import { commitCreate } from "./commitCreate"
 import { commitDelete } from "./commitDelete"
 import { commitUpdate } from "./commitUpdate"
 import { readMutation } from "./readMutation"
 import { saveMutation } from "./saveMutation"
 
-export const commit = async (txn, mutation, { created, updated, deleted }) => {
+export const commit: CommitFunction<PostgresEngineOpts> = async (
+    txn,
+    mutation,
+    { created, updated, deleted },
+) => {
     const currentMutation = await readMutation(txn.engineOpts, mutation.ref)
 
     if (currentMutation) {
@@ -25,7 +31,7 @@ export const commit = async (txn, mutation, { created, updated, deleted }) => {
 
     if (txn.request.changeSetRef) return mutation
     for (const doc of created) {
-        await commitCreate(txn, doc).catch(err => {
+        await commitCreate(txn, doc).catch((err: any) => {
             if (err.code === "23505") {
                 const match = err.detail?.match(
                     /\)=\((.+), (.+)\) already exists/,

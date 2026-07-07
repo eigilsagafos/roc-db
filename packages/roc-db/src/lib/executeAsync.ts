@@ -5,8 +5,8 @@ import { isWriteRequest } from "./isWriteRequest"
 
 export const executeAsync = async (
     request: RocDBRequest,
-    engineOpts,
-    adapter,
+    engineOpts: any,
+    adapter: any,
 ) => {
     if (isWriteRequest(request)) {
         return executeWriteRequestAsync(request, engineOpts, adapter)

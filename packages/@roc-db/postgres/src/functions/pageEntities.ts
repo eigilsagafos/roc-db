@@ -1,6 +1,11 @@
+import type { PageEntitiesFunction } from "roc-db"
+import type {
+    PostgresEngineOpts,
+    PostgresTxnEngine,
+} from "../types/PostgresEngineOpts"
 import { postgresRowToEntity } from "../lib/postgresRowToEntity"
 
-const createKindClause = (entities, sqlTxn) => {
+const createKindClause = (entities: any, sqlTxn: any) => {
     if (Array.isArray(entities)) {
         if (entities.length === 1) {
             return sqlTxn`kind = ${entities[0]}`
@@ -14,20 +19,23 @@ const createKindClause = (entities, sqlTxn) => {
     }
 }
 
-const createChildrenOfClause = (childrenOf, sqlTxn) => {
+const createChildrenOfClause = (childrenOf: any, sqlTxn: any) => {
     if (!childrenOf) return sqlTxn`TRUE`
     if (typeof childrenOf === "string") childrenOf = [childrenOf]
     return sqlTxn`parent_refs @> ${childrenOf}`
 }
 
-const createDescendantsOfClause = (descendantsOf, sqlTxn) => {
+const createDescendantsOfClause = (descendantsOf: any, sqlTxn: any) => {
     if (!descendantsOf) return sqlTxn`TRUE`
     if (typeof descendantsOf === "string") descendantsOf = [descendantsOf]
     return sqlTxn`ancestor_refs @> ${descendantsOf}`
 }
 
-export const pageEntities = async (txn, args) => {
-    const { entitiesTableName, sqlTxn } = txn.engineOpts
+export const pageEntities: PageEntitiesFunction<PostgresEngineOpts> = async (
+    txn,
+    args,
+) => {
+    const { entitiesTableName, sqlTxn } = txn.engineOpts as PostgresTxnEngine
     const { descendantsOf, childrenOf, entities, size = null } = args
 
     const rows = await sqlTxn`
@@ -38,7 +46,7 @@ export const pageEntities = async (txn, args) => {
             ${createDescendantsOfClause(descendantsOf, sqlTxn)}
         ORDER BY created_at DESC
         LIMIT ${size};
-    `.catch(err => {
+    `.catch((err: any) => {
         console.error("pageEntities failed")
         throw err
     })

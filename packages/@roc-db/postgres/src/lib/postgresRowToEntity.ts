@@ -1,3 +1,5 @@
+type DBRow = Record<string, any>
+
 export const postgresRowToEntity = (row: DBRow) => {
     if (!row) throw new Error("Row is undefined")
     const {

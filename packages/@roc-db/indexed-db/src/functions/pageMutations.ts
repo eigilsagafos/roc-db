@@ -1,8 +1,11 @@
-import type { IndexedDBReadTransaction } from "../types/IndexedDBReadTransaction"
+import type { PageMutationsFunction } from "roc-db"
+import type { IndexedDBTxnEngine } from "../types/IndexedDBEngine"
 
-export const pageMutations = async (txn: IndexedDBReadTransaction, args) => {
+export const pageMutations: PageMutationsFunction = async (txn, args) => {
     const { size, changeSetRef, skip } = args
-    const objectStore = txn.engineOpts.txn.objectStore("mutations")
+    const objectStore = (txn.engineOpts as IndexedDBTxnEngine).txn.objectStore(
+        "mutations",
+    )
     let idbRequest: IDBRequest
     if (changeSetRef) {
         const index = objectStore.index("byChangeSetRef")

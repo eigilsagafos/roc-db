@@ -4,9 +4,9 @@ import { generateMutationDoc } from "./generateMutationDoc"
 
 export const createMutationAsync = async (
     request: WriteRequest,
-    engine,
-    adapter,
-    payload,
+    engine: any,
+    adapter: any,
+    payload: any,
 ) => {
     if (request.optimisticMutation) {
         const current = await adapter.functions.readMutation(

@@ -7,7 +7,10 @@ import { QueryObjectClass } from "../utils/QueryObjectClass"
 const isPromiseLike = (value: any): value is PromiseLike<any> =>
     value && typeof value.then === "function"
 
-export const runAsyncFunctionChain = async (query, args = []) => {
+export const runAsyncFunctionChain = async (
+    query: any,
+    args: any[] = [],
+): Promise<any> => {
     if (query instanceof QueryChainClass) {
         let results: any[] = []
         let lastRes: any = undefined
@@ -50,7 +53,7 @@ export const runAsyncFunctionChain = async (query, args = []) => {
             return res
         }
     } else if (query instanceof QueryObjectClass) {
-        const resultObj = {}
+        const resultObj: Record<string, any> = {}
         for (const [key, q] of Object.entries(query.map)) {
             const result = await runAsyncFunctionChain(q)
             resultObj[key] = result

@@ -1,11 +1,13 @@
 import { entityFromRef, idFromRef, type Ref } from "roc-db"
 import type { PostgresMutationTransaction } from "../types/PostgresMutationTransaction"
+import type { PostgresTxnEngine } from "../types/PostgresEngineOpts"
 
 export const commitDelete = async (
     txn: PostgresMutationTransaction,
     ref: Ref,
 ) => {
-    const { sqlTxn, entitiesTableName, mutationsTableName } = txn.engineOpts
+    const { sqlTxn, entitiesTableName, mutationsTableName } =
+        txn.engineOpts as PostgresTxnEngine
     const entity = entityFromRef(ref)
     const id = idFromRef(ref) ?? `_${entity}`
     if (entity === "Mutation") {
@@ -13,7 +15,7 @@ export const commitDelete = async (
                 DELETE FROM ${sqlTxn(mutationsTableName)}
                 WHERE id = ${id}
                 RETURNING id;
-            `.catch(e => {
+            `.catch((e: any) => {
             console.error("Error deleting mutation")
             throw e
         })
@@ -22,7 +24,7 @@ export const commitDelete = async (
                 DELETE FROM ${sqlTxn(entitiesTableName)}
                 WHERE id = ${id}
                 RETURNING id;
-            `.catch(e => {
+            `.catch((e: any) => {
             console.error("Error deleting entity")
             throw e
         })

@@ -48,7 +48,7 @@ const readMutationSync = (
 const handleReadResponse = (
     txn: Transaction,
     ref: Ref,
-    mutation: Mutation | undefined,
+    mutation: Mutation | null | undefined,
     throwIfMissing: boolean,
 ) => {
     if (!mutation && throwIfMissing) throw new NotFoundError(ref)

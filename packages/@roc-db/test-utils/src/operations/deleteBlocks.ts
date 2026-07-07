@@ -1,21 +1,21 @@
-import { Query, QueryChain, writeOperation } from "roc-db"
+import { Query, QueryChain, WriteTransaction, writeOperation } from "roc-db"
 import { z } from "zod"
 import { PostSchema } from "../schemas"
 import { BlockImageRefSchema } from "../schemas/BlockImageRefSchema"
 import { BlockParagraphRefSchema } from "../schemas/BlockParagraphRefSchema"
 import { BlockRowRefSchema } from "../schemas/BlockRowRefSchema"
 
-const DeleteBlockQuery = (txn, blockRef) => {
+const DeleteBlockQuery = (txn: WriteTransaction<any, any>, blockRef: any) => {
     return QueryChain(
         Query(() => txn.readEntity(blockRef)),
         Query(block => {
             return txn.readEntity(block.parents.parent, true)
         }),
-        Query(post => {
+        Query((post: any) => {
             return txn.patchEntity(post.ref, {
                 children: {
                     blocks: post.children.blocks.filter(
-                        ref => ref !== blockRef,
+                        (ref: any) => ref !== blockRef,
                     ),
                 },
             })

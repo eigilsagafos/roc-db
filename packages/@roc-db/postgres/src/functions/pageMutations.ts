@@ -1,9 +1,17 @@
 import { entityFromRef, idFromRef } from "roc-db"
+import type { PageMutationsFunction } from "roc-db"
+import type {
+    PostgresEngineOpts,
+    PostgresTxnEngine,
+} from "../types/PostgresEngineOpts"
 import { postgresRowToMutation } from "../lib/postgresRowToMutation"
 
-export const pageMutations = async (txn, args = {}) => {
+export const pageMutations: PageMutationsFunction<PostgresEngineOpts> = async (
+    txn,
+    args = {},
+) => {
     const { size = null, skip, changeSetRef } = args
-    const { mutationsTableName, sqlTxn } = txn.engineOpts
+    const { mutationsTableName, sqlTxn } = txn.engineOpts as PostgresTxnEngine
 
     const changeSetId = changeSetRef ? idFromRef(changeSetRef) : null
     const changeSetKind = changeSetRef ? entityFromRef(changeSetRef) : null
@@ -15,7 +23,7 @@ export const pageMutations = async (txn, args = {}) => {
         ${changeSetKind ? sqlTxn`AND change_set_kind = ${changeSetKind}` : sqlTxn``}
         ORDER BY timestamp DESC
         LIMIT ${size};
-    `.catch(err => {
+    `.catch((err: any) => {
         console.error("pageMutations failed")
         throw err
     })

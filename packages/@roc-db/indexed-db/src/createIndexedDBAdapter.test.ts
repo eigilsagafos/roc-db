@@ -1,5 +1,9 @@
 import { describe, expect, test } from "bun:test"
-import { entities, operations, testAdapterImplementation } from "@roc-db/test-utils"
+import {
+    entities,
+    operations,
+    testAdapterImplementation,
+} from "@roc-db/test-utils"
 import { Snowflake } from "roc-db"
 import { createIndexedDBAdapter } from "./createIndexedDBAdapter"
 import type { IndexedDBEngine } from "./types/IndexedDBEngine"

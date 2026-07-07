@@ -39,7 +39,10 @@ export const indexEntriesForDocument = (model: any, document: any): any => {
     return __
 }
 
-export const validateAndIndexDocument = (model, { __, ...document }) => {
+export const validateAndIndexDocument = (
+    model: any,
+    { __, ...document }: any,
+) => {
     const entity = document.entity
     if (!model) {
         throw new BadRequestError(
@@ -68,7 +71,7 @@ export const validateAndIndexDocument = (model, { __, ...document }) => {
     return document
 }
 
-const validatedIndexEntry = (key, value) => {
+const validatedIndexEntry = (key: string, value: any) => {
     const type = typeof value
     if (type === "string" || type === "boolean" || type === "number") {
         return [key, value]

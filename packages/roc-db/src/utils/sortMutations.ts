@@ -1,6 +1,7 @@
+import type { Mutation } from "../types/Mutation"
 import { idFromRef } from "./idFromRef"
 
-export const sortMutations = documents => {
+export const sortMutations = (documents: Mutation[]): Mutation[] => {
     // Pick a single sort key per call:
     //   - If every mutation has `persistedAt` (typical on the server, or a
     //     fully-synced multi-client changeSet): sort by `persistedAt`, the
@@ -10,13 +11,19 @@ export const sortMutations = documents => {
     //     clock. Mixing the two reorders dependent mutations on replay
     //     because `persistedAt` is wall-clock at persist receipt and can
     //     land after a later mutation's `timestamp`.
-    const key = documents.every(d => d.persistedAt) ? "persistedAt" : "timestamp"
+    const key = documents.every(d => d.persistedAt)
+        ? "persistedAt"
+        : "timestamp"
     // Decorate once so each id is parsed to a BigInt a single time rather than
     // on every comparison. A tied key — e.g. a whole batch sharing one
     // `persistedAt` — makes every comparison reach the id tiebreak, so without
     // this the parsing cost is O(n log n) instead of O(n).
     return documents
-        .map(doc => ({ doc, sortKey: doc[key], id: BigInt(idFromRef(doc.ref)) }))
+        .map(doc => ({
+            doc,
+            sortKey: doc[key] as string,
+            id: BigInt(idFromRef(doc.ref) as string),
+        }))
         .sort((a, b) => {
             if (a.sortKey !== b.sortKey) {
                 return a.sortKey.localeCompare(b.sortKey)

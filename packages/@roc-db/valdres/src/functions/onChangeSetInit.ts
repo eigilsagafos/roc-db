@@ -8,16 +8,21 @@ import {
     runSyncFunctionChain,
     generateTransactionCache,
     DELETED_IN_CHANGE_SET_SYMBOL,
+    type Mutation,
+    type Ref,
+    type OnChangeSetInitFunction,
 } from "roc-db"
+import type { Store, TransactionInterface } from "valdres"
+import type { ValdresEngine, ValdresTxnEngine } from "../types/ValdresEngine"
 
 const prepareInitTransaction = (
-    adapterOptions,
-    engineOpts,
+    adapterOptions: any,
+    engineOpts: ValdresEngine,
     mutation: Mutation,
-    changeSet,
+    changeSet: any,
 ) => {
     const operation = findOperation(adapterOptions.operations, mutation)
-    const request = {
+    const request: any = {
         operation,
         payload: mutation.payload,
         changeSetRef: mutation.changeSetRef,
@@ -31,7 +36,7 @@ const prepareInitTransaction = (
             async: adapterOptions.async,
             operations: adapterOptions.operations,
             models: adapterOptions.models,
-        },
+        } as any,
         payload,
         mutation,
         mutation.log,
@@ -39,8 +44,13 @@ const prepareInitTransaction = (
     )
 }
 
-const getRootMutations = (engineOpts, adapterOptions, changeSetRef) => {
-    const res = engineOpts.store.txn(txn => {
+const getRootMutations = (
+    engineOpts: ValdresEngine,
+    adapterOptions: any,
+    changeSetRef: Ref,
+) => {
+    const store = engineOpts.store as Store
+    const res = store.txn(txn => {
         return adapterOptions.functions.getChangeSetMutations(
             {
                 engineOpts: {
@@ -51,11 +61,18 @@ const getRootMutations = (engineOpts, adapterOptions, changeSetRef) => {
             changeSetRef,
         )
     })
-    return sortMutations(res)
+    // valdres' Store.txn is typed to return void, but returns the callback's
+    // value (Mutation[]) at runtime.
+    return sortMutations(res as unknown as Mutation[])
 }
 
-export const onChangeSetInit = (engineOpts, adapterOptions, changeSetRef) => {
-    const { store, mutationAtom, entityAtom } = engineOpts
+export const onChangeSetInit: OnChangeSetInitFunction<ValdresEngine> = (
+    engineOpts,
+    adapterOptions,
+    changeSetRef,
+) => {
+    const { mutationAtom, entityAtom } = engineOpts
+    const store = engineOpts.store as Store
     const changeSet = store.get(entityAtom(changeSetRef))
 
     const scopedStore = store.scope(changeSetRef)
@@ -69,7 +86,8 @@ export const onChangeSetInit = (engineOpts, adapterOptions, changeSetRef) => {
         const versionRef = changeSet?.parents?.version
         rootTxn.scope(changeSetRef, scopedTxn => {
             const cache = generateTransactionCache()
-            if (versionRef && !scopedTxn.data.versionRefLoaded) {
+            const scopedData = scopedTxn.data as any
+            if (versionRef && !scopedData.versionRefLoaded) {
                 // Seed the base snapshot via the shared helper so all three
                 // seeding sites resolve `parents.version` -> `data.snapshot`
                 // identically (and pick up the assertVersionKind guardrail).
@@ -82,24 +100,28 @@ export const onChangeSetInit = (engineOpts, adapterOptions, changeSetRef) => {
                     changeSet,
                     cache,
                 )
-                scopedTxn.data.versionRefLoaded = versionRef
+                scopedData.versionRefLoaded = versionRef
             }
 
             for (const mutation of rootMutations) {
-                const currentScopedMutation = scopedTxn.get(
+                const currentScopedMutation: any = scopedTxn.get(
                     mutationAtom(mutation.ref),
                 )
                 if (!currentScopedMutation.initialized) {
                     const initTxn = prepareInitTransaction(
                         adapterOptions,
-                        { ...engineOpts, txn: scopedTxn, rootTxn: rootTxn },
+                        {
+                            ...engineOpts,
+                            txn: scopedTxn as unknown as TransactionInterface,
+                            rootTxn: rootTxn as unknown as TransactionInterface,
+                        },
                         mutation,
                         cache,
                     )
                     runSyncFunctionChain(
-                        initTxn.request.operation.callback(initTxn),
+                        initTxn.request.operation.callback(initTxn as any),
                     )
-                    scopedTxn.set(mutationAtom(mutation.ref), curr => {
+                    scopedTxn.set(mutationAtom(mutation.ref), (curr: any) => {
                         return {
                             ...curr,
                             initialized: true,
@@ -107,15 +129,15 @@ export const onChangeSetInit = (engineOpts, adapterOptions, changeSetRef) => {
                     })
                 }
             }
-            for (const [ref, entity] of cache.entities) {
+            for (const [ref, entity] of cache.entities as Map<Ref, any>) {
                 if (entity === DELETED_IN_CHANGE_SET_SYMBOL) {
-                    scopedTxn.reset(entityAtom(ref))
+                    scopedTxn.reset(entityAtom(ref) as any)
                 } else {
                     const indexd = validateAndIndexDocument(
                         adapterOptions.models[entity.entity],
                         entity,
                     )
-                    scopedTxn.set(entityAtom(ref), indexd)
+                    scopedTxn.set(entityAtom(ref), indexd as any)
                 }
             }
         })

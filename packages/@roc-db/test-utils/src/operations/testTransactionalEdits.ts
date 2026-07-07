@@ -1,9 +1,12 @@
 import { expect } from "bun:test"
-import { Query, QueryChain, writeOperation } from "roc-db"
+import { Query, QueryChain, WriteTransaction, writeOperation } from "roc-db"
 import { z } from "zod"
 import { PostRefSchema } from "../schemas"
 
-const TestCreatePatchDeleteInSameTransaction = (txn, title) => {
+const TestCreatePatchDeleteInSameTransaction = (
+    txn: WriteTransaction<any, any>,
+    title: any,
+) => {
     const postRef = txn.createRef("Post")
     return QueryChain(
         Query(() =>
@@ -25,7 +28,7 @@ const TestCreatePatchDeleteInSameTransaction = (txn, title) => {
             expect(post.data.foo).toBeUndefined()
             expect(post.data.bar).toBe("foo")
             expect(txn.log).toHaveLength(1)
-            expect(txn.log.get(postRef)[0]).toBe("create")
+            expect(txn.log.get(postRef)?.[0]).toBe("create")
         }),
         Query(post => txn.deleteEntity(postRef)),
         Query(res => {
@@ -35,7 +38,10 @@ const TestCreatePatchDeleteInSameTransaction = (txn, title) => {
     )
 }
 
-const TestUpdateAndDeleteInSameTransaction = (txn, ref) => {
+const TestUpdateAndDeleteInSameTransaction = (
+    txn: WriteTransaction<any, any>,
+    ref: any,
+) => {
     return QueryChain(
         Query(() => txn.patchEntity(ref, { data: { foo: "bar" } })),
         Query(post => {
@@ -46,18 +52,18 @@ const TestUpdateAndDeleteInSameTransaction = (txn, ref) => {
             expect(post.data.foo).toBeUndefined()
             expect(post.data.bar).toBe("foo")
             expect(txn.log).toHaveLength(1)
-            expect(txn.log.get(ref)[0]).toBe("update")
+            expect(txn.log.get(ref)?.[0]).toBe("update")
         }),
         Query(post => txn.deleteEntity(ref)),
         Query(res => {
             expect(res).toBe(1)
             expect(txn.log).toHaveLength(1)
-            expect(txn.log.get(ref)[0]).toBe("delete")
+            expect(txn.log.get(ref)?.[0]).toBe("delete")
         }),
     )
 }
 
-const TestCreateOnExistingRef = txn => {
+const TestCreateOnExistingRef = (txn: WriteTransaction<any, any>) => {
     const ref = txn.createRef("Post")
     return QueryChain(
         Query(() => txn.createEntity(ref, { data: { foo: "bar" } })),

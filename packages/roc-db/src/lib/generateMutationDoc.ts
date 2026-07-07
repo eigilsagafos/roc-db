@@ -1,7 +1,7 @@
 import type { WriteRequest } from "../types/WriteRequest"
 import { generateRef } from "../utils/generateRef"
 
-const generateRefAndTimestamp = (adapter, debounce, now) => {
+const generateRefAndTimestamp = (adapter: any, debounce: number, now: any) => {
     // const now = new Date().toISOString()
     if (debounce > 0 && adapter.debounceRef) {
         const id = adapter.debounceRef.split(`/`)[1]
@@ -16,9 +16,9 @@ const generateRefAndTimestamp = (adapter, debounce, now) => {
 
 export const generateMutationDoc = (
     request: WriteRequest,
-    adapter,
+    adapter: any,
     payload: any,
-    now,
+    now: any,
 ) => {
     const [ref, timestamp] = generateRefAndTimestamp(
         adapter,

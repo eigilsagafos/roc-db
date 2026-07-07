@@ -2,7 +2,7 @@ import { z } from "zod"
 import { readOperation } from "../readOperation"
 import { Query } from "../utils/Query"
 
-export const createPageEntitiesOperation = entities =>
+export const createPageEntitiesOperation = (entities: any) =>
     readOperation(
         "pageEntities",
         z

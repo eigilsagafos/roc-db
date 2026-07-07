@@ -14,7 +14,7 @@ const hasNoUndefined = (value: any): boolean => {
     return Object.values(value).every(val => hasNoUndefined(val))
 }
 
-const addUndefinedCheck = schema => {
+const addUndefinedCheck = (schema: any) => {
     return schema.refine(hasNoUndefined, {
         message: "Object cannot contain undefined values",
     })

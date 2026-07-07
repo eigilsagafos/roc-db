@@ -1,11 +1,11 @@
-import type { Entity } from "roc-db"
-import type { ValdresWriteTransaction } from "../types/ValdresWriteTransaction"
+import type { UpdateEntityFunction } from "roc-db"
+import type { ValdresEngine, ValdresTxnEngine } from "../types/ValdresEngine"
 
-export const commitUpdate = (
-    txn: ValdresWriteTransaction,
-    document: Entity,
+export const commitUpdate: UpdateEntityFunction<ValdresEngine> = (
+    txn,
+    ref,
+    document,
 ) => {
-    const { ref } = document
-    const { entityAtom } = txn.engineOpts
-    txn.engineOpts.txn.set(entityAtom(ref), document)
+    const { entityAtom, txn: valdresTxn } = txn.engineOpts as ValdresTxnEngine
+    valdresTxn.set(entityAtom(ref), document)
 }

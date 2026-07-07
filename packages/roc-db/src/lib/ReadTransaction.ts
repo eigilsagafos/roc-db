@@ -54,22 +54,29 @@ export class ReadTransaction<EngineOpts extends any = any, Payload = any> {
         return this.adapter.functions.getChangeSetMutations(this, ref)
     }
 
-    readEntity = <R extends Ref>(ref: R, throwIfNotFound = true): ReadEntityResult<R> =>
+    readEntity = <R extends Ref>(
+        ref: R,
+        throwIfNotFound = true,
+    ): ReadEntityResult<R> =>
         readEntity(this, ref, throwIfNotFound) as ReadEntityResult<R>
 
-    readEntityByUniqueField = (entity, field, value, throwIfNotFound = true) =>
-        readEntityByUniqueField(this, entity, field, value, throwIfNotFound)
+    readEntityByUniqueField = (
+        entity: string,
+        field: string,
+        value: any,
+        throwIfNotFound = true,
+    ) => readEntityByUniqueField(this, entity, field, value, throwIfNotFound)
 
     readMutation = (ref: Ref, throwIfNotFound = true) =>
         readMutation(this, ref, throwIfNotFound)
 
-    pageMutations = args => {
+    pageMutations = (args: any) => {
         return this.adapter.functions.pageMutations(this, args)
     }
-    pageEntities = args => {
+    pageEntities = (args: any) => {
         return this.adapter.functions.pageEntities(this, args)
     }
-    pageEntitiesByIndex = (entity, key, value) => {
+    pageEntitiesByIndex = (entity: string, key: string, value: any) => {
         return this.adapter.functions.pageEntitiesByIndex(
             this,
             entity,
@@ -82,9 +89,15 @@ export class ReadTransaction<EngineOpts extends any = any, Payload = any> {
     }
 }
 
-const childRefsOfSync = (txn: ReadTransaction, refs: Ref[], recursive: boolean): Ref[] => {
+const childRefsOfSync = (
+    txn: ReadTransaction,
+    refs: Ref[],
+    recursive: boolean,
+): Ref[] => {
     const docs = txn.batchReadEntities(refs)
-    const childRefs: Ref[] = docs.flatMap(doc => refsFromRelations(doc.children))
+    const childRefs: Ref[] = docs.flatMap((doc: any) =>
+        refsFromRelations(doc.children),
+    )
     if (recursive) {
         return childRefs.flatMap(ref => [
             ...childRefsOfSync(txn, [ref], recursive),
@@ -95,9 +108,15 @@ const childRefsOfSync = (txn: ReadTransaction, refs: Ref[], recursive: boolean):
     }
 }
 
-const childRefsOfAsync = async (txn: ReadTransaction, refs: Ref[], recursive: boolean): Promise<Ref[]> => {
+const childRefsOfAsync = async (
+    txn: ReadTransaction,
+    refs: Ref[],
+    recursive: boolean,
+): Promise<Ref[]> => {
     const docs = await txn.batchReadEntities(refs)
-    const childRefs: Ref[] = docs.flatMap(doc => refsFromRelations(doc.children))
+    const childRefs: Ref[] = docs.flatMap((doc: any) =>
+        refsFromRelations(doc.children),
+    )
 
     if (recursive) {
         const nestedRefs = await Promise.all(
@@ -112,7 +131,11 @@ const childRefsOfAsync = async (txn: ReadTransaction, refs: Ref[], recursive: bo
     }
 }
 
-const childRefsOf = (txn: ReadTransaction, ref: Ref, recursive: boolean): Ref[] => {
+const childRefsOf = (
+    txn: ReadTransaction,
+    ref: Ref,
+    recursive: boolean,
+): Ref[] => {
     if (txn.adapter.async) {
         return childRefsOfAsync(txn, [ref], recursive) as any
     } else {

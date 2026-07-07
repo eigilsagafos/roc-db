@@ -1,4 +1,7 @@
-import type { MutationTransaction } from "roc-db"
+import type { WriteTransaction } from "roc-db"
+import type { PostgresEngineOpts } from "./PostgresEngineOpts"
 
-export type PostgresMutationTransaction<OperationName extends string = any> =
-    MutationTransaction<OperationName, "postgres">
+// A write transaction over the *base* engine options. Functions narrow
+// `txn.engineOpts` to PostgresTxnEngine via `as` where the transactional SQL
+// handle (`sqlTxn`) is needed — these helpers only run inside `begin`.
+export type PostgresMutationTransaction = WriteTransaction<PostgresEngineOpts>

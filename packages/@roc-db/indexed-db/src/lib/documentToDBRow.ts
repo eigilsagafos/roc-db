@@ -1,12 +1,13 @@
-const stringifyIndexEntry = (entity, [k, v]) =>
+const stringifyIndexEntry = (entity: string, [k, v]: [string, any]) =>
     `${entity}:${k}:${JSON.stringify(v)}`
-const stringifyUniqueEntry = ([k, v]) => `${k}:${JSON.stringify(v)}`
+const stringifyUniqueEntry = ([k, v]: [string, any]) =>
+    `${k}:${JSON.stringify(v)}`
 
-const stringifyIndexEntries = (entity, arr) => {
+const stringifyIndexEntries = (entity: string, arr: [string, any][]) => {
     return arr.map(pair => stringifyIndexEntry(entity, pair))
 }
 
-export const documentToDBRow = document => {
+export const documentToDBRow = (document: any) => {
     return {
         ...document,
         index_entries: document.__.index

@@ -2,20 +2,16 @@ import {
     createAdapter,
     Snowflake,
     type Adapter,
+    type Entity,
     type Operation,
     type Session,
 } from "roc-db"
 import * as functions from "./functions"
-import type { z } from "zod"
-
-type Entity = z.ZodObject<{
-    entity: z.ZodLiteral<string>
-}>
 
 export const createInMemoryAdapter = <
     const Name extends string,
     const Operations extends readonly Operation[],
-    const Entities extends readonly Entity[],
+    const Entities extends readonly Entity<any>[],
 >({
     operations,
     entities,

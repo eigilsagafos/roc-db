@@ -1,11 +1,12 @@
 import { entityToRow } from "../lib/entityToRow"
 import type { PostgresMutationTransaction } from "../types/PostgresMutationTransaction"
+import type { PostgresTxnEngine } from "../types/PostgresEngineOpts"
 
 export const commitCreate = async (
     txn: PostgresMutationTransaction,
-    entity,
+    entity: any,
 ) => {
-    const { sqlTxn, entitiesTableName } = txn.engineOpts
+    const { sqlTxn, entitiesTableName } = txn.engineOpts as PostgresTxnEngine
     const row = entityToRow(entity)
     return sqlTxn`
         INSERT INTO ${sqlTxn(entitiesTableName)} (
@@ -42,7 +43,7 @@ export const commitCreate = async (
             ${row.index_entries},
             ${row.unique_constraint_0},
             ${row.unique_constraint_1}
-        ) RETURNING *;`.catch(err => {
+        ) RETURNING *;`.catch((err: any) => {
         console.error("commitCreate failed")
         throw err
     })

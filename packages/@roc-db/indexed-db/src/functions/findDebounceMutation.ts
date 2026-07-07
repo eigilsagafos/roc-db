@@ -1,17 +1,28 @@
-import type { WriteRequest } from "roc-db"
-import type { IndexedDBEngine } from "../types/IndexedDBEngine"
+import type { FindDebounceMutationFunction, WriteRequest } from "roc-db"
+import type {
+    IndexedDBEngine,
+    IndexedDBTxnEngine,
+} from "../types/IndexedDBEngine"
 
-export const findDebounceMutation = async (
+// Async adapter: the runtime returns a Promise, so the body cannot satisfy the
+// synchronous `Mutation | null | undefined` alias return directly. Params are
+// typed via the alias signature and the value is cast to the alias for the
+// AdapterFunctions check.
+export const findDebounceMutation: FindDebounceMutationFunction = ((
     request: WriteRequest,
     engine: IndexedDBEngine,
-    now: number,
+    now: Date,
     mutationName: string,
     identityRef: string,
 ) => {
-    const objectStore = engine.txn.objectStore("mutations")
+    const objectStore = (engine as IndexedDBTxnEngine).txn.objectStore(
+        "mutations",
+    )
     const index = objectStore.index("timestamp")
+    // `now` is a Date (per the alias). Core always passes a Date; using
+    // getTime() is the numeric equivalent of the previous `now - ...`.
     const timestamp = new Date(
-        now - request.operation.debounce * 1000,
+        now.getTime() - request.operation.debounce * 1000,
     ).toISOString()
     const range = IDBKeyRange.lowerBound(timestamp, true) // timestamp > value
     const idbRequest = index.openCursor(range)
@@ -43,4 +54,4 @@ export const findDebounceMutation = async (
             reject(idbRequest.error)
         }
     })
-}
+}) as unknown as FindDebounceMutationFunction

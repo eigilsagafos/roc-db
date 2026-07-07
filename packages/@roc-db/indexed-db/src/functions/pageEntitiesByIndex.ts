@@ -1,12 +1,15 @@
-import type { IndexedDBReadTransaction } from "../types/IndexedDBReadTransaction"
+import type { PageEntitiesByIndexFunction } from "roc-db"
+import type { IndexedDBTxnEngine } from "../types/IndexedDBEngine"
 
-export const pageEntitiesByIndex = async (
-    txn: IndexedDBReadTransaction,
+export const pageEntitiesByIndex: PageEntitiesByIndexFunction = async (
+    txn,
     entity,
     field,
     value,
 ) => {
-    const objectStore = txn.engineOpts.txn.objectStore("entities")
+    const objectStore = (txn.engineOpts as IndexedDBTxnEngine).txn.objectStore(
+        "entities",
+    )
     const index = objectStore.index("byIndexEntry")
     const entry = `${entity}:${field}:${JSON.stringify(value)}`
     const range = IDBKeyRange.only(entry)

@@ -1,3 +1,1 @@
-export class QueryBaseClass {
-
-}
+export class QueryBaseClass {}

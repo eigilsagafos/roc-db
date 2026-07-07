@@ -1,4 +1,4 @@
-import { z, type ZodSchema, type ZodType } from "zod"
+import { z, type ZodSchema } from "zod"
 import { RefSchema } from "../RefSchema"
 import { MutationSchema } from "../MutationSchema"
 import { MutationLogSchema } from "../MutationLogSchema"
@@ -9,7 +9,8 @@ export const mutationSchemaGenerator = <
 >(
     name: Name,
     payloadSchema: Payload,
-    refsSchema: ZodType<z.infer<typeof MutationLogSchema>> = MutationLogSchema,
+    // Any schema is valid here — it's just placed into the `log` field.
+    refsSchema: ZodSchema = MutationLogSchema,
     changeSetOnly: boolean = false,
 ) =>
     MutationSchema.extend({

@@ -2,13 +2,14 @@ import { QueryArrayClass } from "./QueryArrayClass"
 import type { QueryChainClass } from "./QueryChainClass"
 import type { QueryClass } from "./QueryClass"
 
-type UnwrapQueryResult<T> = T extends QueryChainClass<infer O>
-    ? O
-    : T extends QueryClass<any, infer O>
-      ? O
-      : T extends QueryArrayClass<infer O>
+type UnwrapQueryResult<T> =
+    T extends QueryChainClass<infer O>
         ? O
-        : never
+        : T extends QueryClass<any, infer O>
+          ? O
+          : T extends QueryArrayClass<infer O>
+            ? O
+            : never
 
 export type QueryArrayType = (
     | QueryChainClass<any>
@@ -16,6 +17,10 @@ export type QueryArrayType = (
     | QueryArrayClass
 )[]
 
-export const QueryArray = <T extends QueryArrayType>(arr: T): QueryArrayClass<UnwrapQueryResult<T[number]>[]> => {
-    return new QueryArrayClass(arr) as QueryArrayClass<UnwrapQueryResult<T[number]>[]>
+export const QueryArray = <T extends QueryArrayType>(
+    arr: T,
+): QueryArrayClass<UnwrapQueryResult<T[number]>[]> => {
+    return new QueryArrayClass(arr) as QueryArrayClass<
+        UnwrapQueryResult<T[number]>[]
+    >
 }

@@ -1,7 +1,10 @@
-import type { MutationRef } from "roc-db"
-import type { ValdresEngine } from "../types/ValdresEngine"
+import type { ReadMutationFunction } from "roc-db"
+import type { ValdresEngine, ValdresTxnEngine } from "../types/ValdresEngine"
 
-export const readMutation = (engineOpts: ValdresEngine, ref: MutationRef) => {
-    const { mutationAtom } = engineOpts
-    return engineOpts.rootTxn.get(mutationAtom(ref))
+export const readMutation: ReadMutationFunction<ValdresEngine> = (
+    engineOpts: ValdresTxnEngine,
+    ref,
+) => {
+    const { mutationAtom, rootTxn } = engineOpts
+    return rootTxn.get(mutationAtom(ref))
 }

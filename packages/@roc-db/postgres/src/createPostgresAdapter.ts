@@ -22,7 +22,7 @@ export const createPostgresAdapter = ({
     snowflake = new Snowflake(1, 1),
 }: {
     operations: readonly Operation[]
-    entities: readonly Entity[]
+    entities: readonly Entity<any>[]
     getClient?: any
     session?: any
     optimistic?: boolean

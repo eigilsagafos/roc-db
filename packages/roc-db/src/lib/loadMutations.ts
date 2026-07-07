@@ -1,6 +1,7 @@
 import type { AdapterOptions } from "../types/AdapterOptions"
 import type { Mutation } from "../types/Mutation"
 import type { WriteOperation } from "../types/WriteOperation"
+import type { WriteRequest } from "../types/WriteRequest"
 import { defaultBeginRequest } from "./defaultBeginRequest"
 import { defaultBeginTransaction } from "./defaultBeginTransaction"
 import { executeWriteRequestAsyncInternal } from "./executeWriteRequestAsync"
@@ -43,10 +44,11 @@ const loadMutationsSync = (
                 }
             }
             const operation = findOperation(operations, mutation)
-            const request = {
+            const request: WriteRequest & { isBatch: boolean } = {
+                type: "write",
                 operation,
                 payload: mutation.payload,
-                changeSetRef: mutation.changeSetRef,
+                changeSetRef: mutation.changeSetRef ?? null,
                 optimisticMutation: mutation,
                 isBatch: true,
             }
@@ -97,10 +99,11 @@ const loadMutationsAsync = async (
                 }
             }
             const operation = findOperation(operations, mutation)
-            const request = {
+            const request: WriteRequest & { isBatch: boolean } = {
+                type: "write",
                 operation,
                 payload: mutation.payload,
-                changeSetRef: mutation.changeSetRef,
+                changeSetRef: mutation.changeSetRef ?? null,
                 optimisticMutation: mutation,
                 isBatch: true,
             }

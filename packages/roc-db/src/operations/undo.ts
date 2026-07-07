@@ -2,10 +2,11 @@ import { z } from "zod"
 import { writeOperation } from "../writeOperation"
 import { Query } from "../utils/Query"
 import { QueryChain } from "../utils/QueryChain"
+import type { MutationRef } from "../types/MutationRef"
 
 export const undo = writeOperation("undo", z.string().optional(), txn => {
     if (txn.payload) {
-        return QueryChain(Query(() => txn.undo(txn.payload)))
+        return QueryChain(Query(() => txn.undo(txn.payload as MutationRef)))
     } else if (txn.adapter.undoStack.length > 0) {
         const mutation = txn.adapter.undoStack.pop()
         if (!mutation) return false

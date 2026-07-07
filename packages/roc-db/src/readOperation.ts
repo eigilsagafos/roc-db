@@ -9,11 +9,13 @@ export const readOperation = <
     name: Name,
     payloadSchema: PayloadSchema,
     callback: (txn: ReadTransaction<any, z.output<PayloadSchema>>) => any,
+    settings: { outputSchema?: ZodSchema } = {},
 ): ReadOperation<Name, PayloadSchema> => {
     return {
         type: "read",
         name,
         payloadSchema,
         callback,
+        outputSchema: settings.outputSchema,
     } as ReadOperation<Name, PayloadSchema>
 }

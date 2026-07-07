@@ -38,7 +38,16 @@ export const executeWriteRequestSyncInternal = (
         request.operation.callback(txn, adapter.session),
     )
     if (request.operation.outputSchema) {
-        validateOutput(res, request)
+        validateOutput(
+            res,
+            request as WriteRequest & {
+                operation: {
+                    outputSchema: NonNullable<
+                        WriteRequest["operation"]["outputSchema"]
+                    >
+                }
+            },
+        )
     }
     const savedMutation = txn.commit()
     return [res, savedMutation]
