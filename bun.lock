@@ -19,10 +19,10 @@
     },
     "packages/@roc-db/in-memory": {
       "name": "@roc-db/in-memory",
-      "version": "0.2.0-pre.98",
+      "version": "0.2.0-pre.99",
       "devDependencies": {
-        "@roc-db/test-utils": "0.2.0-pre.98",
-        "roc-db": "0.2.0-pre.98",
+        "@roc-db/test-utils": "0.2.0-pre.100",
+        "roc-db": "0.2.0-pre.100",
         "zod": "4.0.14",
       },
       "peerDependencies": {
@@ -32,11 +32,11 @@
     },
     "packages/@roc-db/indexed-db": {
       "name": "@roc-db/indexed-db",
-      "version": "0.2.0-pre.98",
+      "version": "0.2.0-pre.100",
       "devDependencies": {
-        "@roc-db/test-utils": "0.2.0-pre.98",
+        "@roc-db/test-utils": "0.2.0-pre.100",
         "fake-indexeddb": "6.0.1",
-        "roc-db": "0.2.0-pre.98",
+        "roc-db": "0.2.0-pre.100",
         "zod": "4.0.14",
       },
       "peerDependencies": {
@@ -46,13 +46,13 @@
     },
     "packages/@roc-db/postgres": {
       "name": "@roc-db/postgres",
-      "version": "0.2.0-pre.98",
+      "version": "0.2.0-pre.100",
       "dependencies": {
         "postgres": "3.4.5",
       },
       "devDependencies": {
-        "@roc-db/test-utils": "0.2.0-pre.98",
-        "roc-db": "0.2.0-pre.98",
+        "@roc-db/test-utils": "0.2.0-pre.100",
+        "roc-db": "0.2.0-pre.100",
         "zod": "4.0.14",
       },
       "peerDependencies": {
@@ -62,15 +62,15 @@
     },
     "packages/@roc-db/test-utils": {
       "name": "@roc-db/test-utils",
-      "version": "0.2.0-pre.98",
+      "version": "0.2.0-pre.100",
       "devDependencies": {
         "@faker-js/faker": "9.7.0",
-        "@roc-db/in-memory": "0.2.0-pre.98",
+        "@roc-db/in-memory": "0.2.0-pre.99",
         "@types/bun": "1.2.19",
         "@types/sanitize-html": "2.13.0",
         "bun": "1.2.19",
         "expect-type": "1.2.0",
-        "roc-db": "0.2.0-pre.98",
+        "roc-db": "0.2.0-pre.100",
       },
       "peerDependencies": {
         "roc-db": ">=0.2.0-pre.98 <1.0.0",
@@ -79,15 +79,15 @@
     },
     "packages/@roc-db/valdres": {
       "name": "@roc-db/valdres",
-      "version": "0.2.0-pre.98",
+      "version": "0.2.0-pre.100",
       "devDependencies": {
         "@faker-js/faker": "9.3.0",
-        "@roc-db/test-utils": "0.2.0-pre.98",
+        "@roc-db/test-utils": "0.2.0-pre.100",
         "@types/bun": "1.2.19",
         "bun": "1.2.19",
         "expect-type": "1.1.0",
         "prettier": "3.4.1",
-        "roc-db": "0.2.0-pre.98",
+        "roc-db": "0.2.0-pre.100",
         "valdres": "0.2.0-pre.18",
       },
       "peerDependencies": {
@@ -98,11 +98,11 @@
     },
     "packages/roc-db": {
       "name": "roc-db",
-      "version": "0.2.0-pre.98",
+      "version": "0.2.0-pre.100",
       "devDependencies": {
-        "@roc-db/in-memory": "0.2.0-pre.98",
-        "@roc-db/indexed-db": "0.2.0-pre.98",
-        "@roc-db/test-utils": "0.2.0-pre.98",
+        "@roc-db/in-memory": "0.2.0-pre.99",
+        "@roc-db/indexed-db": "0.2.0-pre.100",
+        "@roc-db/test-utils": "0.2.0-pre.100",
         "@types/bun": "1.2.19",
         "bun": "1.2.19",
         "expect-type": "1.1.0",

@@ -714,7 +714,9 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
                     parentRef: post.ref,
                     url: "https://example.com/image.png",
                 }),
-            ).toThrowError("The provided changeSetRef has already been applied")
+            ).toThrowError(
+                `The provided changeSetRef "${draftRef}" has already been applied`,
+            )
         })
 
         test("deleteDraft", async () => {
