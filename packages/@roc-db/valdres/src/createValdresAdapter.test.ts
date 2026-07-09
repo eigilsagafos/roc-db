@@ -144,7 +144,7 @@ test("mutation stored in root store", () => {
     expect(rootStore.get(mutationFamily)).toHaveLength(3)
 })
 
-const prepareChangeSetTest = () => {
+const prepareChangeSetTest = ({ optimistic }: { optimistic?: boolean } = {}) => {
     const rootStore = store()
     const entityFamily = atomFamily(null)
     const mutationFamily = atomFamily(null)
@@ -157,6 +157,7 @@ const prepareChangeSetTest = () => {
         operations,
         session: { identityRef: "User/42" },
         entities,
+        ...(optimistic === undefined ? {} : { optimistic }),
     })
     expect(rootStore.get(mutationFamily)).toHaveLength(0)
     const [post] = adapter.createPost({ title: "Foo" })
@@ -174,7 +175,11 @@ const prepareChangeSetTest = () => {
 }
 
 test("duplicateDraft (txn.duplicateChangeSetMutations) clones a changeSet with remapped refs", () => {
-    const { adapter, post, draft, changeSetAdapter } = prepareChangeSetTest()
+    // Duplication is server-authoritative: run it on a non-optimistic adapter
+    // (valdres defaults to optimistic: true).
+    const { adapter, post, draft, changeSetAdapter } = prepareChangeSetTest({
+        optimistic: false,
+    })
     const [{ block: row }] = changeSetAdapter.createBlockRow({
         parentRef: post.ref,
     })

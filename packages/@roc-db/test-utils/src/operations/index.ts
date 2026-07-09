@@ -2,6 +2,7 @@ import { applyDraft } from "./applyDraft"
 import { createBlockImage } from "./createBlockImage"
 import { createBlockParagrah } from "./createBlockParagraph"
 import { createBlockRow } from "./createBlockRow"
+import { createBlockRowReadingRoot } from "./createBlockRowReadingRoot"
 import { createBlockTitle } from "./createBlockTitle"
 import { createDraft } from "./createDraft"
 import { createOrgSettings } from "./createOrgSettings"
@@ -40,6 +41,7 @@ export const operations: any[] = [
     createBlockTitle,
     createBlockParagrah,
     createBlockRow,
+    createBlockRowReadingRoot,
     createDraft,
     createOrgSettings,
     createPost,
