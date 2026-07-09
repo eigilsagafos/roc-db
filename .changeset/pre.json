@@ -11,7 +11,9 @@
   },
   "changesets": [
     "duplicate-changeset-mutations",
+    "duplicate-server-authoritative",
     "fix-type-declaration-emit",
-    "indexed-db-conformance"
+    "indexed-db-conformance",
+    "strict-types-and-bug-fixes"
   ]
 }

@@ -1,6 +1,6 @@
 {
     "name": "@roc-db/in-memory",
-    "version": "0.2.0-pre.98",
+    "version": "0.2.0-pre.99",
     "type": "module",
     "exports": {
         ".": "./src/index.ts"
@@ -16,8 +16,8 @@
         "test": "bun test"
     },
     "devDependencies": {
-        "@roc-db/test-utils": "0.2.0-pre.99",
-        "roc-db": "0.2.0-pre.99",
+        "@roc-db/test-utils": "0.2.0-pre.100",
+        "roc-db": "0.2.0-pre.100",
         "zod": "4.0.14"
     },
     "peerDependencies": {
