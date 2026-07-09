@@ -714,7 +714,11 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
                     parentRef: post.ref,
                     url: "https://example.com/image.png",
                 }),
-            ).toThrowError("The provided changeSetRef has already been applied")
+            ).toThrowError(
+                new RegExp(
+                    `changeSetRef .*${draftRef}.* has already been applied`,
+                ),
+            )
         })
 
         test("debounce does not collapse across changeSets (applied draft)", async () => {

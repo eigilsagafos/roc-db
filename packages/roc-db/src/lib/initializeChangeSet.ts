@@ -42,7 +42,7 @@ const prepareInitTransaction = (txn: Transaction, mutation: Mutation) => {
 
 const initializeChangeSetAsync = async (txn: Transaction) => {
     const changeSetDoc = await txn.readEntity(txn.changeSetRef as Ref, false)
-    verifyChangeSet(changeSetDoc)
+    verifyChangeSet(changeSetDoc, txn.changeSetRef as Ref)
     await loadChangeSetBase(txn, changeSetDoc, txn.changeSet)
     const mutations = await txn.adapter.functions.getChangeSetMutations(
         txn,
@@ -62,7 +62,7 @@ const initializeChangeSetAsync = async (txn: Transaction) => {
 
 export const initializeChangeSetSync = (txn: Transaction) => {
     const changeSetDoc = txn.readEntity(txn.changeSetRef as Ref, false)
-    verifyChangeSet(changeSetDoc)
+    verifyChangeSet(changeSetDoc, txn.changeSetRef as Ref)
     loadChangeSetBase(txn, changeSetDoc, txn.changeSet)
     const mutations = txn.adapter.functions.getChangeSetMutations(
         txn,
@@ -78,11 +78,13 @@ export const initializeChangeSetSync = (txn: Transaction) => {
     txn.changeSet.initialized = true
 }
 
-const verifyChangeSet = (changeSetDoc: any) => {
+const verifyChangeSet = (changeSetDoc: any, changeSetRef: Ref) => {
     if (!changeSetDoc)
-        throw new BadRequestError("The provided changeSetRef does not exist")
+        throw new BadRequestError(
+            `The provided changeSetRef ${JSON.stringify(changeSetRef)} does not exist`,
+        )
     if (changeSetDoc?.data?.appliedAt)
         throw new BadRequestError(
-            "The provided changeSetRef has already been applied",
+            `The provided changeSetRef ${JSON.stringify(changeSetRef)} has already been applied`,
         )
 }
