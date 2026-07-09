@@ -81,10 +81,10 @@ export const initializeChangeSetSync = (txn: Transaction) => {
 const verifyChangeSet = (changeSetDoc: any, changeSetRef: Ref) => {
     if (!changeSetDoc)
         throw new BadRequestError(
-            `The provided changeSetRef "${changeSetRef}" does not exist`,
+            `The provided changeSetRef ${JSON.stringify(changeSetRef)} does not exist`,
         )
     if (changeSetDoc?.data?.appliedAt)
         throw new BadRequestError(
-            `The provided changeSetRef "${changeSetRef}" has already been applied`,
+            `The provided changeSetRef ${JSON.stringify(changeSetRef)} has already been applied`,
         )
 }

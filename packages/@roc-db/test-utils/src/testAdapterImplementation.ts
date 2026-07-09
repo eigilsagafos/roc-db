@@ -715,7 +715,9 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
                     url: "https://example.com/image.png",
                 }),
             ).toThrowError(
-                `The provided changeSetRef "${draftRef}" has already been applied`,
+                new RegExp(
+                    `changeSetRef .*${draftRef}.* has already been applied`,
+                ),
             )
         })
 
