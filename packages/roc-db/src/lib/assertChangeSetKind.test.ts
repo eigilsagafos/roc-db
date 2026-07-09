@@ -17,11 +17,14 @@ const dupLoose = writeOperation("dupLoose", z.any(), (txn: any) =>
 )
 
 const makeAdapter = () =>
+    // duplicateChangeSetMutations is server-authoritative (rejects optimistic
+    // adapters), so exercise its guardrails on a non-optimistic adapter.
     createInMemoryAdapter({
         operations: [...operations, dupLoose],
         entities,
         session: { identityRef: "User/42" },
         snowflake: new Snowflake(10, 10),
+        optimistic: false,
     })
 
 describe("changeSet-kind guardrail", () => {

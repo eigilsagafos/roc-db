@@ -634,6 +634,36 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
             )
         })
 
+        test("duplicateDraft when a source op reads the changeSet root (one-transaction, pending target root)", async () => {
+            const [post] = await adapter1.createPost({
+                title: "Title 1",
+                slug: faker.lorem.slug(5),
+            })
+            const [sourceDraft] = await adapter1.createDraft({
+                postRef: post.ref,
+            })
+            // A source mutation whose op reads its own changeSet root. When
+            // cloned, replay reads the freshly-created (uncommitted) target root
+            // in the SAME transaction — which must resolve, not throw
+            // NotFoundError(target).
+            await adapter1
+                .changeSet(sourceDraft.ref)
+                .createBlockRowReadingRoot({ parentRef: post.ref })
+
+            const [{ draftRef: newDraftRef, mutations, refMap }] =
+                await adapter1.duplicateDraft({
+                    sourceRef: sourceDraft.ref,
+                    postRef: post.ref,
+                })
+
+            expect(mutations).toHaveLength(1)
+            expect(mutations[0].operation.name).toBe("createBlockRowReadingRoot")
+            const newRow = [...refMap.values()][0]
+            expect(newRow).toBeDefined()
+            const targetCs = adapter1.changeSet(newDraftRef)
+            expect((await targetCs.readEntity(newRow)).ref).toBe(newRow)
+        })
+
         test("deleteBlocks (patch running 2 times removing on array element every time)", async () => {
             const [post, createPostMutation] = await adapter1.createPost({
                 title: "Title 1",

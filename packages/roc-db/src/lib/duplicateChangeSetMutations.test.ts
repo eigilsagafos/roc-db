@@ -6,6 +6,7 @@ import { BadRequestError } from "../errors/BadRequestError"
 import { ChangeSetIntegrityError } from "../errors/ChangeSetIntegrityError"
 import { ChangeSetNotEmptyError } from "../errors/ChangeSetNotEmptyError"
 import { NotFoundError } from "../errors/NotFoundError"
+import { OptimisticDuplicationError } from "../errors/OptimisticDuplicationError"
 import { SingletonDuplicationError } from "../errors/SingletonDuplicationError"
 import { entityFromRef } from "../utils/entityFromRef"
 import { Query } from "../utils/Query"
@@ -37,6 +38,65 @@ const duplicateInto = writeOperation("duplicateInto", PayloadSchema, txn =>
             txn.payload.targetRef,
         ),
     ),
+)
+// One-transaction consumer usage where the target draft carries a
+// `parents.version` (base-snapshot pointer), created in the SAME write op as the
+// duplicate call — the exact shape from the "two transactions, not one" bug
+// report. It must resolve the SOURCE base from the source's own snapshot without
+// ever reading the not-yet-committed target root.
+const OneTxnVersionSchema = z
+    .object({
+        sourceRef: DraftRefSchema,
+        postRef: z.string(),
+        versionRef: z.string(),
+    })
+    .strict()
+const duplicateOneTxnWithVersion = writeOperation(
+    "duplicateOneTxnWithVersion",
+    OneTxnVersionSchema,
+    txn => {
+        const target = txn.createRef("Draft")
+        const { sourceRef, postRef, versionRef } = txn.payload
+        return QueryChain(
+            Query(() =>
+                txn.createEntity(target, {
+                    parents: { post: postRef, version: versionRef },
+                }),
+            ),
+            // The same-transaction pending target root IS visible to the txn's
+            // own direct read (regression anchor for the report's observation).
+            Query(() => {
+                const pending = txn.readEntity(target, false)
+                if (!pending) throw new Error("pending target not visible")
+            }),
+            Query(() => txn.duplicateChangeSetMutations(sourceRef, target)),
+            Query(dup => ({ targetRef: target, ...(dup as any) })),
+        )
+    },
+)
+// A changeSet operation that reads its OWN changeSet root before creating a
+// child (a common validate/attach-against-the-root pattern). When a mutation of
+// this op is cloned into a freshly-created target, replay reads the TARGET root —
+// which, in the one-transaction pattern, is the not-yet-committed root the outer
+// op just created. The primitive must make that pending write visible to replay.
+const createReadsRoot = writeOperation(
+    "createReadsRoot",
+    z.object({ parentRef: z.string() }).strict(),
+    txn => {
+        const rowRef = txn.createRef("BlockRow")
+        return QueryChain(
+            Query(() => {
+                if (txn.changeSetRef) txn.readEntity(txn.changeSetRef)
+            }),
+            Query(() =>
+                txn.createEntity(rowRef, {
+                    children: { blocks: [] },
+                    parents: { parent: txn.payload.parentRef },
+                }),
+            ),
+        )
+    },
+    { changeSetOnly: true },
 )
 const duplicateIntoKeepRows = writeOperation(
     "duplicateIntoKeepRows",
@@ -175,7 +235,9 @@ const dupStripTags = writeOperation("dupStripTags", PayloadSchema, txn =>
 
 const localOps = [
     applyDraftTest,
+    createReadsRoot,
     duplicateInto,
+    duplicateOneTxnWithVersion,
     duplicateIntoKeepRows,
     duplicateIntoDropRows,
     duplicateIntoDropUpdates,
@@ -202,12 +264,26 @@ const makeAdapter = ({
     session?: any
     snowflake?: Snowflake
 } = {}) =>
+    // duplicateChangeSetMutations is server-authoritative: it rejects optimistic
+    // adapters (the in-memory adapter defaults to optimistic: true), so exercise
+    // it on a non-optimistic (server) adapter.
     createInMemoryAdapter({
         operations: [...operations, ...localOps],
         entities,
         session,
         snowflake,
         engine,
+        optimistic: false,
+    })
+
+const makeOptimisticAdapter = () =>
+    createInMemoryAdapter({
+        operations: [...operations, ...localOps],
+        entities,
+        session: { identityRef: "User/42" },
+        snowflake: new Snowflake(10, 10),
+        engine: makeEngine(),
+        optimistic: true,
     })
 
 // Source changeSet: a Post (base) + a BlockRow created in the changeSet + a
@@ -586,6 +662,40 @@ describe("duplicateChangeSetMutations", () => {
         expect(err.existingCount).toBeGreaterThan(0)
     })
 
+    test("throws OptimisticDuplicationError on an optimistic adapter", () => {
+        const adapter = makeOptimisticAdapter()
+        const [post] = adapter.createPost({ title: "P" })
+        const { draftRef } = seedSource(adapter, post)
+        const [target] = adapter.createDraft({ postRef: post.ref })
+
+        let err: any
+        try {
+            adapter.duplicateInto({
+                sourceRef: draftRef,
+                targetRef: target.ref,
+            })
+        } catch (e) {
+            err = e
+        }
+        expect(err).toBeInstanceOf(OptimisticDuplicationError)
+        expect(err.sourceChangeSetRef).toBe(draftRef)
+        expect(err.targetChangeSetRef).toBe(target.ref)
+        // Nothing was copied into the target.
+        expect(changeSetMutations(adapter, target.ref)).toHaveLength(0)
+    })
+
+    test("optimistic guard fires before any other validation", () => {
+        const adapter = makeOptimisticAdapter()
+        // Even a self-referential (otherwise BadRequest) call reports the
+        // optimistic rejection first — the primitive is unusable here at all.
+        expect(() =>
+            adapter.duplicateInto({
+                sourceRef: "Draft/1",
+                targetRef: "Draft/1",
+            }),
+        ).toThrow(OptimisticDuplicationError)
+    })
+
     test("throws NotFoundError when the source changeSet does not exist", () => {
         const adapter = makeAdapter()
         const [post] = adapter.createPost({ title: "P" })
@@ -777,6 +887,91 @@ describe("duplicateChangeSetMutations", () => {
         expect(newRow).not.toBe("BlockRow/900000000004")
         // The base was never materialized into the live store.
         expect(adapter._engineOpts.entities.has(basePost.ref)).toBe(false)
+    })
+
+    // Regression for the "target root must be created in a PRIOR transaction"
+    // report: creating the target changeSet root (WITH a `parents.version`) and
+    // calling the primitive in the SAME uncommitted transaction must work. The
+    // primitive seeds from the SOURCE base and never reads the target root, so a
+    // snapshot-only source base still resolves and the not-yet-committed target
+    // is never consulted.
+    test("creates the target (with version parent) and duplicates in one transaction", () => {
+        const adapter = makeAdapter()
+        // Source base lives ONLY in the source's version snapshot, never live.
+        const basePost = makeDoc("Post/920000000000", "Post", {
+            data: { title: "Base", tags: [] },
+            children: { blocks: [] },
+        })
+        const versionRef = "PostVersion/920000000001"
+        adapter._engineOpts.entities.set(
+            versionRef,
+            makeDoc(versionRef, "PostVersion", {
+                data: { version: 1, snapshot: [basePost] },
+                parents: { post: basePost.ref },
+            }),
+        )
+        const sourceRef = "Draft/920000000002"
+        adapter._engineOpts.entities.set(
+            sourceRef,
+            makeDoc(sourceRef, "Draft", {
+                parents: { post: basePost.ref, version: versionRef },
+            }),
+        )
+        adapter._engineOpts.mutations.set("Mutation/920000000003", {
+            ref: "Mutation/920000000003",
+            timestamp: TS,
+            operation: { name: "createBlockRow", version: 1 },
+            payload: { parentRef: basePost.ref },
+            log: [["BlockRow/920000000004", "create"]],
+            changeSetRef: sourceRef,
+            debounceCount: 0,
+            identityRef: "User/42",
+        })
+
+        // A live post to hang the target draft's `post` parent on.
+        const [livePost] = adapter.createPost({ title: "P" })
+
+        let result: any
+        expect(() => {
+            ;[result] = adapter.duplicateOneTxnWithVersion({
+                sourceRef,
+                postRef: livePost.ref,
+                versionRef,
+            })
+        }).not.toThrow()
+
+        // The copy landed in the freshly-created target, with a fresh row ref.
+        const persisted = changeSetMutations(adapter, result.targetRef)
+        expect(persisted).toHaveLength(1)
+        const newRow = result.refMap.get("BlockRow/920000000004")
+        expect(newRow).toBeDefined()
+        expect(newRow).not.toBe("BlockRow/920000000004")
+        // The target root was never materialized via a base-resolution read.
+        expect(adapter._engineOpts.entities.has(basePost.ref)).toBe(false)
+    })
+
+    // Regression: a cloned op that reads its own changeSet root must see the
+    // freshly-created target root during the one-transaction duplicate. The
+    // outer op creates the target root (uncommitted) and duplicates in the SAME
+    // txn; the store has no target root yet, so without surfacing the outer
+    // transaction's pending writes to replay, the cloned op's readEntity(target)
+    // throws NotFoundError(target).
+    test("cloned op that reads the changeSet root resolves the pending target in one txn", () => {
+        const adapter = makeAdapter()
+        const [post] = adapter.createPost({ title: "P" })
+        const [source] = adapter.createDraft({ postRef: post.ref })
+        // source mutation whose op reads the (source) changeSet root
+        adapter.changeSet(source.ref).createReadsRoot({ parentRef: post.ref })
+
+        let result: any
+        expect(() => {
+            ;[result] = adapter.duplicateDraft({
+                sourceRef: source.ref,
+                postRef: post.ref,
+            })
+        }).not.toThrow()
+        expect(result.mutations).toHaveLength(1)
+        expect(result.mutations[0].operation.name).toBe("createReadsRoot")
     })
 
     // Sibling of the test above, but for the *initializeChangeSet* seeding site

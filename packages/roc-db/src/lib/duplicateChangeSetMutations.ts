@@ -2,6 +2,7 @@ import { BadRequestError } from "../errors/BadRequestError"
 import { ChangeSetIntegrityError } from "../errors/ChangeSetIntegrityError"
 import { ChangeSetNotEmptyError } from "../errors/ChangeSetNotEmptyError"
 import { NotFoundError } from "../errors/NotFoundError"
+import { OptimisticDuplicationError } from "../errors/OptimisticDuplicationError"
 import { SingletonDuplicationError } from "../errors/SingletonDuplicationError"
 import type { Mutation } from "../types/Mutation"
 import type { Ref } from "../types/Ref"
@@ -192,7 +193,9 @@ const buildClonePlans = (
             debounceCount: 0,
             identityRef: adapter.session.identityRef,
             sessionRef,
-            persistedAt: adapter.optimistic ? null : timestamp,
+            // Duplication is server-authoritative only (the entry point rejects
+            // optimistic adapters), so copies are always persisted records.
+            persistedAt: timestamp,
         } as Mutation
         return { operation, request, skeleton, pinningLog }
     })
@@ -288,6 +291,25 @@ const seedBaseAsync = async (
     await loadChangeSetBase(txn as any, sourceDoc, cache)
 }
 
+// Overlay the OUTER transaction's own pending writes onto the scratch cache.
+// Duplication runs inside the caller's (uncommitted) write operation, so a
+// cloned op must see what that operation has already written this transaction —
+// most importantly the freshly-created target changeSet root (a cloned op that
+// reads its own `changeSetRef` would otherwise fall through to the store, which
+// does not have the not-yet-committed root, and throw NotFoundError(target)).
+// `txn.log` holds exactly the refs this transaction created/updated/deleted (the
+// current value lives in `txn.changeSet.entities`, incl. the delete tombstone).
+// The SOURCE base was seeded first and wins: copies resolve their base against
+// the source snapshot, so we only add refs the base did not already provide.
+const seedTransactionWrites = (txn: WriteTransaction, cache: any) => {
+    for (const ref of txn.log.keys()) {
+        if (cache.entities.has(ref)) continue
+        if (txn.changeSet.entities.has(ref)) {
+            cache.entities.set(ref, txn.changeSet.entities.get(ref))
+        }
+    }
+}
+
 const duplicateSync = (
     txn: WriteTransaction,
     sourceChangeSetRef: Ref,
@@ -296,6 +318,7 @@ const duplicateSync = (
 ): DuplicateChangeSetMutationsResult => {
     const cache = generateTransactionCache(true)
     seedBaseSync(txn, sourceChangeSetRef, cache)
+    seedTransactionWrites(txn, cache)
     const existing = txn.adapter.functions.getChangeSetMutations(
         txn,
         targetChangeSetRef,
@@ -325,6 +348,7 @@ const duplicateAsync = async (
 ): Promise<DuplicateChangeSetMutationsResult> => {
     const cache = generateTransactionCache(true)
     await seedBaseAsync(txn, sourceChangeSetRef, cache)
+    seedTransactionWrites(txn, cache)
     const existing = await txn.adapter.functions.getChangeSetMutations(
         txn,
         targetChangeSetRef,
@@ -355,12 +379,26 @@ const duplicateAsync = async (
  * primary-key collisions. A transaction primitive (like `applyChangeSet`):
  * consumers call it from inside their own write operation, after creating the
  * target changeSet's root entity, so the whole duplicate is one transaction.
+ * The scratch cache is seeded from the SOURCE base (never the target), and the
+ * outer transaction's own pending writes are surfaced onto it, so creating the
+ * target root (even with a `parents.version`) in this same uncommitted
+ * transaction is supported — including when a cloned op reads its changeSet root.
  *
  * Each mutation is re-played: its operation is re-run (with the remapped /
  * transformed payload, pinning fresh refs) against a scratch cache seeded from
- * the source's base, and `finalizeMutation` derives the stored log. So the log
- * is always consistent with the payload — `transformPayload` rewriting refs
- * inside strings is reflected in reverse/delete blobs too.
+ * the source's base plus the outer transaction's pending writes, and
+ * `finalizeMutation` derives the stored log. So the log is always consistent
+ * with the payload — `transformPayload` rewriting refs inside strings is
+ * reflected in reverse/delete blobs too.
+ *
+ * **Server-authoritative only.** The primitive emits the source's mutations as N
+ * independent mutation records in the target changeSet. Running the wrapping
+ * operation optimistically would sync that operation's own mutation and re-run
+ * the primitive on replay (server, or another client via `loadMutations`),
+ * double-executing it. So it throws `OptimisticDuplicationError` on an optimistic
+ * adapter: run the wrapping operation once on a non-optimistic adapter and load
+ * the resulting mutations on clients (do not replay the wrapping operation —
+ * load the granular copies it produced instead).
  */
 export const duplicateChangeSetMutations = (
     txn: WriteTransaction,
@@ -368,6 +406,12 @@ export const duplicateChangeSetMutations = (
     targetChangeSetRef: Ref,
     options: DuplicateChangeSetMutationsOptions = {},
 ) => {
+    if (txn.adapter.optimistic) {
+        throw new OptimisticDuplicationError(
+            sourceChangeSetRef,
+            targetChangeSetRef,
+        )
+    }
     validateRefs(sourceChangeSetRef, targetChangeSetRef)
     assertChangeSetKind(txn.adapter, sourceChangeSetRef)
     assertChangeSetKind(txn.adapter, targetChangeSetRef)
