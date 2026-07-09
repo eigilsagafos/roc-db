@@ -10,6 +10,8 @@
     "roc-db": "0.2.0-pre.98"
   },
   "changesets": [
+    "changeset-ref-in-error",
+    "debounce-changeset-scope",
     "duplicate-changeset-mutations",
     "duplicate-server-authoritative",
     "fix-type-declaration-emit",

@@ -1,5 +1,33 @@
 # @roc-db/postgres
 
+## 0.2.0-pre.101
+
+### Patch Changes
+
+- [#18](https://github.com/eigilsagafos/roc-db/pull/18)
+  [`86f88c8`](https://github.com/eigilsagafos/roc-db/commit/86f88c8f1334129eb368c7336ddf91e5869aa850)
+  Thanks [@eigilsagafos](https://github.com/eigilsagafos)! - Fix: scope debounce
+  matching by `changeSetRef` in the valdres, in-memory, and postgres adapters.
+
+    `findDebounceMutation` matched a debounce candidate by operation name +
+    `payload.ref` + `identityRef` + time window, but **not** by `changeSetRef`.
+    As a result, a debounced edit made in a new changeSet could reuse a mutation
+    from a _different_ changeSet, and `createMutation` would then inherit that
+    mutation's stale `changeSetRef` via `{...res}`.
+
+    The concrete failure: edit an entity's field in draft D1 with a debounced,
+    changeSet-only op → apply/publish D1 (sets `appliedAt`) → within the
+    debounce window, open a new draft D2 and edit the same field of the same
+    entity. The client reused D1's mutation, so the new optimistic mutation
+    carried `changeSetRef=D1`; the server then rejected it in `verifyChangeSet`
+    with `"The provided changeSetRef has already been applied"` (500). This
+    affected every debounced changeSet-only operation.
+
+    The three adapters now require
+    `(mutation.changeSetRef ?? null) === (request.changeSetRef ?? null)` for a
+    debounce match, matching the behavior `@roc-db/indexed-db` already had.
+    Covered by a new shared conformance test that runs across all adapters.
+
 ## 0.2.0-pre.100
 
 ### Patch Changes

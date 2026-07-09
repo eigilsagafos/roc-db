@@ -1,5 +1,17 @@
 # roc-db
 
+## 0.2.0-pre.101
+
+### Patch Changes
+
+- [#17](https://github.com/eigilsagafos/roc-db/pull/17)
+  [`be8f388`](https://github.com/eigilsagafos/roc-db/commit/be8f3881c2fbaffa4ccf6c763fe70a7594faec26)
+  Thanks [@eigilsagafos](https://github.com/eigilsagafos)! - Include the
+  offending `changeSetRef` in the `initializeChangeSet` error messages
+  (`The provided changeSetRef "<ref>" has already been applied` /
+  `... does not exist`), making it easier to identify which changeSet caused the
+  failure.
+
 ## 0.2.0-pre.100
 
 ### Minor Changes
