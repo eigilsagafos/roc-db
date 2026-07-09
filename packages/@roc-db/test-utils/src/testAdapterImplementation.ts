@@ -717,6 +717,41 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
             ).toThrowError("The provided changeSetRef has already been applied")
         })
 
+        test("debounce does not collapse across changeSets (applied draft)", async () => {
+            // Repro: edit an entity's field in draft D1 with a debounced,
+            // changeSet-only op → apply/publish D1 (sets appliedAt) → open a NEW
+            // draft D2 within the debounce window → edit the SAME entity's SAME
+            // field. The debounce must NOT reuse the D1 mutation; otherwise the
+            // new mutation inherits the stale (applied) changeSetRef and the
+            // server rejects it with "changeSetRef has already been applied".
+            const [post] = await adapter1.createPost({
+                title: "Debounce repro",
+                slug: faker.lorem.slug(5),
+                tags: [],
+            })
+            const [draft1] = await adapter1.createDraft({ postRef: post.ref })
+            const draft1adapter = adapter1.changeSet(draft1.ref)
+            const [, mutation1] = await draft1adapter.updatePostDescription({
+                ref: post.ref,
+                description: "From draft 1",
+            })
+            expect(mutation1.changeSetRef).toBe(draft1.ref)
+
+            // Publish draft 1 → sets appliedAt on the changeSet.
+            await adapter1.applyDraft(draft1.ref)
+
+            // New draft, same post, same field, within the 10s debounce window.
+            const [draft2] = await adapter1.createDraft({ postRef: post.ref })
+            const draft2adapter = adapter1.changeSet(draft2.ref)
+            const [, mutation2] = await draft2adapter.updatePostDescription({
+                ref: post.ref,
+                description: "From draft 2",
+            })
+            // The debounced mutation must belong to draft 2, not applied draft 1.
+            expect(mutation2.ref).not.toBe(mutation1.ref)
+            expect(mutation2.changeSetRef).toBe(draft2.ref)
+        })
+
         test("deleteDraft", async () => {
             const { draftRef } = await prepareChangeSetTest(adapter1)
             const mutationsBefore = await adapter1.pageMutations({

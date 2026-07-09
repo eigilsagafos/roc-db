@@ -21,6 +21,7 @@ export const findDebounceMutation: FindDebounceMutationFunction<
             mutation.operation.name === mutationName &&
             mutation.timestamp > thresholdTime &&
             mutation.payload?.ref === payloadRef &&
+            (mutation.changeSetRef ?? null) === (request.changeSetRef ?? null) &&
             mutation.identityRef === identityRef
         ) {
             return true
