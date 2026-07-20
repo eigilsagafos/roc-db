@@ -1,3 +1,4 @@
+import { verifyReplayDivergence } from "./verifyReplayDivergence"
 import type { WriteTransaction } from "./WriteTransaction"
 
 export const finalizeMutation = (
@@ -22,6 +23,14 @@ export const finalizeMutation = (
             }
         },
     )
+    // On replay/load (a re-executed mutation that carries an optimisticMutation),
+    // `txn.mutation.log` is the stored effect and `log` is what re-execution just
+    // reproduced. Compare them so a non-deterministic operation's silent
+    // divergence is caught here rather than surfacing later as corrupted state.
+    // The fresh-write path has no optimisticMutation and is left untouched.
+    if (txn.request?.type === "write" && txn.request.optimisticMutation) {
+        verifyReplayDivergence(txn, log)
+    }
     const doc = {
         ...txn.mutation,
         log,

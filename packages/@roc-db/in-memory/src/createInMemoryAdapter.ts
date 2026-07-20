@@ -4,6 +4,7 @@ import {
     type Adapter,
     type Entity,
     type Operation,
+    type ReplayDivergenceConfig,
     type Session,
 } from "roc-db"
 import * as functions from "./functions"
@@ -19,6 +20,7 @@ export const createInMemoryAdapter = <
     optimistic = true,
     session,
     engine,
+    replayDivergence,
 }: {
     operations: Operations
     entities: Entities
@@ -31,6 +33,7 @@ export const createInMemoryAdapter = <
         entitiesUnique: Map<string, any>
         entitiesIndex: Map<string, any>
     }
+    replayDivergence?: ReplayDivergenceConfig
 }) => {
     return createAdapter(
         {
@@ -41,6 +44,7 @@ export const createInMemoryAdapter = <
             snowflake,
             optimistic,
             session,
+            replayDivergence,
         },
         engine ?? {
             entities: new Map(),

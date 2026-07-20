@@ -13,6 +13,7 @@ export { NotAChangeSetError } from "./errors/NotAChangeSetError"
 export { NotAVersionError } from "./errors/NotAVersionError"
 export { OptimisticDuplicationError } from "./errors/OptimisticDuplicationError"
 export { SingletonDuplicationError } from "./errors/SingletonDuplicationError"
+export { ReplayDivergenceError } from "./errors/ReplayDivergenceError"
 export { createUniqueConstraintConflictError } from "./errors/createUniqueConstraintConflictError"
 
 // schemas
@@ -61,6 +62,12 @@ export type {
 } from "./lib/duplicateChangeSetMutations"
 export type { MutationRef } from "./types/MutationRef"
 export type { Operation } from "./types/Operation"
+export type {
+    ReplayDivergenceConfig,
+    ReplayDivergenceInfo,
+    ReplayDivergenceKind,
+    ReplayDivergencePolicy,
+} from "./types/ReplayDivergence"
 export type { ReadRequest } from "./types/ReadRequest"
 export type { Ref } from "./types/Ref"
 export type { Session } from "./types/Session"
