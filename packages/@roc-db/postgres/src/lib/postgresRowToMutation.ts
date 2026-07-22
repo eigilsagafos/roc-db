@@ -25,7 +25,11 @@ export const postgresRowToMutation = (row: DBRow) => {
         timestamp: timestamp.toISOString(),
         operation: {
             name: operation_name,
-            version: operation_version,
+            // `operation_version` is a nullable column with no DB default; rows
+            // written before it existed round-trip as NULL. Default to 1 (as the
+            // write path and mutation schema do) so the returned Mutation matches
+            // its `version: number` type and replay resolves version-1 history.
+            version: operation_version ?? 1,
         },
         payload,
         log,

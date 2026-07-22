@@ -1,6 +1,8 @@
 import { z } from "zod"
 import type { Entity } from "./Entity"
+import { ReservedOperationNameError } from "./errors/ReservedOperationNameError"
 import { assertChangeSetKind } from "./lib/assertChangeSetKind"
+import { assertUniqueOperations } from "./lib/assertUniqueOperations"
 import { execute } from "./lib/execute"
 import { validateChangeSetVersionParents } from "./lib/validateChangeSetVersionParents"
 import { loadMutations } from "./lib/loadMutations"
@@ -52,6 +54,9 @@ type AdapterOptions<
     undoStack?: Mutation[]
     redoStack?: Mutation[]
     models?: Record<string, EntityN>
+    // Set once the caller's operations have been validated + augmented with the
+    // built-ins; lets clone()/changeSet() re-entry skip the caller-only checks.
+    _operationsInitialized?: boolean
 }
 export const createAdapter = <
     const Operations extends readonly Operation[],
@@ -61,13 +66,41 @@ export const createAdapter = <
     adapterOptions: AdapterOptions<Operations, Entities, EngineOptions>,
     engineOptions: EngineOptions = {} as EngineOptions,
 ) => {
-    const allOperations = [
+    const builtInOperations = [
         pageMutations,
         createPageEntitiesOperation(adapterOptions.entities),
         undo,
         redo,
-        ...adapterOptions.operations,
     ]
+    const builtInNames = new Set<string>(builtInOperations.map(op => op.name))
+
+    // Validate the caller's operations exactly once. On the initial construction
+    // adapterOptions.operations is the caller's list; clone()/changeSet() re-run
+    // createAdapter with a list that ALREADY includes the built-ins (stored back
+    // onto adapterOptions below), which must not be re-validated as if authored.
+    if (!adapterOptions._operationsInitialized) {
+        for (const operation of adapterOptions.operations) {
+            // Built-in names are reserved: registering your own would silently
+            // shadow the built-in, so reject it rather than dropping it below.
+            if (builtInNames.has(operation.name)) {
+                throw new ReservedOperationNameError(operation.name)
+            }
+        }
+        // A given (name, version) may only be registered once. Multiple
+        // *versions* (same name, different version) are allowed and expected; a
+        // repeated (name, version) is an accidental double-registration.
+        assertUniqueOperations(adapterOptions.operations)
+        adapterOptions._operationsInitialized = true
+    }
+
+    // Built-ins are prepended on every construction. On re-entry the incoming
+    // list already contains them, so strip built-in-named entries first — they'd
+    // otherwise double each time. (After the reserved-name check above, the only
+    // built-in-named entries here are the framework's own.)
+    const userOperations = adapterOptions.operations.filter(
+        op => !builtInNames.has(op.name),
+    )
+    const allOperations = [...builtInOperations, ...userOperations]
 
     type FunctionMap = {
         [Item in (typeof allOperations)[number] as Item["name"]]: (
@@ -87,8 +120,27 @@ export const createAdapter = <
     )
     validateChangeSetVersionParents(adapterOptions)
 
+    // An operation can be registered at multiple versions (same name, different
+    // `version`). The public adapter method always invokes the highest version
+    // so new writes use the latest logic; replay stays version-pinned via
+    // findOperation. Selecting by max version keeps this independent of the
+    // order operations were passed in.
+    const latestOperationByName = new Map<
+        string,
+        (typeof allOperations)[number]
+    >()
+    for (const operation of allOperations) {
+        const existing = latestOperationByName.get(operation.name)
+        const version = (operation as { version?: number }).version ?? 1
+        const existingVersion =
+            (existing as { version?: number } | undefined)?.version ?? 1
+        if (!existing || version > existingVersion) {
+            latestOperationByName.set(operation.name, operation)
+        }
+    }
+
     const operationsMap = Object.fromEntries(
-        allOperations.map(
+        [...latestOperationByName.values()].map(
             operation =>
                 [
                     operation.name,
@@ -125,7 +177,11 @@ export const createAdapter = <
             return adapterOptions.entities.map(model => model.name)
         },
         get _operationNames(): Operations[number]["name"][] {
-            return adapterOptions.operations.map(op => op.name)
+            // De-dupe so an operation registered at multiple versions surfaces
+            // once (adapterOptions.operations holds every version).
+            return [
+                ...new Set(adapterOptions.operations.map(op => op.name)),
+            ] as Operations[number]["name"][]
         },
         get _operations() {
             return adapterOptions.operations
