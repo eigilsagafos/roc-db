@@ -87,8 +87,27 @@ export const createAdapter = <
     )
     validateChangeSetVersionParents(adapterOptions)
 
+    // An operation can be registered at multiple versions (same name, different
+    // `version`). The public adapter method always invokes the highest version
+    // so new writes use the latest logic; replay stays version-pinned via
+    // findOperation. Selecting by max version keeps this independent of the
+    // order operations were passed in.
+    const latestOperationByName = new Map<
+        string,
+        (typeof allOperations)[number]
+    >()
+    for (const operation of allOperations) {
+        const existing = latestOperationByName.get(operation.name)
+        const version = (operation as { version?: number }).version ?? 1
+        const existingVersion =
+            (existing as { version?: number } | undefined)?.version ?? 1
+        if (!existing || version > existingVersion) {
+            latestOperationByName.set(operation.name, operation)
+        }
+    }
+
     const operationsMap = Object.fromEntries(
-        allOperations.map(
+        [...latestOperationByName.values()].map(
             operation =>
                 [
                     operation.name,
@@ -125,7 +144,11 @@ export const createAdapter = <
             return adapterOptions.entities.map(model => model.name)
         },
         get _operationNames(): Operations[number]["name"][] {
-            return adapterOptions.operations.map(op => op.name)
+            // De-dupe so an operation registered at multiple versions surfaces
+            // once (adapterOptions.operations holds every version).
+            return [
+                ...new Set(adapterOptions.operations.map(op => op.name)),
+            ] as Operations[number]["name"][]
         },
         get _operations() {
             return adapterOptions.operations
