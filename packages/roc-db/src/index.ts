@@ -3,6 +3,13 @@ export { readOperation } from "./readOperation"
 export { writeOperation } from "./writeOperation"
 export { Entity } from "./Entity"
 
+// Opt-in built-in operations. The adapter no longer registers these
+// automatically — include the ones you want in your `operations` list.
+export { pageMutations } from "./operations/pageMutations"
+export { pageEntities } from "./operations/pageEntities"
+export { undo } from "./operations/undo"
+export { redo } from "./operations/redo"
+
 // errors
 export { BadRequestError } from "./errors/BadRequestError"
 export { ConflictError } from "./errors/ConflictError"
@@ -12,7 +19,6 @@ export { ChangeSetNotEmptyError } from "./errors/ChangeSetNotEmptyError"
 export { NotAChangeSetError } from "./errors/NotAChangeSetError"
 export { NotAVersionError } from "./errors/NotAVersionError"
 export { DuplicateOperationError } from "./errors/DuplicateOperationError"
-export { ReservedOperationNameError } from "./errors/ReservedOperationNameError"
 export { OptimisticDuplicationError } from "./errors/OptimisticDuplicationError"
 export { SingletonDuplicationError } from "./errors/SingletonDuplicationError"
 export { createUniqueConstraintConflictError } from "./errors/createUniqueConstraintConflictError"
