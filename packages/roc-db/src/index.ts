@@ -6,7 +6,7 @@ export { Entity } from "./Entity"
 // Opt-in built-in operations. The adapter no longer registers these
 // automatically — include the ones you want in your `operations` list.
 export { pageMutations } from "./operations/pageMutations"
-export { createPageEntitiesOperation } from "./operations/createPageEntitiesOperation"
+export { pageEntities } from "./operations/pageEntities"
 export { undo } from "./operations/undo"
 export { redo } from "./operations/redo"
 

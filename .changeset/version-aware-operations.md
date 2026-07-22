@@ -16,16 +16,10 @@ Operations already carried a `version` (default `1`), recorded on every mutation
 **Behavior change — built-in operations are now opt-in.** `createAdapter` no longer implicitly registers `pageMutations` / `pageEntities` / `undo` / `redo`. Import the ones you want and include them in your own `operations` list:
 
 ```ts
-import { pageMutations, createPageEntitiesOperation, undo, redo } from "roc-db"
+import { pageMutations, pageEntities, undo, redo } from "roc-db"
 
 createAdapter({
-    operations: [
-        pageMutations,
-        createPageEntitiesOperation(entities), // needs the entity set to page over
-        undo,
-        redo,
-        ...myOperations,
-    ],
+    operations: [pageMutations, pageEntities, undo, redo, ...myOperations],
     entities,
     // ...
 })

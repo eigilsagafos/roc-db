@@ -8,7 +8,7 @@ import {
 import { describe, expect, test } from "bun:test"
 import { z } from "zod"
 import { DuplicateOperationError } from "../errors/DuplicateOperationError"
-import { createPageEntitiesOperation } from "../operations/createPageEntitiesOperation"
+import { pageEntities } from "../operations/pageEntities"
 import { pageMutations } from "../operations/pageMutations"
 import { redo } from "../operations/redo"
 import { undo } from "../operations/undo"
@@ -280,12 +280,7 @@ describe("built-in operations are opt-in", () => {
 
     test("registering the built-ins explicitly exposes them", () => {
         const adapter = createInMemoryAdapter({
-            operations: [
-                pageMutations,
-                createPageEntitiesOperation(entities),
-                undo,
-                redo,
-            ],
+            operations: [pageMutations, pageEntities, undo, redo],
             entities,
             session: { identityRef: "User/42" },
         }) as any

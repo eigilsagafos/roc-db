@@ -60,9 +60,9 @@ export const createAdapter = <
 ) => {
     // Built-in operations (pageMutations / pageEntities / undo / redo) are NOT
     // injected automatically. Register the ones you want explicitly — they're
-    // exported individually (pageEntities via createPageEntitiesOperation, which
-    // needs the entity set). This keeps the adapter's surface to exactly what the
-    // caller declares; changeSet replay resolves undo/redo only when registered.
+    // each exported individually. This keeps the adapter's surface to exactly
+    // what the caller declares; changeSet replay resolves undo/redo only when
+    // they've actually been registered.
     const allOperations = [...adapterOptions.operations]
 
     type FunctionMap = {
