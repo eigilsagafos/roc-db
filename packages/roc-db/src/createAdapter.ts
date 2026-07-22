@@ -1,16 +1,11 @@
 import { z } from "zod"
 import type { Entity } from "./Entity"
-import { ReservedOperationNameError } from "./errors/ReservedOperationNameError"
 import { assertChangeSetKind } from "./lib/assertChangeSetKind"
 import { assertUniqueOperations } from "./lib/assertUniqueOperations"
 import { execute } from "./lib/execute"
 import { validateChangeSetVersionParents } from "./lib/validateChangeSetVersionParents"
 import { loadMutations } from "./lib/loadMutations"
 import { persistOptimisticMutations } from "./lib/persistOptimisticMutations"
-import { createPageEntitiesOperation } from "./operations/createPageEntitiesOperation"
-import { pageMutations } from "./operations/pageMutations"
-import { redo } from "./operations/redo"
-import { undo } from "./operations/undo"
 import type { AdapterOptions as EngineAdapterOptions } from "./types/AdapterOptions"
 import type { AdapterFunctions } from "./types/AdapterFunctions"
 import type { Mutation } from "./types/Mutation"
@@ -54,9 +49,6 @@ type AdapterOptions<
     undoStack?: Mutation[]
     redoStack?: Mutation[]
     models?: Record<string, EntityN>
-    // Set once the caller's operations have been validated + augmented with the
-    // built-ins; lets clone()/changeSet() re-entry skip the caller-only checks.
-    _operationsInitialized?: boolean
 }
 export const createAdapter = <
     const Operations extends readonly Operation[],
@@ -66,41 +58,12 @@ export const createAdapter = <
     adapterOptions: AdapterOptions<Operations, Entities, EngineOptions>,
     engineOptions: EngineOptions = {} as EngineOptions,
 ) => {
-    const builtInOperations = [
-        pageMutations,
-        createPageEntitiesOperation(adapterOptions.entities),
-        undo,
-        redo,
-    ]
-    const builtInNames = new Set<string>(builtInOperations.map(op => op.name))
-
-    // Validate the caller's operations exactly once. On the initial construction
-    // adapterOptions.operations is the caller's list; clone()/changeSet() re-run
-    // createAdapter with a list that ALREADY includes the built-ins (stored back
-    // onto adapterOptions below), which must not be re-validated as if authored.
-    if (!adapterOptions._operationsInitialized) {
-        for (const operation of adapterOptions.operations) {
-            // Built-in names are reserved: registering your own would silently
-            // shadow the built-in, so reject it rather than dropping it below.
-            if (builtInNames.has(operation.name)) {
-                throw new ReservedOperationNameError(operation.name)
-            }
-        }
-        // A given (name, version) may only be registered once. Multiple
-        // *versions* (same name, different version) are allowed and expected; a
-        // repeated (name, version) is an accidental double-registration.
-        assertUniqueOperations(adapterOptions.operations)
-        adapterOptions._operationsInitialized = true
-    }
-
-    // Built-ins are prepended on every construction. On re-entry the incoming
-    // list already contains them, so strip built-in-named entries first — they'd
-    // otherwise double each time. (After the reserved-name check above, the only
-    // built-in-named entries here are the framework's own.)
-    const userOperations = adapterOptions.operations.filter(
-        op => !builtInNames.has(op.name),
-    )
-    const allOperations = [...builtInOperations, ...userOperations]
+    // Built-in operations (pageMutations / pageEntities / undo / redo) are NOT
+    // injected automatically. Register the ones you want explicitly — they're
+    // each exported individually. This keeps the adapter's surface to exactly
+    // what the caller declares; changeSet replay resolves undo/redo only when
+    // they've actually been registered.
+    const allOperations = [...adapterOptions.operations]
 
     type FunctionMap = {
         [Item in (typeof allOperations)[number] as Item["name"]]: (
@@ -110,11 +73,10 @@ export const createAdapter = <
     adapterOptions.undoStack = []
     adapterOptions.redoStack = []
 
-    // const operations = [...adapterOptions.operations, undo, redo]
-    // allOperations mixes the caller's operations with the built-ins
-    // (pageMutations/pageEntities/undo/redo), so it's wider than the narrow
-    // `Operations` generic; the runtime deliberately stores the augmented list.
-    adapterOptions.operations = allOperations as unknown as Operations
+    // A given (name, version) may only be registered once. Multiple *versions*
+    // (same name, different version) are allowed and expected; a repeated
+    // (name, version) is an accidental double-registration.
+    assertUniqueOperations(allOperations)
     adapterOptions.models = Object.fromEntries(
         adapterOptions.entities.map(model => [model.name, model]),
     )
