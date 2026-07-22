@@ -1,3 +1,4 @@
+import { pageEntities, pageMutations, redo, undo } from "roc-db"
 import { applyDraft } from "./applyDraft"
 import { createBlockImage } from "./createBlockImage"
 import { createBlockParagrah } from "./createBlockParagraph"
@@ -36,6 +37,12 @@ import { updatePostTitle } from "./updatePostTitle"
 import { crudBySlug } from "./crudBySlug"
 
 export const operations: any[] = [
+    // Built-ins are opt-in now; register them explicitly so the fixtures keep
+    // exposing adapter.undo()/redo()/pageMutations()/pageEntities().
+    pageMutations,
+    pageEntities,
+    undo,
+    redo,
     applyDraft,
     createBlockImage,
     createBlockTitle,
