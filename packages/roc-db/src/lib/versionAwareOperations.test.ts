@@ -8,7 +8,10 @@ import {
 import { describe, expect, test } from "bun:test"
 import { z } from "zod"
 import { DuplicateOperationError } from "../errors/DuplicateOperationError"
-import { createBuiltInOperations } from "../operations/createBuiltInOperations"
+import { createPageEntitiesOperation } from "../operations/createPageEntitiesOperation"
+import { pageMutations } from "../operations/pageMutations"
+import { redo } from "../operations/redo"
+import { undo } from "../operations/undo"
 import { Query } from "../utils/Query"
 import { Snowflake } from "../utils/Snowflake"
 import { writeOperation } from "../writeOperation"
@@ -275,9 +278,14 @@ describe("built-in operations are opt-in", () => {
         expect(adapter.pageEntities).toBeUndefined()
     })
 
-    test("createBuiltInOperations registers them explicitly", () => {
+    test("registering the built-ins explicitly exposes them", () => {
         const adapter = createInMemoryAdapter({
-            operations: [...createBuiltInOperations(entities)],
+            operations: [
+                pageMutations,
+                createPageEntitiesOperation(entities),
+                undo,
+                redo,
+            ],
             entities,
             session: { identityRef: "User/42" },
         }) as any

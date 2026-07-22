@@ -1,4 +1,4 @@
-import { createBuiltInOperations } from "roc-db"
+import { createPageEntitiesOperation, pageMutations, redo, undo } from "roc-db"
 import { entities } from "../entities"
 import { applyDraft } from "./applyDraft"
 import { createBlockImage } from "./createBlockImage"
@@ -38,9 +38,12 @@ import { updatePostTitle } from "./updatePostTitle"
 import { crudBySlug } from "./crudBySlug"
 
 export const operations: any[] = [
-    // Built-ins are opt-in now; register them so the fixtures keep exposing
-    // adapter.undo()/redo()/pageMutations()/pageEntities().
-    ...createBuiltInOperations(entities),
+    // Built-ins are opt-in now; register them explicitly so the fixtures keep
+    // exposing adapter.undo()/redo()/pageMutations()/pageEntities().
+    pageMutations,
+    createPageEntitiesOperation(entities),
+    undo,
+    redo,
     applyDraft,
     createBlockImage,
     createBlockTitle,
