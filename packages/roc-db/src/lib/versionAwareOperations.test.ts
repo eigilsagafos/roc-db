@@ -8,7 +8,7 @@ import {
 import { describe, expect, test } from "bun:test"
 import { z } from "zod"
 import { DuplicateOperationError } from "../errors/DuplicateOperationError"
-import { ReservedOperationNameError } from "../errors/ReservedOperationNameError"
+import { createBuiltInOperations } from "../operations/createBuiltInOperations"
 import { Query } from "../utils/Query"
 import { Snowflake } from "../utils/Snowflake"
 import { writeOperation } from "../writeOperation"
@@ -246,9 +246,9 @@ describe("duplicate operation registration", () => {
         ).not.toThrow()
     })
 
-    test("clone() and changeSet() do not re-trigger the guard on built-ins", () => {
-        // Built-ins are folded into the stored operations list, so re-running
-        // createAdapter (clone/changeSet) must not see them as duplicates.
+    test("clone() and changeSet() re-run construction without false-positiving", () => {
+        // The uniqueness guard runs on every construction; re-running it via
+        // clone()/changeSet() on a valid multi-version list must not throw.
         const adapter = createInMemoryAdapter({
             operations: [...operations, setTitleV2, setTitleV1],
             entities,
@@ -262,26 +262,28 @@ describe("duplicate operation registration", () => {
     })
 })
 
-describe("reserved built-in operation names", () => {
-    // Registering an operation named after a built-in would silently shadow it;
-    // that's rejected rather than dropped.
-    const RESERVED = ["undo", "redo", "pageMutations", "pageEntities"] as const
+describe("built-in operations are opt-in", () => {
+    test("an adapter exposes no built-ins unless they are registered", () => {
+        const adapter = createInMemoryAdapter({
+            operations: [],
+            entities,
+            session: { identityRef: "User/42" },
+        }) as any
+        expect(adapter.undo).toBeUndefined()
+        expect(adapter.redo).toBeUndefined()
+        expect(adapter.pageMutations).toBeUndefined()
+        expect(adapter.pageEntities).toBeUndefined()
+    })
 
-    for (const name of RESERVED) {
-        test(`registering "${name}" throws ReservedOperationNameError`, () => {
-            const clashing = writeOperation(name, z.any(), () => {})
-            let err: any
-            try {
-                createInMemoryAdapter({
-                    operations: [clashing],
-                    entities,
-                    session: { identityRef: "User/42" },
-                })
-            } catch (e) {
-                err = e
-            }
-            expect(err).toBeInstanceOf(ReservedOperationNameError)
-            expect(err.operationName).toBe(name)
-        })
-    }
+    test("createBuiltInOperations registers them explicitly", () => {
+        const adapter = createInMemoryAdapter({
+            operations: [...createBuiltInOperations(entities)],
+            entities,
+            session: { identityRef: "User/42" },
+        }) as any
+        expect(typeof adapter.undo).toBe("function")
+        expect(typeof adapter.redo).toBe("function")
+        expect(typeof adapter.pageMutations).toBe("function")
+        expect(typeof adapter.pageEntities).toBe("function")
+    })
 })
