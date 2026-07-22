@@ -16,6 +16,7 @@
     "duplicate-server-authoritative",
     "fix-type-declaration-emit",
     "indexed-db-conformance",
-    "strict-types-and-bug-fixes"
+    "strict-types-and-bug-fixes",
+    "version-aware-operations"
   ]
 }
