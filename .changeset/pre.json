@@ -10,6 +10,7 @@
     "roc-db": "0.2.0-pre.98"
   },
   "changesets": [
+    "builtin-operations-opt-in",
     "changeset-ref-in-error",
     "debounce-changeset-scope",
     "duplicate-changeset-mutations",
