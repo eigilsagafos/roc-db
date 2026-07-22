@@ -289,4 +289,26 @@ describe("built-in operations are opt-in", () => {
         expect(typeof adapter.pageMutations).toBe("function")
         expect(typeof adapter.pageEntities).toBe("function")
     })
+
+    test("pageEntities filters by the `entities` kind list", () => {
+        // Guards the payload<->adapter contract: the `entities` filter must be
+        // honored (the old include/exclude payload was silently dropped).
+        const adapter = createInMemoryAdapter({
+            operations,
+            entities,
+            session: { identityRef: "User/42" },
+        }) as any
+        const [post] = adapter.createPost({ title: "P" })
+        adapter.createDraft({ postRef: post.ref })
+
+        const onlyPosts = adapter.pageEntities({ entities: ["Post"] })
+        expect(onlyPosts.length).toBe(1)
+        expect(onlyPosts.every((doc: any) => doc.entity === "Post")).toBe(true)
+
+        const kinds = new Set(
+            adapter.pageEntities({ entities: "*" }).map((d: any) => d.entity),
+        )
+        expect(kinds.has("Post")).toBe(true)
+        expect(kinds.has("Draft")).toBe(true)
+    })
 })
