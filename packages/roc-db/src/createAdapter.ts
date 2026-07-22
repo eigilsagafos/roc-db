@@ -1,5 +1,6 @@
 import { z } from "zod"
 import type { Entity } from "./Entity"
+import { ReservedOperationNameError } from "./errors/ReservedOperationNameError"
 import { assertChangeSetKind } from "./lib/assertChangeSetKind"
 import { assertUniqueOperations } from "./lib/assertUniqueOperations"
 import { execute } from "./lib/execute"
@@ -53,6 +54,9 @@ type AdapterOptions<
     undoStack?: Mutation[]
     redoStack?: Mutation[]
     models?: Record<string, EntityN>
+    // Set once the caller's operations have been validated + augmented with the
+    // built-ins; lets clone()/changeSet() re-entry skip the caller-only checks.
+    _operationsInitialized?: boolean
 }
 export const createAdapter = <
     const Operations extends readonly Operation[],
@@ -62,10 +66,6 @@ export const createAdapter = <
     adapterOptions: AdapterOptions<Operations, Entities, EngineOptions>,
     engineOptions: EngineOptions = {} as EngineOptions,
 ) => {
-    // Built-ins are prepended on every construction. clone()/changeSet() re-run
-    // createAdapter with an operations list that ALREADY includes them (it was
-    // stored back onto adapterOptions below), so strip built-in-named entries
-    // from the incoming list first — otherwise they'd double on each re-entry.
     const builtInOperations = [
         pageMutations,
         createPageEntitiesOperation(adapterOptions.entities),
@@ -73,13 +73,33 @@ export const createAdapter = <
         redo,
     ]
     const builtInNames = new Set<string>(builtInOperations.map(op => op.name))
+
+    // Validate the caller's operations exactly once. On the initial construction
+    // adapterOptions.operations is the caller's list; clone()/changeSet() re-run
+    // createAdapter with a list that ALREADY includes the built-ins (stored back
+    // onto adapterOptions below), which must not be re-validated as if authored.
+    if (!adapterOptions._operationsInitialized) {
+        for (const operation of adapterOptions.operations) {
+            // Built-in names are reserved: registering your own would silently
+            // shadow the built-in, so reject it rather than dropping it below.
+            if (builtInNames.has(operation.name)) {
+                throw new ReservedOperationNameError(operation.name)
+            }
+        }
+        // A given (name, version) may only be registered once. Multiple
+        // *versions* (same name, different version) are allowed and expected; a
+        // repeated (name, version) is an accidental double-registration.
+        assertUniqueOperations(adapterOptions.operations)
+        adapterOptions._operationsInitialized = true
+    }
+
+    // Built-ins are prepended on every construction. On re-entry the incoming
+    // list already contains them, so strip built-in-named entries first — they'd
+    // otherwise double each time. (After the reserved-name check above, the only
+    // built-in-named entries here are the framework's own.)
     const userOperations = adapterOptions.operations.filter(
         op => !builtInNames.has(op.name),
     )
-    // A given (name, version) may only be registered once. Multiple *versions*
-    // (same name, different version) are allowed and expected; a repeated
-    // (name, version) is an accidental double-registration and throws.
-    assertUniqueOperations(userOperations)
     const allOperations = [...builtInOperations, ...userOperations]
 
     type FunctionMap = {

@@ -8,6 +8,7 @@ import {
 import { describe, expect, test } from "bun:test"
 import { z } from "zod"
 import { DuplicateOperationError } from "../errors/DuplicateOperationError"
+import { ReservedOperationNameError } from "../errors/ReservedOperationNameError"
 import { Query } from "../utils/Query"
 import { Snowflake } from "../utils/Snowflake"
 import { writeOperation } from "../writeOperation"
@@ -259,4 +260,28 @@ describe("duplicate operation registration", () => {
         const [draft] = adapter.createDraft({ postRef: post.ref })
         expect(() => adapter.changeSet(draft.ref)).not.toThrow()
     })
+})
+
+describe("reserved built-in operation names", () => {
+    // Registering an operation named after a built-in would silently shadow it;
+    // that's rejected rather than dropped.
+    const RESERVED = ["undo", "redo", "pageMutations", "pageEntities"] as const
+
+    for (const name of RESERVED) {
+        test(`registering "${name}" throws ReservedOperationNameError`, () => {
+            const clashing = writeOperation(name, z.any(), () => {})
+            let err: any
+            try {
+                createInMemoryAdapter({
+                    operations: [clashing],
+                    entities,
+                    session: { identityRef: "User/42" },
+                })
+            } catch (e) {
+                err = e
+            }
+            expect(err).toBeInstanceOf(ReservedOperationNameError)
+            expect(err.operationName).toBe(name)
+        })
+    }
 })
