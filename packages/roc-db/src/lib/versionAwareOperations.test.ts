@@ -7,6 +7,7 @@ import {
 } from "@roc-db/test-utils"
 import { describe, expect, test } from "bun:test"
 import { z } from "zod"
+import { DuplicateOperationError } from "../errors/DuplicateOperationError"
 import { Query } from "../utils/Query"
 import { Snowflake } from "../utils/Snowflake"
 import { writeOperation } from "../writeOperation"
@@ -220,5 +221,42 @@ describe("version-aware operations", () => {
         expect(appV2.changeSet(target.ref).readPost(post.ref).data.title).toBe(
             "Edited (v1)",
         )
+    })
+})
+
+describe("duplicate operation registration", () => {
+    test("throws when the same name and version is registered twice", () => {
+        expect(() =>
+            createInMemoryAdapter({
+                operations: [setTitleV1, setTitleV1],
+                entities,
+                session: { identityRef: "User/42" },
+            }),
+        ).toThrow(DuplicateOperationError)
+    })
+
+    test("does not throw for the same name at different versions", () => {
+        expect(() =>
+            createInMemoryAdapter({
+                operations: [setTitleV1, setTitleV2],
+                entities,
+                session: { identityRef: "User/42" },
+            }),
+        ).not.toThrow()
+    })
+
+    test("clone() and changeSet() do not re-trigger the guard on built-ins", () => {
+        // Built-ins are folded into the stored operations list, so re-running
+        // createAdapter (clone/changeSet) must not see them as duplicates.
+        const adapter = createInMemoryAdapter({
+            operations: [...operations, setTitleV2, setTitleV1],
+            entities,
+            session: { identityRef: "User/42" },
+        })
+        expect(() => adapter.clone()).not.toThrow()
+
+        const [post] = adapter.createPost({ title: "P" })
+        const [draft] = adapter.createDraft({ postRef: post.ref })
+        expect(() => adapter.changeSet(draft.ref)).not.toThrow()
     })
 })

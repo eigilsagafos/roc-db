@@ -1,6 +1,7 @@
 import { z } from "zod"
 import type { Entity } from "./Entity"
 import { assertChangeSetKind } from "./lib/assertChangeSetKind"
+import { assertUniqueOperations } from "./lib/assertUniqueOperations"
 import { execute } from "./lib/execute"
 import { validateChangeSetVersionParents } from "./lib/validateChangeSetVersionParents"
 import { loadMutations } from "./lib/loadMutations"
@@ -61,13 +62,25 @@ export const createAdapter = <
     adapterOptions: AdapterOptions<Operations, Entities, EngineOptions>,
     engineOptions: EngineOptions = {} as EngineOptions,
 ) => {
-    const allOperations = [
+    // Built-ins are prepended on every construction. clone()/changeSet() re-run
+    // createAdapter with an operations list that ALREADY includes them (it was
+    // stored back onto adapterOptions below), so strip built-in-named entries
+    // from the incoming list first — otherwise they'd double on each re-entry.
+    const builtInOperations = [
         pageMutations,
         createPageEntitiesOperation(adapterOptions.entities),
         undo,
         redo,
-        ...adapterOptions.operations,
     ]
+    const builtInNames = new Set<string>(builtInOperations.map(op => op.name))
+    const userOperations = adapterOptions.operations.filter(
+        op => !builtInNames.has(op.name),
+    )
+    // A given (name, version) may only be registered once. Multiple *versions*
+    // (same name, different version) are allowed and expected; a repeated
+    // (name, version) is an accidental double-registration and throws.
+    assertUniqueOperations(userOperations)
+    const allOperations = [...builtInOperations, ...userOperations]
 
     type FunctionMap = {
         [Item in (typeof allOperations)[number] as Item["name"]]: (
