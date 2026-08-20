@@ -1,5 +1,7 @@
 import type { WriteTransaction } from "../lib/WriteTransaction"
 import type { Mutation } from "./Mutation"
+import type { MutationFacetsArgs, MutationFacetsResult } from "./MutationFacets"
+import type { PageMutationsArgs } from "./PageMutationsArgs"
 import type { Ref } from "./Ref"
 import type { RocDBRequest } from "./RocDBRequest"
 import type { Transaction } from "./Transaction"
@@ -71,10 +73,18 @@ export type PageEntitiesByIndexFunction<EngineOpts extends any = any> = (
     value: any,
 ) => any
 
+// Adapters may be sync (valdres/in-memory) or async (postgres/indexed-db), so
+// the result type covers both. `args` is optional and, unlike the operation
+// layer, un-defaulted: a missing `size` here means unbounded.
 export type PageMutationsFunction<EngineOpts extends any = any> = (
     txn: Transaction<EngineOpts>,
-    args: any,
-) => any
+    args?: PageMutationsArgs,
+) => Mutation[] | Promise<Mutation[]>
+
+export type MutationFacetsFunction<EngineOpts extends any = any> = (
+    txn: Transaction<EngineOpts>,
+    args?: MutationFacetsArgs,
+) => MutationFacetsResult | Promise<MutationFacetsResult>
 
 export type ReadEntityFunctiun<EngineOpts extends any = any> = (
     txn: Transaction<EngineOpts>,
@@ -138,6 +148,7 @@ export type AdapterFunctions<EngineOpts extends any = any> = {
     commit: CommitFunction<EngineOpts>
     findDebounceMutation: FindDebounceMutationFunction<EngineOpts>
     getChangeSetMutations: GetChangeSetMutationsFunction<EngineOpts>
+    mutationFacets: MutationFacetsFunction<EngineOpts>
     pageEntities: PageEntitiesFunction<EngineOpts>
     pageEntitiesByIndex: PageEntitiesByIndexFunction<EngineOpts>
     pageMutations: PageMutationsFunction<EngineOpts>

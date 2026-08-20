@@ -6,6 +6,7 @@ export { Entity } from "./Entity"
 // Opt-in built-in operations. The adapter no longer registers these
 // automatically — include the ones you want in your `operations` list.
 export { pageMutations } from "./operations/pageMutations"
+export { mutationFacets } from "./operations/mutationFacets"
 export { pageEntities } from "./operations/pageEntities"
 export { undo } from "./operations/undo"
 export { redo } from "./operations/redo"
@@ -26,6 +27,11 @@ export { createUniqueConstraintConflictError } from "./errors/createUniqueConstr
 // schemas
 export { MutationRefSchema } from "./schemas/MutationRefSchema"
 export { RefSchema } from "./schemas/RefSchema"
+export { MutationFacetsArgsSchema } from "./schemas/MutationFacetsArgsSchema"
+export {
+    PageMutationsArgsSchema,
+    mutationFilterShape,
+} from "./schemas/PageMutationsArgsSchema"
 
 // schema generators
 export { entitySchemaGenerator } from "./schemas/generators/entitySchemaGenerator"
@@ -46,6 +52,7 @@ export type {
     EndFunction,
     FindDebounceMutationFunction,
     GetChangeSetMutationsFunction,
+    MutationFacetsFunction,
     OnChangeSetAppliedFunction,
     OnChangeSetInitFunction,
     PageEntitiesByIndexFunction,
@@ -63,6 +70,18 @@ export type {
 // under a distinct name to avoid the collision.
 export type { Entity as EntityDocument } from "./types/Entity"
 export type { Mutation } from "./types/Mutation"
+export type {
+    MutationFacet,
+    MutationFacetField,
+    MutationFacetsArgs,
+    MutationFacetsResult,
+    NormalizedMutationFacetsArgs,
+} from "./types/MutationFacets"
+export type {
+    ChangeSetFilter,
+    NormalizedPageMutationsArgs,
+    PageMutationsArgs,
+} from "./types/PageMutationsArgs"
 export type {
     DuplicateChangeSetMutationsOptions,
     DuplicateChangeSetMutationsResult,
@@ -97,6 +116,25 @@ export { validateAndIndexDocument } from "./utils/validateAndIndexDocument"
 export { mutationToFormData } from "./utils/mutationToFormData"
 export { formDataToMutation } from "./utils/formDataToMutation"
 export { sortMutations } from "./utils/sortMutations"
+
+// lib - the shared `pageMutations` / `mutationFacets` semantics. Adapters build
+// on these rather than reimplementing predicate handling, which is what keeps
+// them in parity with each other and with the postgres SQL.
+export { normalizePageMutationsArgs } from "./lib/normalizePageMutationsArgs"
+export {
+    compareMutationsNewestFirst,
+    filterAndPageMutations,
+    matchesMutationFilter,
+    mutationLogRefs,
+} from "./lib/filterAndPageMutations"
+export {
+    MUTATION_FACET_FIELDS,
+    normalizeMutationFacetsArgs,
+} from "./lib/normalizeMutationFacetsArgs"
+export {
+    compareMutationFacets,
+    computeMutationFacets,
+} from "./lib/computeMutationFacets"
 
 // lib - temporarily exposed for valdres integration until a better solution is found
 export { findOperation } from "./lib/findOperation"

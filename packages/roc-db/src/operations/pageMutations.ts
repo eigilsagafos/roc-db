@@ -1,19 +1,23 @@
-import { z } from "zod"
 import { readOperation } from "../readOperation"
+import { PageMutationsArgsSchema } from "../schemas/PageMutationsArgsSchema"
 import { Query } from "../utils/Query"
 
+/**
+ * Page the mutation log, newest first.
+ *
+ * Predicates (all optional, all combinable):
+ * - `changeSet`: `"any"` (default) | `"none"` (mutations outside any change
+ *   set, i.e. committed history) | a change-set ref.
+ * - `operationName` / `identityRef`: one value or several.
+ * - `logRefs`: one ref or several; matches mutations whose log touched all of
+ *   them ("everything that changed this entity").
+ *
+ * Paging is keyset, not offset: pass the previous page's last `timestamp` as
+ * `before` (and its `ref` as `beforeRef` when timestamps can tie). `size`
+ * defaults to 30; pass `size: null` for an explicitly unbounded read.
+ */
 export const pageMutations = readOperation(
     "pageMutations",
-    z
-        .object({
-            size: z.number().default(30),
-            skip: z.number().default(0),
-            changeSetRef: z.string().optional(),
-        })
-        .optional(),
-    txn => {
-        // console.log("txn.pageMutations()", txn.)
-        // throw new Error("Not implemented")
-        return Query(() => txn.pageMutations(txn.payload))
-    },
+    PageMutationsArgsSchema,
+    txn => Query(() => txn.pageMutations(txn.payload)),
 )
