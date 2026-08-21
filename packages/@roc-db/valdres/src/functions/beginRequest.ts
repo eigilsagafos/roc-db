@@ -2,10 +2,11 @@ import type { BeginRequestFunction, Ref } from "roc-db"
 import type { Store, TransactionInterface } from "valdres"
 import type { ValdresEngine, ValdresTxnEngine } from "../types/ValdresEngine"
 import { generateTransactionCache } from "roc-db"
+import { getScopeState } from "../lib/scopeState"
 
 const selectScopedStore = (engineOpts: ValdresEngine, changeSetRef: Ref) => {
     const store = engineOpts.store as Store
-    if (engineOpts.scopedStore && changeSetRef in store.data.scopes) {
+    if (engineOpts.scopedStore && store.hasScope(changeSetRef)) {
         return engineOpts.scopedStore
     } else {
         return store.scope(changeSetRef)
@@ -19,17 +20,19 @@ export const beginRequest: BeginRequestFunction<ValdresEngine> = (
 ) => {
     if (request.changeSetRef) {
         if (engineOpts.store) {
+            const changeSetRef = request.changeSetRef
             const scopedStoreAlreadyAttachedBeforeBegin =
                 !!engineOpts.scopedStore
-            const scopedStore = selectScopedStore(
-                engineOpts,
-                request.changeSetRef,
-            )
+            const scopedStore = selectScopedStore(engineOpts, changeSetRef)
             const { rootTxn } = engineOpts as ValdresTxnEngine
-            return rootTxn.scope(request.changeSetRef, scopedTxn => {
-                const scopedData = scopedTxn.data as any
+            return rootTxn.scope(changeSetRef, scopedTxn => {
+                const scopeState = getScopeState(
+                    engineOpts.store as Store,
+                    changeSetRef,
+                    scopedStore,
+                )
                 if (scopedStoreAlreadyAttachedBeforeBegin) {
-                    scopedData.txnCache ||= generateTransactionCache(false)
+                    scopeState.txnCache ||= generateTransactionCache(false)
                 }
                 return callback(
                     {
@@ -39,7 +42,7 @@ export const beginRequest: BeginRequestFunction<ValdresEngine> = (
                         scopedStoreAlreadyAttachedBeforeBegin,
                         scopedStore,
                     },
-                    scopedData.txnCache,
+                    scopeState.txnCache,
                 )
             })
         } else {

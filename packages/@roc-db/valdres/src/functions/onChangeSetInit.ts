@@ -14,6 +14,7 @@ import {
 } from "roc-db"
 import type { Store, TransactionInterface } from "valdres"
 import type { ValdresEngine, ValdresTxnEngine } from "../types/ValdresEngine"
+import { getScopeState } from "../lib/scopeState"
 
 const prepareInitTransaction = (
     adapterOptions: any,
@@ -61,9 +62,7 @@ const getRootMutations = (
             changeSetRef,
         )
     })
-    // valdres' Store.txn is typed to return void, but returns the callback's
-    // value (Mutation[]) at runtime.
-    return sortMutations(res as unknown as Mutation[])
+    return sortMutations(res as Mutation[])
 }
 
 export const onChangeSetInit: OnChangeSetInitFunction<ValdresEngine> = (
@@ -86,8 +85,8 @@ export const onChangeSetInit: OnChangeSetInitFunction<ValdresEngine> = (
         const versionRef = changeSet?.parents?.version
         rootTxn.scope(changeSetRef, scopedTxn => {
             const cache = generateTransactionCache()
-            const scopedData = scopedTxn.data as any
-            if (versionRef && !scopedData.versionRefLoaded) {
+            const scopeState = getScopeState(store, changeSetRef, scopedStore)
+            if (versionRef && !scopeState.versionRefLoaded) {
                 // Seed the base snapshot via the shared helper so all three
                 // seeding sites resolve `parents.version` -> `data.snapshot`
                 // identically (and pick up the assertVersionKind guardrail).
@@ -100,7 +99,7 @@ export const onChangeSetInit: OnChangeSetInitFunction<ValdresEngine> = (
                     changeSet,
                     cache,
                 )
-                scopedData.versionRefLoaded = versionRef
+                scopeState.versionRefLoaded = versionRef
             }
 
             for (const mutation of rootMutations) {

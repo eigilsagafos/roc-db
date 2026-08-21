@@ -19,10 +19,10 @@
     },
     "packages/@roc-db/in-memory": {
       "name": "@roc-db/in-memory",
-      "version": "0.2.0-pre.99",
+      "version": "0.2.0-pre.100",
       "devDependencies": {
-        "@roc-db/test-utils": "0.2.0-pre.100",
-        "roc-db": "0.2.0-pre.100",
+        "@roc-db/test-utils": "0.2.0-pre.102",
+        "roc-db": "0.2.0-pre.103",
         "zod": "4.0.14",
       },
       "peerDependencies": {
@@ -34,9 +34,9 @@
       "name": "@roc-db/indexed-db",
       "version": "0.2.0-pre.100",
       "devDependencies": {
-        "@roc-db/test-utils": "0.2.0-pre.100",
+        "@roc-db/test-utils": "0.2.0-pre.102",
         "fake-indexeddb": "6.0.1",
-        "roc-db": "0.2.0-pre.100",
+        "roc-db": "0.2.0-pre.103",
         "zod": "4.0.14",
       },
       "peerDependencies": {
@@ -46,13 +46,13 @@
     },
     "packages/@roc-db/postgres": {
       "name": "@roc-db/postgres",
-      "version": "0.2.0-pre.100",
+      "version": "0.2.0-pre.102",
       "dependencies": {
         "postgres": "3.4.5",
       },
       "devDependencies": {
-        "@roc-db/test-utils": "0.2.0-pre.100",
-        "roc-db": "0.2.0-pre.100",
+        "@roc-db/test-utils": "0.2.0-pre.102",
+        "roc-db": "0.2.0-pre.103",
         "zod": "4.0.14",
       },
       "peerDependencies": {
@@ -62,15 +62,15 @@
     },
     "packages/@roc-db/test-utils": {
       "name": "@roc-db/test-utils",
-      "version": "0.2.0-pre.100",
+      "version": "0.2.0-pre.102",
       "devDependencies": {
         "@faker-js/faker": "9.7.0",
-        "@roc-db/in-memory": "0.2.0-pre.99",
+        "@roc-db/in-memory": "0.2.0-pre.100",
         "@types/bun": "1.2.19",
         "@types/sanitize-html": "2.13.0",
         "bun": "1.2.19",
         "expect-type": "1.2.0",
-        "roc-db": "0.2.0-pre.100",
+        "roc-db": "0.2.0-pre.103",
       },
       "peerDependencies": {
         "roc-db": ">=0.2.0-pre.98 <1.0.0",
@@ -79,30 +79,30 @@
     },
     "packages/@roc-db/valdres": {
       "name": "@roc-db/valdres",
-      "version": "0.2.0-pre.100",
+      "version": "0.2.0-pre.101",
       "devDependencies": {
         "@faker-js/faker": "9.3.0",
-        "@roc-db/test-utils": "0.2.0-pre.100",
+        "@roc-db/test-utils": "0.2.0-pre.102",
         "@types/bun": "1.2.19",
         "bun": "1.2.19",
         "expect-type": "1.1.0",
         "prettier": "3.4.1",
-        "roc-db": "0.2.0-pre.100",
-        "valdres": "0.2.0-pre.18",
+        "roc-db": "0.2.0-pre.103",
+        "valdres": "1.0.0-beta.20",
       },
       "peerDependencies": {
         "roc-db": ">=0.2.0-pre.98 <1.0.0",
-        "valdres": "0.2.0-pre.18",
+        "valdres": ">=1.0.0-beta.20 <2.0.0",
         "zod": ">=4.0.0",
       },
     },
     "packages/roc-db": {
       "name": "roc-db",
-      "version": "0.2.0-pre.100",
+      "version": "0.2.0-pre.103",
       "devDependencies": {
-        "@roc-db/in-memory": "0.2.0-pre.99",
+        "@roc-db/in-memory": "0.2.0-pre.100",
         "@roc-db/indexed-db": "0.2.0-pre.100",
-        "@roc-db/test-utils": "0.2.0-pre.100",
+        "@roc-db/test-utils": "0.2.0-pre.102",
         "@types/bun": "1.2.19",
         "bun": "1.2.19",
         "expect-type": "1.1.0",
@@ -539,7 +539,7 @@
 
     "uri-js": ["uri-js@4.4.1", "", { "dependencies": { "punycode": "^2.1.0" } }, "sha512-7rKUyy33Q1yc98pQ1DAmLtwX109F7TIfWlW1Ydo8Wl1ii1SeHieeh0HHfPeL2fMXK6z0s8ecKs9frCuLJvndBg=="],
 
-    "valdres": ["valdres@0.2.0-pre.18", "", {}, "sha512-dqA778sE6WR/HQfgmuzEfkFUisLnzK1H9XrENmAXA3Mn8B6WjpALc2i8fvStTear4aD9CuqvjZU2CV0gIXMmPQ=="],
+    "valdres": ["valdres@1.0.0-beta.20", "", {}, "sha512-VWqF5U/H3xbhMbfwBViAPcJyXUqrODBZBaJMZPrDYusZe/utTfalLbihxN9SJD/z1CfU6cQGojF6wDVGxqKkug=="],
 
     "webidl-conversions": ["webidl-conversions@3.0.1", "", {}, "sha512-2JAn3z8AR6rjK8Sm8orRC0h/bcl/DqL7tRPdGZ4I1CjdF+EaMLmYxBHyXuKL849eucPFhvBoxMsflfOb8kxaeQ=="],
 
