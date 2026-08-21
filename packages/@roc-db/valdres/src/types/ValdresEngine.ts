@@ -1,5 +1,10 @@
 import type { EntityDocument, Mutation, Ref } from "roc-db"
-import type { AtomFamily, Store, TransactionInterface } from "valdres"
+import type {
+    AtomFamily,
+    ScopedStore,
+    Store,
+    TransactionInterface,
+} from "valdres"
 
 // The engine options valdres supplies to `createAdapter`. This is the *base*
 // shape: at the root adapter there is no active transaction, so `txn`/`rootTxn`
@@ -17,8 +22,9 @@ export type ValdresEngine = {
     txn: TransactionInterface | undefined
     rootTxn: TransactionInterface | undefined
     store: Store | undefined
-    // Attached by beginRequest when operating inside a changeSet scope.
-    scopedStore?: Store
+    // Attached by beginRequest when operating inside a changeSet scope. Holds
+    // a scope lease, so it carries `detach()` on top of the Store surface.
+    scopedStore?: ScopedStore
     scopedStoreAlreadyAttachedBeforeBegin?: boolean
     entityAtom: AtomFamily<EntityDocument | null, [string]>
     mutationAtom: AtomFamily<Mutation | null, [string]>
