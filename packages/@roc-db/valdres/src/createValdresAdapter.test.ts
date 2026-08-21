@@ -31,20 +31,24 @@ describe("createValdresAdapter", () => {
     })
 })
 
-test.todo("clone with txn", () => {
+// Enabled once `end()` stopped calling `rootTxn.commit()`. That force-committed
+// the CALLER's transaction, so a caller throwing afterwards could not roll back;
+// the writes now stay staged until the caller's own `store.txn` returns.
+test("clone with txn", () => {
     const rootStore = store()
-    const entityFamily = atomFamily(null)
+    const entityFamily = atomFamily<any, [string]>(null)
     const adapter = createValdresAdapter({
         store: rootStore,
         entityAtom: entityFamily,
         mutationAtom: atomFamily(null),
+        entityUniqueAtom: atomFamily(null),
+        entityIndexAtom: atomFamily([]),
         operations,
         session: { identityRef: "User/42" },
         entities,
     })
-    const [post1] = adapter.createPost({ title: "Foo" })
 
-    let post2ref
+    let post2ref: any
     expect(() => {
         rootStore.txn(txn => {
             const clone = adapter.clone({ txn })
@@ -53,10 +57,13 @@ test.todo("clone with txn", () => {
             throw new Error("rollback")
         })
     }).toThrow("rollback")
+    // Guard against passing vacuously: the ref must exist for the null read to
+    // mean "rolled back" rather than "never created".
+    expect(post2ref).toBeDefined()
     const post2read = rootStore.get(entityFamily(post2ref))
     expect(post2read).toBeNull()
 
-    let post3ref
+    let post3ref: any
     rootStore.txn(txn => {
         const clone = adapter.clone({ txn })
         const [post3] = clone.createPost({ title: "Post 3" })
@@ -483,6 +490,22 @@ describe("changeSet scope state", () => {
         expect(rootStore.get(entityFamily)).toContain(settings)
         expect(scopedStore.get(entityFamily)).toContain(settings)
         expect(scopedStore.get(settings).data.name).toBe("Acme again")
+    })
+
+    test("applying a changeSet on a store-less adapter is a no-op", () => {
+        // An adapter can run on a bare transaction with no store. There is no
+        // scope state to drop and no handle to probe for the scope, so the
+        // cleanup has nothing to do — it must not reach through the missing
+        // store and throw.
+        const { rootStore, adapter, post, draft } = prepareVersionedDraft()
+        const cs = adapter.changeSet(draft.ref)
+        cs.createBlockParagraph({ parentRef: post.ref })
+
+        expect(() =>
+            rootStore.txn(txn =>
+                adapter.clone({ store: undefined, txn }).applyDraft(draft.ref),
+            ),
+        ).not.toThrow()
     })
 
     test("drops the scope entry when the changeSet is applied", () => {
