@@ -18,6 +18,7 @@
     "fix-type-declaration-emit",
     "indexed-db-conformance",
     "strict-types-and-bug-fixes",
+    "valdres-beta-compat",
     "version-aware-operations"
   ]
 }
