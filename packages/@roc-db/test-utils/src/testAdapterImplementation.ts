@@ -15,6 +15,7 @@ import {
     UpdatePostTitleMutationSchema,
 } from "./schemas"
 import { entities } from "./entities"
+import { testMutationQueries } from "./testMutationQueries"
 import type { Post } from "./schemas/PostSchema"
 import type { BlockParagraph as BlockParagraphType } from "./schemas/BlockParagraphSchema"
 import type { BlockRow } from "./schemas/BlockRowSchema"
@@ -479,6 +480,8 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
         })
     })
 
+    testMutationQueries(createAdapter, generateArgs)
+
     describe("changeSet", () => {
         let postRef: string,
             draftRef: string,
@@ -657,7 +660,9 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
                 })
 
             expect(mutations).toHaveLength(1)
-            expect(mutations[0].operation.name).toBe("createBlockRowReadingRoot")
+            expect(mutations[0].operation.name).toBe(
+                "createBlockRowReadingRoot",
+            )
             const newRow = [...refMap.values()][0]
             expect(newRow).toBeDefined()
             const targetCs = adapter1.changeSet(newDraftRef)

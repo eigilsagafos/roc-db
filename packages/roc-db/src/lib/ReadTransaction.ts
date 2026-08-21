@@ -1,5 +1,7 @@
 import { BadRequestError } from "../errors/BadRequestError"
 import type { AdapterOptions } from "../types/AdapterOptions"
+import type { MutationFacetsArgs } from "../types/MutationFacets"
+import type { PageMutationsArgs } from "../types/PageMutationsArgs"
 import type { ReadEntityResult } from "../types/ReadEntityResult"
 import type { Ref } from "../types/Ref"
 import type { RocDBRequest } from "../types/RocDBRequest"
@@ -70,8 +72,11 @@ export class ReadTransaction<EngineOpts extends any = any, Payload = any> {
     readMutation = (ref: Ref, throwIfNotFound = true) =>
         readMutation(this, ref, throwIfNotFound)
 
-    pageMutations = (args: any) => {
+    pageMutations = (args?: PageMutationsArgs) => {
         return this.adapter.functions.pageMutations(this, args)
+    }
+    mutationFacets = (args?: MutationFacetsArgs) => {
+        return this.adapter.functions.mutationFacets(this, args)
     }
     pageEntities = (args: any) => {
         return this.adapter.functions.pageEntities(this, args)
