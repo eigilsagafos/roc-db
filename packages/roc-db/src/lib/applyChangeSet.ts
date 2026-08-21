@@ -1,3 +1,4 @@
+import { ApplyChangeSetError } from "../errors/ApplyChangeSetError"
 import type { Mutation } from "../types/Mutation"
 import type { Ref } from "../types/Ref"
 import type { WriteRequest } from "../types/WriteRequest"
@@ -24,7 +25,13 @@ const applyChangeSetSync = (txn: WriteTransaction, ref: Ref) => {
         const sortedMutations = sortMutations(mutations)
         for (const mutation of sortedMutations) {
             const applyTxn = prepareTransaction(txn, mutation)
-            runSyncFunctionChain(applyTxn.request.operation.callback(applyTxn))
+            try {
+                runSyncFunctionChain(
+                    applyTxn.request.operation.callback(applyTxn),
+                )
+            } catch (cause) {
+                throwMutationContext(mutation, cause)
+            }
         }
     }
     if (txn.adapter.functions.onChangeSetApplied) {
@@ -41,14 +48,29 @@ const applyChangeSetAsync = async (txn: WriteTransaction, ref: Ref) => {
         const sortedMutations = sortMutations(mutations)
         for (const mutation of sortedMutations) {
             const applyTxn = prepareTransaction(txn, mutation)
-            await runAsyncFunctionChain(
-                applyTxn.request.operation.callback(applyTxn),
-            )
+            try {
+                await runAsyncFunctionChain(
+                    applyTxn.request.operation.callback(applyTxn),
+                )
+            } catch (cause) {
+                throwMutationContext(mutation, cause)
+            }
         }
     }
     if (txn.adapter.functions.onChangeSetApplied) {
         await txn.adapter.functions.onChangeSetApplied(txn, ref)
     }
+}
+
+const throwMutationContext = (mutation: Mutation, cause: unknown): never => {
+    throw new ApplyChangeSetError(
+        {
+            mutationRef: mutation.ref,
+            operationName: mutation.operation.name,
+            timestamp: mutation.timestamp,
+        },
+        { cause },
+    )
 }
 
 const prepareTransaction = (txn: WriteTransaction, mutation: Mutation) => {
