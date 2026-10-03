@@ -52,6 +52,7 @@ export type {
     PageEntitiesFunction,
     PageMutationsFunction,
     PatchEntityFunction,
+    PrepareChangeSetsFunction,
     ReadEntityFunctiun,
     ReadMutationFunction,
     RefByUniqueFieldFunction,

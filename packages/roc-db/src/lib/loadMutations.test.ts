@@ -3,6 +3,8 @@ import { describe, expect, test } from "bun:test"
 import { createInMemoryAdapter } from "@roc-db/in-memory"
 import { createIndexedDBAdapter } from "@roc-db/indexed-db"
 import { Snowflake } from "../utils/Snowflake"
+import { createAdapter } from "../createAdapter"
+import * as inMemoryFunctions from "../../../@roc-db/in-memory/src/functions"
 
 const snowflake = new Snowflake(10, 10)
 
@@ -88,5 +90,98 @@ describe("loadMutations", () => {
 
         const postRead2 = await adapter2.readPost(post.ref)
         expect(postRead2.data.title).toBe("Second")
+    })
+})
+
+describe("prepareChangeSets", () => {
+    // An in-memory adapter that records when the batch hooks run.
+    const createRecordingAdapter = (optimistic: boolean, calls: any[]) =>
+        createAdapter(
+            {
+                name: "recording",
+                operations,
+                entities,
+                snowflake,
+                optimistic,
+                session: { identityRef: "User/42" },
+                functions: {
+                    ...inMemoryFunctions,
+                    prepareChangeSets: (_engineOpts: any, refs: string[]) => {
+                        calls.push(["prepareChangeSets", refs])
+                    },
+                    begin: (engineOpts: any, callback: any) => {
+                        calls.push(["begin"])
+                        return callback(engineOpts)
+                    },
+                },
+            } as any,
+            {
+                entities: new Map(),
+                mutations: new Map(),
+                entitiesUnique: new Map(),
+                entitiesIndex: new Map(),
+            },
+        ) as any
+
+    const prepareChangeSetMutations = () => {
+        const source = createInMemoryAdapter({
+            operations,
+            entities,
+            session: { identityRef: "User/42" },
+            snowflake,
+        })
+        const [post] = source.createPost({ title: "Post" })
+        const [draft] = source.createDraft({ postRef: post.ref })
+        source
+            .changeSet(draft.ref)
+            .createBlockParagraph({ parentRef: post.ref })
+        return { draft, mutations: source.pageMutations({}) }
+    }
+
+    test("loadMutations prepares the batch's changeSets before its transaction", () => {
+        const { draft, mutations } = prepareChangeSetMutations()
+        const calls: any[] = []
+        createRecordingAdapter(true, calls).loadMutations(mutations)
+        expect(calls[0]).toEqual(["prepareChangeSets", [draft.ref]])
+        expect(calls[1]).toEqual(["begin"])
+    })
+
+    test("passes every changeSet once and never the root", () => {
+        const source = createInMemoryAdapter({
+            operations,
+            entities,
+            session: { identityRef: "User/42" },
+            snowflake,
+        })
+        const [post] = source.createPost({ title: "Post" })
+        const rootOnly = source.pageMutations({})
+        const [draft1] = source.createDraft({ postRef: post.ref })
+        const [draft2] = source.createDraft({ postRef: post.ref })
+        for (const draft of [draft1, draft2, draft1]) {
+            source
+                .changeSet(draft.ref)
+                .createBlockParagraph({ parentRef: post.ref })
+        }
+
+        const rootCalls: any[] = []
+        createRecordingAdapter(true, rootCalls).loadMutations(rootOnly)
+        expect(rootCalls[0]).toEqual(["prepareChangeSets", []])
+
+        const calls: any[] = []
+        createRecordingAdapter(true, calls).loadMutations(
+            source.pageMutations({}),
+        )
+        expect(calls[0][0]).toBe("prepareChangeSets")
+        expect([...calls[0][1]].sort()).toEqual([draft1.ref, draft2.ref].sort())
+    })
+
+    test("persistOptimisticMutations prepares the batch's changeSets before its transaction", () => {
+        const { draft, mutations } = prepareChangeSetMutations()
+        const calls: any[] = []
+        createRecordingAdapter(false, calls).persistOptimisticMutations(
+            mutations,
+        )
+        expect(calls[0]).toEqual(["prepareChangeSets", [draft.ref]])
+        expect(calls[1]).toEqual(["begin"])
     })
 })

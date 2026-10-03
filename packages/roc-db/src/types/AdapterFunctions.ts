@@ -32,6 +32,15 @@ export type OnChangeSetInitFunction<EngineOpts extends any = any> = (
     changeSetRef: Ref,
 ) => EngineOpts
 
+// Runs before a batch (loadMutations / persistOptimisticMutations) opens its
+// transaction, with every changeSet the batch writes to. Lets an engine prepare
+// per-changeSet state that cannot be created inside a transaction. Called
+// synchronously, also for async adapters; a returned promise is not awaited.
+export type PrepareChangeSetsFunction<EngineOpts extends any = any> = (
+    engineOpts: EngineOpts,
+    changeSetRefs: Ref[],
+) => void
+
 export type OnChangeSetAppliedFunction<EngineOpts extends any = any> = (
     txn: WriteTransaction<EngineOpts>,
     changeSetRef: Ref,
@@ -134,6 +143,7 @@ export type AdapterFunctions<EngineOpts extends any = any> = {
     end?: EndFunction<EngineOpts>
     onChangeSetInit?: OnChangeSetInitFunction<EngineOpts>
     onChangeSetApplied?: OnChangeSetAppliedFunction<EngineOpts>
+    prepareChangeSets?: PrepareChangeSetsFunction<EngineOpts>
     // Required engine functions.
     commit: CommitFunction<EngineOpts>
     findDebounceMutation: FindDebounceMutationFunction<EngineOpts>

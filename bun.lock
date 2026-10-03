@@ -79,7 +79,7 @@
     },
     "packages/@roc-db/valdres": {
       "name": "@roc-db/valdres",
-      "version": "0.2.0-pre.101",
+      "version": "0.2.0-pre.102",
       "devDependencies": {
         "@faker-js/faker": "9.3.0",
         "@roc-db/test-utils": "0.2.0-pre.102",
@@ -88,11 +88,11 @@
         "expect-type": "1.1.0",
         "prettier": "3.4.1",
         "roc-db": "0.2.0-pre.103",
-        "valdres": "1.0.0-beta.20",
+        "valdres": "1.0.0-beta.41",
       },
       "peerDependencies": {
         "roc-db": ">=0.2.0-pre.98 <1.0.0",
-        "valdres": ">=1.0.0-beta.20 <2.0.0",
+        "valdres": ">=1.0.0-beta.41 <2.0.0",
         "zod": ">=4.0.0",
       },
     },
@@ -539,7 +539,7 @@
 
     "uri-js": ["uri-js@4.4.1", "", { "dependencies": { "punycode": "^2.1.0" } }, "sha512-7rKUyy33Q1yc98pQ1DAmLtwX109F7TIfWlW1Ydo8Wl1ii1SeHieeh0HHfPeL2fMXK6z0s8ecKs9frCuLJvndBg=="],
 
-    "valdres": ["valdres@1.0.0-beta.20", "", {}, "sha512-VWqF5U/H3xbhMbfwBViAPcJyXUqrODBZBaJMZPrDYusZe/utTfalLbihxN9SJD/z1CfU6cQGojF6wDVGxqKkug=="],
+    "valdres": ["valdres@1.0.0-beta.41", "", {}, "sha512-xJA6UalOG0ImECTJcBHGOnjWInKSCGXXcdNJdhFRwXiy5/HQzYAYZZNdla503PdyrQSnOMrJrL3C7BGEemIe0Q=="],
 
     "webidl-conversions": ["webidl-conversions@3.0.1", "", {}, "sha512-2JAn3z8AR6rjK8Sm8orRC0h/bcl/DqL7tRPdGZ4I1CjdF+EaMLmYxBHyXuKL849eucPFhvBoxMsflfOb8kxaeQ=="],
 

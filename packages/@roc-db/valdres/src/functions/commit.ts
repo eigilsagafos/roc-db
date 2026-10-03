@@ -6,6 +6,7 @@ import {
 } from "roc-db"
 import type { ValdresEngine, ValdresTxnEngine } from "../types/ValdresEngine"
 import { saveMutation } from "./saveMutation"
+import { uniqueHolder } from "../lib/uniqueHolder"
 
 const findAddedAndRemovedEntries = (
     oldArr: [string, any][],
@@ -25,6 +26,7 @@ export const commit: CommitFunction<ValdresEngine> = (
     mutation,
     { created, updated, deleted },
 ) => {
+    const engine = txn.engineOpts as ValdresTxnEngine
     const {
         mutationAtom,
         entityAtom,
@@ -32,7 +34,7 @@ export const commit: CommitFunction<ValdresEngine> = (
         entityIndexAtom,
         txn: valdresTxn,
         rootTxn,
-    } = txn.engineOpts as ValdresTxnEngine
+    } = engine
     const atom = mutationAtom(txn.mutation.ref)
     const currentMutation = rootTxn.get(atom)
     if (currentMutation) {
@@ -59,16 +61,18 @@ export const commit: CommitFunction<ValdresEngine> = (
         }
         if (doc.__.unique?.length) {
             doc.__.unique.forEach(([key, value]: [string, any]) => {
-                const atom = entityUniqueAtom(doc.entity, key, value)
-                if (valdresTxn.get(atom))
+                if (uniqueHolder(valdresTxn, engine, doc.entity, key, value))
                     throw createUniqueConstraintConflictError(doc.entity)
-                valdresTxn.set(atom, doc.ref)
+                valdresTxn.set(
+                    entityUniqueAtom(doc.entity, key, value),
+                    doc.ref,
+                )
             })
         }
         if (doc.__.index?.length) {
             doc.__.index.forEach(([key, value]: [string, any]) => {
                 const atom = entityIndexAtom(doc.entity, key, value)
-                valdresTxn.set(atom, (curr: Ref[]) => [...curr, doc.ref])
+                valdresTxn.update(atom, (curr: Ref[]) => [...curr, doc.ref])
             })
         }
         valdresTxn.set(entityAtom(doc.ref), doc)
@@ -88,15 +92,14 @@ export const commit: CommitFunction<ValdresEngine> = (
             )
             removed.forEach(([k, v]: [string, any]) => {
                 const atom = entityUniqueAtom(entity, k, v)
-                valdresTxn.del(atom)
+                valdresTxn.reset(atom)
             })
 
             added.forEach(([k, v]: [string, any]) => {
-                const atom = entityUniqueAtom(entity, k, v)
-                if (valdresTxn.get(atom)) {
+                if (uniqueHolder(valdresTxn, engine, entity, k, v)) {
                     throw createUniqueConstraintConflictError(entity)
                 } else {
-                    valdresTxn.set(atom, ref)
+                    valdresTxn.set(entityUniqueAtom(entity, k, v), ref)
                 }
             })
         }
@@ -111,14 +114,14 @@ export const commit: CommitFunction<ValdresEngine> = (
             )
             removed.forEach(([k, v]: [string, any]) => {
                 const atom = entityIndexAtom(entity, k, v)
-                valdresTxn.set(atom, (curr: Ref[]) =>
+                valdresTxn.update(atom, (curr: Ref[]) =>
                     curr.filter((r: Ref) => r !== ref),
                 )
             })
 
             added.forEach(([k, v]: [string, any]) => {
                 const atom = entityIndexAtom(entity, k, v)
-                valdresTxn.set(atom, (curr: Ref[]) => [...curr, ref])
+                valdresTxn.update(atom, (curr: Ref[]) => [...curr, ref])
             })
         }
         valdresTxn.set(entityAtom(updatedDocument.ref), updatedDocument)
@@ -126,24 +129,24 @@ export const commit: CommitFunction<ValdresEngine> = (
     for (const ref of deleted) {
         const entity = entityFromRef(ref)
         if (entity === "Mutation") {
-            valdresTxn.del(mutationAtom(ref))
+            valdresTxn.delete(mutationAtom(ref))
         } else {
             const existingDocument: any = valdresTxn.get(entityAtom(ref))
             if (existingDocument.__.unique?.length) {
                 existingDocument.__.unique.forEach(([k, v]: [string, any]) => {
                     const atom = entityUniqueAtom(existingDocument.entity, k, v)
-                    valdresTxn.del(atom)
+                    valdresTxn.reset(atom)
                 })
             }
             if (existingDocument.__.index?.length) {
                 existingDocument.__.index.forEach(([k, v]: [string, any]) => {
                     const atom = entityIndexAtom(existingDocument.entity, k, v)
-                    valdresTxn.set(atom, (curr: Ref[]) =>
+                    valdresTxn.update(atom, (curr: Ref[]) =>
                         curr.filter((r: Ref) => r !== existingDocument.ref),
                     )
                 })
             }
-            valdresTxn.del(entityAtom(ref))
+            valdresTxn.delete(entityAtom(ref))
         }
     }
     return mutation
