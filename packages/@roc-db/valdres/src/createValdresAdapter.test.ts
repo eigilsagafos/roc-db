@@ -458,50 +458,23 @@ describe("changeSet scope state", () => {
         expect(scope.get(entityFamily(basePost.ref))?.ref).toBe(basePost.ref)
     })
 
-    test("stops shadowing the root once the changeSet is applied", () => {
-        // The scope's values were the draft's optimistic view. Applying moves
-        // that work onto the root, so the scope has to stop shadowing it or a
-        // UI still rendering the draft freezes at pre-apply state forever.
+    test("leaves the scope alone when the changeSet is applied", () => {
+        // Once a changeSet is applied, consumers render from the root and
+        // dispose the scope. Applying neither reverts nor disposes it.
         const { rootStore, entityFamily, adapter, post, draft } =
             prepareVersionedDraft()
         const cs = adapter.changeSet(draft.ref)
-        cs.createBlockParagraph({ parentRef: post.ref })
+        const [{ block }] = cs.createBlockParagraph({ parentRef: post.ref })
         const scopedStore = cs._engineOpts.scopedStore
 
         adapter.applyDraft(draft.ref)
         adapter.updatePostTitle({ ref: post.ref, title: "Renamed after apply" })
 
+        expect(rootStore.get(entityFamily(block.ref))?.ref).toBe(block.ref)
         expect(rootStore.get(entityFamily(post.ref)).data.title).toBe(
             "Renamed after apply",
         )
-        expect(scopedStore.get(entityFamily(post.ref)).data.title).toBe(
-            "Renamed after apply",
-        )
-    })
-
-    test("restores family membership the changeSet deleted", () => {
-        // A draft deleting an entity `del`s it from the scope's family index,
-        // and that tombstone is permanent per key: the value falls through to
-        // the root again, but the member never reappears in the scope's
-        // `get(family)` — so the two read paths disagree forever. Singletons
-        // make it reachable, since they reuse one bare-name ref across a
-        // delete/recreate cycle. unsetAll reverts membership too.
-        const { rootStore, entityFamily, adapter, post, draft } =
-            prepareVersionedDraft()
-        adapter.createOrgSettings({ name: "Acme" })
-        const cs = adapter.changeSet(draft.ref)
-        const scopedStore = cs._engineOpts.scopedStore
-
-        cs.deleteOrgSettings({})
-        const settings = entityFamily("OrgSettings")
-        expect(scopedStore.get(entityFamily)).not.toContain(settings)
-
-        adapter.applyDraft(draft.ref)
-        adapter.createOrgSettings({ name: "Acme again" })
-
-        expect(rootStore.get(entityFamily)).toContain(settings)
-        expect(scopedStore.get(entityFamily)).toContain(settings)
-        expect(scopedStore.get(settings).data.name).toBe("Acme again")
+        expect(scopedStore.get(entityFamily(post.ref)).data.title).toBe("Host")
     })
 
     test("applying a changeSet on a store-less adapter is a no-op", () => {

@@ -14,12 +14,8 @@ import {
 } from "roc-db"
 import type { Store, Transaction } from "valdres"
 import type { ValdresEngine } from "../types/ValdresEngine"
-import {
-    getScopeState,
-    registerScope,
-    scopeBuiltAtom,
-} from "../lib/scopeState"
-import { getScopeTransaction, recordScopeWrites } from "../lib/scopeTransaction"
+import { registerScope, scopeBuiltAtom } from "../lib/scopeState"
+import { getScopeTransaction } from "../lib/scopeTransaction"
 
 // Runs `callback` in the caller's transaction when the adapter was given one,
 // and in a transaction of its own otherwise.
@@ -102,11 +98,7 @@ export const onChangeSetInit: OnChangeSetInitFunction<ValdresEngine> = (
 
     inTransaction(engineOpts, rootTxn => {
         const versionRef = changeSet?.parents?.version
-        const scopeState = getScopeState(store, changeSetRef)
-        const scopedTxn = recordScopeWrites(
-            getScopeTransaction(rootTxn, changeSetRef),
-            scopeState.written,
-        )
+        const scopedTxn = getScopeTransaction(rootTxn, changeSetRef)
         const cache = generateTransactionCache()
         // A scope this function has not built holds at most what later
         // requests wrote into it. Rebuild it from the base and the whole

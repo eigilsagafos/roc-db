@@ -9,6 +9,7 @@ import {
     NotFoundError,
     Query,
     QueryChain,
+    Snowflake,
     writeOperation,
 } from "roc-db"
 import { z } from "zod"
@@ -46,12 +47,16 @@ const failAfterPatch = writeOperation(
     { changeSetOnly: true },
 )
 
+// Each adapter gets its own id generator, so refs from a source adapter loaded
+// into a target never collide with refs the target generates itself.
+let serverId = 0
 const setup = ({ optimistic }: { optimistic?: boolean } = {}) => {
     const rootStore = store()
     const atoms = createAtoms()
     const adapter = createValdresAdapter({
         store: rootStore,
         ...atoms,
+        snowflake: new Snowflake(2, ++serverId),
         operations: [...operations, failAfterPatch],
         entities,
         session: { identityRef: "User/42" },
@@ -204,7 +209,7 @@ describe("valdres 1.0 compatibility", () => {
         expect(scope.get(entityAtom(block.ref))?.ref).toBe(block.ref)
     })
 
-    test("derived selectors follow changeSet writes and the apply", () => {
+    test("derived selectors follow changeSet writes and the apply in the root", () => {
         const { rootStore, entityAtom, adapter, post, draft, cs, scope } =
             setupDraft()
         const blockCount = selector(
@@ -233,9 +238,9 @@ describe("valdres 1.0 compatibility", () => {
         expect([rootStore.get(blockCount), scope.get(blockCount)]).toEqual([
             2, 2,
         ])
-        // The scope follows the root again after the apply.
-        adapter.createPost({ title: "After", tags: [] })
-        expect(scope.get(entityAtom)).toEqual(rootStore.get(entityAtom))
+        expect([rootStore.get(postBlocks), scope.get(postBlocks)]).toEqual([
+            2, 2,
+        ])
     })
 
     test("loads changeSet mutations into a scope that was never opened", () => {
@@ -301,21 +306,17 @@ describe("valdres 1.0 compatibility", () => {
         ).toHaveLength(1)
     })
 
-    test("a rolled-back apply does not lose the scope revert", () => {
-        const { rootStore, entityAtom, adapter, post, draft, cs, scope } =
-            setupDraft()
-        cs.updatePostDescription({ ref: post.ref, description: "Draft" })
+    test("a rolled-back apply leaves the changeSet usable", () => {
+        const { rootStore, adapter, post, draft, cs } = setupDraft()
+        cs.createBlockParagraph({ parentRef: post.ref })
         expect(() =>
             rootStore.txn(txn => {
                 adapter.clone({ txn }).applyDraft(draft.ref)
                 throw new Error("rollback")
             }),
         ).toThrow("rollback")
-        adapter.applyDraft(draft.ref)
-        adapter.updatePostTitle({ ref: post.ref, title: "After" })
-        expect(scope.get(entityAtom(post.ref))).toBe(
-            rootStore.get(entityAtom(post.ref)),
-        )
+        cs.createBlockParagraph({ parentRef: post.ref })
+        expect(cs.readEntity(post.ref).children.blocks).toHaveLength(2)
     })
 
     test("rebuilds a scope re-created outside the adapter", () => {
@@ -587,6 +588,52 @@ describe("valdres 1.0 compatibility", () => {
         expect(scope.get(target.entityAtom(source.post.ref))?.data.title).toBe(
             "Draft",
         )
+    })
+
+    test("a store-less adapter opens a changeSet inside the caller's transaction", () => {
+        const { rootStore, entityAtom, adapter } = setup()
+        const [post] = adapter.createPost({ title: "Host", tags: [] })
+        const [draft] = adapter.createDraft({ postRef: post.ref })
+        const scope = rootStore.scope(draft.ref)
+        rootStore.txn(txn =>
+            adapter
+                .clone({ store: undefined, txn })
+                .changeSet(draft.ref)
+                .createBlockParagraph({ parentRef: post.ref }),
+        )
+        expect(scope.get(entityAtom(post.ref))?.children.blocks).toHaveLength(1)
+        expect(
+            rootStore.get(entityAtom(post.ref))?.children.blocks,
+        ).toHaveLength(0)
+    })
+
+    test("a settle handler writes through its transaction", () => {
+        const { rootStore, entityAtom, adapter } = setup()
+        const [post] = adapter.createPost({ title: "Host", tags: [] })
+        let created: any
+        const stop = rootStore.sub(entityAtom(post.ref), {
+            settle: tx => {
+                if (created) return
+                ;[created] = adapter
+                    .clone({ txn: tx })
+                    .createPost({ title: "From settle", tags: [] })
+            },
+        })
+        adapter.updatePostTitle({ ref: post.ref, title: "Renamed" })
+        stop()
+        expect(rootStore.get(entityAtom(created.ref))?.data.title).toBe(
+            "From settle",
+        )
+    })
+
+    test("a UI child of the scope can be disposed without ending the changeSet", () => {
+        const { rootStore, entityAtom, post, draft, cs } = setupDraft()
+        const view = rootStore.scope(draft.ref).scope()
+        const [{ block }] = cs.createBlockParagraph({ parentRef: post.ref })
+        expect(view.get(entityAtom(block.ref))?.ref).toBe(block.ref)
+        view.dispose()
+        cs.createBlockParagraph({ parentRef: post.ref })
+        expect(cs.readEntity(post.ref).children.blocks).toHaveLength(2)
     })
 
     test("rejects async mode", () => {

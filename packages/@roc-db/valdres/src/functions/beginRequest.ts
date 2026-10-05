@@ -7,7 +7,7 @@ import {
     getScopeState,
     scopeChangeSetRef,
 } from "../lib/scopeState"
-import { getScopeTransaction, recordScopeWrites } from "../lib/scopeTransaction"
+import { getScopeTransaction } from "../lib/scopeTransaction"
 
 export const beginRequest: BeginRequestFunction<ValdresEngine> = (
     request,
@@ -28,12 +28,10 @@ export const beginRequest: BeginRequestFunction<ValdresEngine> = (
                 engineOpts.store as Store,
                 changeSetRef,
             )
-            const scopedTxn = recordScopeWrites(
+            const scopedTxn =
                 scopedStore && scopeChangeSetRef(scopedStore) === changeSetRef
                     ? rootTxn.scope(scopedStore)
-                    : getScopeTransaction(rootTxn, changeSetRef),
-                scopeState.written,
-            )
+                    : getScopeTransaction(rootTxn, changeSetRef)
             if (scopedTxn.get(cacheTokenAtom) !== scopeState.cacheToken) {
                 scopeState.txnCache = undefined
             }

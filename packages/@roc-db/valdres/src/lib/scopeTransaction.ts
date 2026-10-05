@@ -1,5 +1,5 @@
 import type { Ref } from "roc-db"
-import { ScopeNotFoundError, type State, type Transaction } from "valdres"
+import { ScopeNotFoundError, type Transaction } from "valdres"
 
 // Thrown when a request targets a changeSet scope that has not been opened.
 // valdres only creates named scopes through `store.scope()`, which is not
@@ -37,33 +37,3 @@ export const getScopeTransaction = (
     if (!scopedTxn) throw new ChangeSetScopeNotOpenError(changeSetRef)
     return scopedTxn
 }
-
-// Wraps a scope's transaction so every atom and row written through it is
-// recorded in `written` (see ScopeState.written).
-export const recordScopeWrites = (
-    txn: Transaction,
-    written: Set<State<any>>,
-): Transaction =>
-    ({
-        get: state => txn.get(state),
-        set: (target: any, value: any) => {
-            written.add(target)
-            txn.set(target, value)
-        },
-        update: (target: any, update: any) => {
-            written.add(target)
-            txn.update(target, update)
-        },
-        reset: (target: any) => {
-            written.add(target)
-            txn.reset(target)
-        },
-        delete: target => {
-            written.add(target)
-            txn.delete(target)
-        },
-        scope: ((target: any, callback?: any) =>
-            callback === undefined
-                ? txn.scope(target)
-                : txn.scope(target, callback)) as Transaction["scope"],
-    }) as Transaction
