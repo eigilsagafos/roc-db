@@ -5,9 +5,14 @@ import { generateTransactionCache } from "roc-db"
 import {
     cacheTokenAtom,
     getScopeState,
+    isRebased,
+    scopeBaseAtom,
     scopeChangeSetRef,
 } from "../lib/scopeState"
-import { getScopeTransaction } from "../lib/scopeTransaction"
+import {
+    ChangeSetRebasedError,
+    getScopeTransaction,
+} from "../lib/scopeTransaction"
 
 export const beginRequest: BeginRequestFunction<ValdresEngine> = (
     request,
@@ -32,6 +37,18 @@ export const beginRequest: BeginRequestFunction<ValdresEngine> = (
                 scopedStore && scopeChangeSetRef(scopedStore) === changeSetRef
                     ? rootTxn.scope(scopedStore)
                     : getScopeTransaction(rootTxn, changeSetRef)
+            // A scope built from an older version would serve the old base.
+            const changeSet: any = rootTxn.get(
+                engineOpts.entityAtom(changeSetRef),
+            )
+            if (
+                isRebased(
+                    scopedTxn.get(scopeBaseAtom),
+                    changeSet?.parents?.version,
+                )
+            ) {
+                throw new ChangeSetRebasedError(changeSetRef)
+            }
             if (scopedTxn.get(cacheTokenAtom) !== scopeState.cacheToken) {
                 scopeState.txnCache = undefined
             }

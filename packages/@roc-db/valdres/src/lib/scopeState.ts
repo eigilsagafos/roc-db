@@ -16,13 +16,23 @@ export type ScopeState = {
     cacheToken?: object
 }
 
-// Whether onChangeSetInit has built this scope from the changeSet's base and
-// its full mutation history. A scope opened anywhere else (prepareChangeSets,
-// application code, a re-creation after disposal) only holds what later
-// requests wrote, so onChangeSetInit rebuilds it. Only ever set in a scope,
+// The base onChangeSetInit built this scope from: the changeSet's version ref,
+// or null for a changeSet without one. Null until built. A scope opened
+// anywhere else (prepareChangeSets, application code, a re-creation after
+// disposal) only holds what later requests wrote, so onChangeSetInit rebuilds
+// it. A scope built from another version than the changeSet now names was
+// rebased, and is replaced (see openChangeSetScope). Only ever set in a scope,
 // never in the root. Being valdres state, it rolls back with the transaction
 // that built the scope.
-export const scopeBuiltAtom: Atom<boolean> = atom<boolean>(false)
+export const scopeBaseAtom: Atom<{ versionRef: Ref | null } | null> = atom<{
+    versionRef: Ref | null
+} | null>(null)
+
+// Whether a scope was built from another base than `versionRef`.
+export const isRebased = (
+    base: { versionRef: Ref | null } | null,
+    versionRef: Ref | null | undefined,
+) => !!base && base.versionRef !== (versionRef ?? null)
 
 // Proves a scope's txnCache describes its committed state. Every write request
 // (and every request that rebuilt the cache) replaces the token in the scope and

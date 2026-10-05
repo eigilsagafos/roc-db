@@ -1,5 +1,6 @@
 import type { Ref } from "roc-db"
-import { ScopeNotFoundError, type Transaction } from "valdres"
+import { ScopeNotFoundError, type Store, type Transaction } from "valdres"
+import { isRebased, scopeBaseAtom } from "./scopeState"
 
 // Thrown when a request targets a changeSet scope that has not been opened.
 // valdres only creates named scopes through `store.scope()`, which is not
@@ -12,6 +13,32 @@ export class ChangeSetScopeNotOpenError extends Error {
         )
         this.name = "ChangeSetScopeNotOpenError"
     }
+}
+
+// Thrown when a changeSet's scope was built from another version than the
+// changeSet now names. A scope cannot be cleared inside a transaction, so open
+// the changeSet again with adapter.changeSet(), outside one, to rebuild it.
+export class ChangeSetRebasedError extends Error {
+    constructor(readonly changeSetRef: Ref) {
+        super(
+            `The valdres scope for changeSet ${changeSetRef} was built from another version. Open it again with adapter.changeSet() outside a transaction.`,
+        )
+        this.name = "ChangeSetRebasedError"
+    }
+}
+
+// The scope for `changeSetRef`, opened outside a transaction. A scope built
+// from another version than `versionRef` is disposed and replaced by an empty
+// one, which onChangeSetInit then builds from the new base.
+export const openChangeSetScope = (
+    store: Store,
+    changeSetRef: Ref,
+    versionRef: Ref | null | undefined,
+): Store => {
+    const scope = store.scope(changeSetRef)
+    if (!isRebased(scope.get(scopeBaseAtom), versionRef)) return scope
+    scope.dispose()
+    return store.scope(changeSetRef)
 }
 
 // The transaction cursor for `changeSetRef`'s scope, or undefined when the

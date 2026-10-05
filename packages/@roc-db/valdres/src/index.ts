@@ -1,5 +1,8 @@
 export { createValdresAdapter } from "./createValdresAdapter"
-export { ChangeSetScopeNotOpenError } from "./lib/scopeTransaction"
+export {
+    ChangeSetRebasedError,
+    ChangeSetScopeNotOpenError,
+} from "./lib/scopeTransaction"
 export type {
     EntityCollection,
     EntityIndexFamily,

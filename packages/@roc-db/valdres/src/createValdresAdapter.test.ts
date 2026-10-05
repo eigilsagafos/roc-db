@@ -9,7 +9,7 @@ import { createValdresAdapter } from "./createValdresAdapter"
 import type { ValdresEngine } from "./types/ValdresEngine"
 import * as initializeChangeSetModule from "../../../roc-db/src/lib/initializeChangeSet"
 import * as loadChangeSetBaseModule from "../../../roc-db/src/lib/loadChangeSetBase"
-import { peekScopeState, scopeBuiltAtom } from "./lib/scopeState"
+import { peekScopeState, scopeBaseAtom } from "./lib/scopeState"
 import { createAtoms } from "../test/createAtoms"
 
 describe("createValdresAdapter", () => {
@@ -373,8 +373,8 @@ describe("changeSet scope state", () => {
         const changeSetAdapter = adapter.changeSet(draft.ref)
         expect(loadBaseSpy).toHaveBeenCalledTimes(1)
         expect(
-            changeSetAdapter._engineOpts.scopedStore.get(scopeBuiltAtom),
-        ).toBe(true)
+            changeSetAdapter._engineOpts.scopedStore.get(scopeBaseAtom),
+        ).toEqual({ versionRef })
 
         changeSetAdapter.createBlockParagraph({ parentRef: post.ref })
         const callsAfterFirstRequest = loadBaseSpy.mock.calls.length
@@ -450,11 +450,11 @@ describe("changeSet scope state", () => {
                 throw new Error("rollback")
             }),
         ).toThrow("rollback")
-        expect(scope.get(scopeBuiltAtom)).toBe(false)
+        expect(scope.get(scopeBaseAtom)).toBeNull()
         expect(scope.get(entityFamily(basePost.ref))).toBeUndefined()
 
         adapter.changeSet(draft.ref)
-        expect(scope.get(scopeBuiltAtom)).toBe(true)
+        expect(scope.get(scopeBaseAtom)).toEqual({ versionRef })
         expect(scope.get(entityFamily(basePost.ref))?.ref).toBe(basePost.ref)
     })
 

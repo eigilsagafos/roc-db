@@ -14,8 +14,12 @@ import {
 } from "roc-db"
 import type { Store, Transaction } from "valdres"
 import type { ValdresEngine } from "../types/ValdresEngine"
-import { registerScope, scopeBuiltAtom } from "../lib/scopeState"
-import { getScopeTransaction } from "../lib/scopeTransaction"
+import { isRebased, registerScope, scopeBaseAtom } from "../lib/scopeState"
+import {
+    ChangeSetRebasedError,
+    getScopeTransaction,
+    openChangeSetScope,
+} from "../lib/scopeTransaction"
 
 // Runs `callback` in the caller's transaction when the adapter was given one,
 // and in a transaction of its own otherwise.
@@ -86,9 +90,13 @@ export const onChangeSetInit: OnChangeSetInitFunction<ValdresEngine> = (
         txn.get(entityAtom(changeSetRef)),
     )
 
+    const versionRef = changeSet?.parents?.version
+
     // Opening a scope is not allowed inside a transaction, so inside the
     // caller's transaction the scope has to exist already.
-    const scopedStore = engineOpts.txn ? undefined : store.scope(changeSetRef)
+    const scopedStore = engineOpts.txn
+        ? undefined
+        : openChangeSetScope(store, changeSetRef, versionRef)
     if (scopedStore) registerScope(scopedStore, changeSetRef)
     const rootMutations = getRootMutations(
         engineOpts,
@@ -97,14 +105,17 @@ export const onChangeSetInit: OnChangeSetInitFunction<ValdresEngine> = (
     )
 
     inTransaction(engineOpts, rootTxn => {
-        const versionRef = changeSet?.parents?.version
         const scopedTxn = getScopeTransaction(rootTxn, changeSetRef)
+        const base = scopedTxn.get(scopeBaseAtom)
+        if (isRebased(base, versionRef)) {
+            throw new ChangeSetRebasedError(changeSetRef)
+        }
         const cache = generateTransactionCache()
         // A scope this function has not built holds at most what later
         // requests wrote into it. Rebuild it from the base and the whole
         // history; replaying only part of it on top of the root would
         // overwrite newer rows with stale ones.
-        const rebuild = !scopedTxn.get(scopeBuiltAtom)
+        const rebuild = !base
         if (versionRef && rebuild) {
             // Seed the base snapshot via the shared helper so all three
             // seeding sites resolve `parents.version` -> `data.snapshot`
@@ -159,7 +170,9 @@ export const onChangeSetInit: OnChangeSetInitFunction<ValdresEngine> = (
                 scopedTxn.set(entityAtom(ref), indexd as any)
             }
         }
-        if (rebuild) scopedTxn.set(scopeBuiltAtom, true)
+        if (rebuild) {
+            scopedTxn.set(scopeBaseAtom, { versionRef: versionRef ?? null })
+        }
     })
     return {
         ...engineOpts,

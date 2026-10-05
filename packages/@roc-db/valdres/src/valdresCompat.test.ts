@@ -13,10 +13,13 @@ import {
     writeOperation,
 } from "roc-db"
 import { z } from "zod"
-import { selector, store } from "valdres"
+import { selector, store, StoreDisposedError } from "valdres"
 import { createValdresAdapter } from "./createValdresAdapter"
-import { cacheTokenAtom, peekScopeState } from "./lib/scopeState"
-import { ChangeSetScopeNotOpenError } from "./lib/scopeTransaction"
+import { cacheTokenAtom, peekScopeState, scopeBaseAtom } from "./lib/scopeState"
+import {
+    ChangeSetRebasedError,
+    ChangeSetScopeNotOpenError,
+} from "./lib/scopeTransaction"
 import type { ValdresEngine } from "./types/ValdresEngine"
 import { createAtoms } from "../test/createAtoms"
 import { freezingStore } from "../test/freezingStore"
@@ -634,6 +637,103 @@ describe("valdres 1.0 compatibility", () => {
         view.dispose()
         cs.createBlockParagraph({ parentRef: post.ref })
         expect(cs.readEntity(post.ref).children.blocks).toHaveLength(2)
+    })
+
+    describe("rebasing a draft onto another version", () => {
+        const setupVersions = () => {
+            const ctx = setup()
+            const { rootStore, entityAtom, adapter } = ctx
+            const [post] = adapter.createPost({ title: "Live", tags: [] })
+            const [draft] = adapter.createDraft({ postRef: post.ref })
+            const meta = { mutationRef: "Mutation/1", timestamp: "2020-01-01" }
+            const live: any = rootStore.get(entityAtom(post.ref))
+            const addVersion = (ref: string, title: string) =>
+                rootStore.set(entityAtom(ref), {
+                    ref,
+                    entity: "PostVersion",
+                    created: meta,
+                    updated: meta,
+                    data: {
+                        version: 1,
+                        snapshot: [{ ...live, data: { ...live.data, title } }],
+                    },
+                    children: {},
+                    parents: { post: post.ref },
+                    ancestors: {},
+                } as any)
+            const setBase = (versionRef: string) => {
+                const doc: any = rootStore.get(entityAtom(draft.ref))
+                rootStore.set(entityAtom(draft.ref), {
+                    ...doc,
+                    parents: { ...doc.parents, version: versionRef },
+                })
+            }
+            addVersion("PostVersion/1", "V1")
+            addVersion("PostVersion/2", "V2")
+            setBase("PostVersion/1")
+            const cs = adapter.changeSet(draft.ref)
+            const [{ block }] = cs.createBlockParagraph({ parentRef: post.ref })
+            return { ...ctx, post, draft, cs, block, setBase }
+        }
+
+        test("changeSet() rebuilds the scope from the new version", () => {
+            const { entityAtom, adapter, post, draft, cs, block, setBase } =
+                setupVersions()
+            expect(cs.readEntity(post.ref).data.title).toBe("V1")
+            const oldScope = cs._engineOpts.scopedStore
+
+            setBase("PostVersion/2")
+            const rebased = adapter.changeSet(draft.ref)
+            const scope = rebased._engineOpts.scopedStore
+            expect(scope).not.toBe(oldScope)
+            expect(scope.get(entityAtom(post.ref))?.data.title).toBe("V2")
+            expect(rebased.readEntity(post.ref).data.title).toBe("V2")
+            // The draft's own work is replayed onto the new base.
+            expect(scope.get(entityAtom(block.ref))?.ref).toBe(block.ref)
+            expect(rebased.readEntity(post.ref).children.blocks).toEqual([
+                block.ref,
+            ])
+            // The old scope is gone, so the old changeSet adapter fails loudly.
+            expect(() =>
+                cs.createBlockParagraph({ parentRef: post.ref }),
+            ).toThrow(StoreDisposedError)
+        })
+
+        test("a request on a stale changeSet adapter is rejected", () => {
+            const { post, cs, setBase } = setupVersions()
+            setBase("PostVersion/2")
+            expect(() => cs.readEntity(post.ref)).toThrow(ChangeSetRebasedError)
+            expect(() =>
+                cs.createBlockParagraph({ parentRef: post.ref }),
+            ).toThrow(ChangeSetRebasedError)
+        })
+
+        test("a batch replaces the stale scope before loading", () => {
+            const { rootStore, adapter, post, draft, cs, setBase } =
+                setupVersions()
+            const oldScope = cs._engineOpts.scopedStore
+            setBase("PostVersion/2")
+            // prepareChangeSets runs for every changeSet in the batch, even
+            // when all of its mutations are already known.
+            adapter.loadMutations(
+                adapter.pageMutations({ changeSetRef: draft.ref }),
+            )
+            const scope = rootStore.scope(draft.ref)
+            expect(scope).not.toBe(oldScope)
+            expect(scope.get(scopeBaseAtom)).toBeNull()
+            const reopened = adapter.changeSet(draft.ref)
+            expect(reopened.readEntity(post.ref).data.title).toBe("V2")
+        })
+
+        test("changeSet() inside a caller's transaction cannot rebuild", () => {
+            const { rootStore, adapter, draft, setBase } = setupVersions()
+            setBase("PostVersion/2")
+            expect(() =>
+                rootStore.txn(txn =>
+                    adapter.clone({ txn }).changeSet(draft.ref),
+                ),
+            ).toThrow(ChangeSetRebasedError)
+        })
     })
 
     test("rejects async mode", () => {
