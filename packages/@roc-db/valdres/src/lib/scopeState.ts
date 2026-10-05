@@ -1,44 +1,60 @@
 import type { Ref } from "roc-db"
-import type { ScopedStore, Store } from "valdres"
+import { atom, type Atom, type Store } from "valdres"
 
-// roc-db-owned state that lives for as long as a changeSet scope does.
-//
-// This used to be stashed on valdres' per-scope `data` object, which stopped
-// being public in valdres 1.0.0-beta.17. Both fields are roc-db concepts that
-// valdres has no reason to know about, so they live in an adapter-owned
-// registry keyed by the two identities valdres does expose: the store and the
-// changeSet ref that names the scope.
+// roc-db-owned state for a changeSet scope: the transaction cache shared by
+// every request against it. It is a roc-db concept valdres has no reason to
+// know about, so it lives in an adapter-owned registry keyed by the two
+// identities valdres does expose: the store and the changeSet ref that names
+// the scope. The registry is not rolled back with a valdres transaction, so
+// the cache is checked against valdres state before every use, and released
+// when the changeSet is applied.
 export type ScopeState = {
     // The transaction cache shared by every request made against this scope
-    // (roc-db's `changeSet` cacheMap). Created lazily by beginRequest.
+    // (roc-db's `changeSet` cacheMap). Created lazily by beginRequest, and only
+    // trusted while `cacheToken` matches the scope's cacheTokenAtom.
     txnCache?: any
-    // The version ref whose base snapshot has been seeded into this scope, so
-    // onChangeSetInit loads the base exactly once per scope.
-    versionRefLoaded?: Ref
-    // Cancels this entry's disposal hook, so dropping the entry early (on
-    // apply) leaves no registration behind on a scope that is still alive.
-    release?: () => void
+    cacheToken?: object
 }
+
+// The base onChangeSetInit built this scope from: the changeSet's version ref,
+// or null for a changeSet without one. Null until built. A scope opened
+// anywhere else (prepareChangeSets, application code, a re-creation after
+// disposal) only holds what later requests wrote, so onChangeSetInit rebuilds
+// it. A scope built from another version than the changeSet now names was
+// rebased, and is replaced (see openChangeSetScope). Only ever set in a scope,
+// never in the root. Being valdres state, it rolls back with the transaction
+// that built the scope.
+export const scopeBaseAtom: Atom<{ versionRef: Ref | null } | null> = atom<{
+    versionRef: Ref | null
+} | null>(null)
+
+// Whether a scope was built from another base than `versionRef`.
+export const isRebased = (
+    base: { versionRef: Ref | null } | null,
+    versionRef: Ref | null | undefined,
+) => !!base && base.versionRef !== (versionRef ?? null)
+
+// Proves a scope's txnCache describes its committed state. Every write request
+// (and every request that rebuilt the cache) replaces the token in the scope and
+// in the registry, in the request's transaction. If that transaction rolls
+// back, or the scope is disposed and re-created, the two no longer match and
+// the cache is rebuilt.
+export const cacheTokenAtom: Atom<object | null> = atom<object | null>(null)
 
 // Weak on the store so a discarded store takes its scope state with it.
 const registry = new WeakMap<Store, Map<Ref, ScopeState>>()
+// The changeSet each scope opened by onChangeSetInit belongs to.
+const scopeChangeSetRefs = new WeakMap<Store, Ref>()
+
+export const registerScope = (scope: Store, changeSetRef: Ref) => {
+    scopeChangeSetRefs.set(scope, changeSetRef)
+}
+
+export const scopeChangeSetRef = (scope: Store): Ref | undefined =>
+    scopeChangeSetRefs.get(scope)
 
 // State for `changeSetRef`'s scope, created on first use.
-//
-// The entry describes one particular incarnation of the scope. valdres
-// destroys a scope once its last lease detaches, and a later `store.scope(id)`
-// builds a fresh, empty one under the same id — a stale `versionRefLoaded`
-// would then suppress the base seed the new scope needs, and a stale
-// `txnCache` would convince roc-db the changeSet is already initialized.
-// Living on the scope's own `data` object used to tie the two lifetimes
-// together; `onDispose` does that job now. It fires on scope death rather than
-// lease detach, and a re-created scope reusing the id does not inherit the
-// registration, so a new incarnation always starts from a clean entry.
-export const getScopeState = (
-    store: Store,
-    changeSetRef: Ref,
-    scopedStore: ScopedStore,
-): ScopeState => {
+export const getScopeState = (store: Store, changeSetRef: Ref): ScopeState => {
     let scopes = registry.get(store)
     if (!scopes) {
         scopes = new Map()
@@ -48,26 +64,13 @@ export const getScopeState = (
     if (!state) {
         state = {}
         scopes.set(changeSetRef, state)
-        state.release = scopedStore.onDispose(() =>
-            deleteScopeState(store, changeSetRef),
-        )
     }
     return state
 }
 
 // Read without creating, so a caller can tell "no state for this scope" apart
-// from "empty state". Only the lifecycle tests need this.
+// from "empty state".
 export const peekScopeState = (
     store: Store,
     changeSetRef: Ref,
 ): ScopeState | undefined => registry.get(store)?.get(changeSetRef)
-
-export const deleteScopeState = (store: Store, changeSetRef: Ref) => {
-    const scopes = registry.get(store)
-    if (!scopes) return
-    // Safe to call from inside the hook itself — cancelling a registration that
-    // is currently firing, or has already fired, is a no-op.
-    scopes.get(changeSetRef)?.release?.()
-    scopes.delete(changeSetRef)
-    if (scopes.size === 0) registry.delete(store)
-}

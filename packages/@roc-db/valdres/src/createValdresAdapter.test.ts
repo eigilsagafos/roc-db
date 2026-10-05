@@ -4,29 +4,19 @@ import {
     testAdapterImplementation,
 } from "@roc-db/test-utils"
 import { describe, expect, spyOn, test } from "bun:test"
-import type { Entity, Mutation, Ref } from "roc-db"
-import { atomFamily, store } from "valdres"
+import { store, StoreDisposedError } from "valdres"
 import { createValdresAdapter } from "./createValdresAdapter"
 import type { ValdresEngine } from "./types/ValdresEngine"
 import * as initializeChangeSetModule from "../../../roc-db/src/lib/initializeChangeSet"
 import * as loadChangeSetBaseModule from "../../../roc-db/src/lib/loadChangeSetBase"
-import { peekScopeState } from "./lib/scopeState"
+import { peekScopeState, scopeBaseAtom } from "./lib/scopeState"
+import { createAtoms } from "../test/createAtoms"
 
 describe("createValdresAdapter", () => {
     testAdapterImplementation<ValdresEngine>(createValdresAdapter, () => {
         return {
             store: store(),
-            // Generics are <Value, Args>: value first, key-args tuple second.
-            entityAtom: atomFamily<Entity | null, [string]>(null),
-            mutationAtom: atomFamily<Mutation | null, [string]>(null),
-            entityUniqueAtom: atomFamily<
-                Ref | null,
-                [string, string, string | number | boolean]
-            >(null),
-            entityIndexAtom: atomFamily<
-                Ref[],
-                [string, string, string | number | boolean]
-            >([]),
+            ...createAtoms(),
         }
     })
 })
@@ -36,13 +26,11 @@ describe("createValdresAdapter", () => {
 // the writes now stay staged until the caller's own `store.txn` returns.
 test("clone with txn", () => {
     const rootStore = store()
-    const entityFamily = atomFamily<any, [string]>(null)
+    const { entityAtom: entityFamily, ...atoms } = createAtoms()
     const adapter = createValdresAdapter({
         store: rootStore,
         entityAtom: entityFamily,
-        mutationAtom: atomFamily(null),
-        entityUniqueAtom: atomFamily(null),
-        entityIndexAtom: atomFamily([]),
+        ...atoms,
         operations,
         session: { identityRef: "User/42" },
         entities,
@@ -61,7 +49,7 @@ test("clone with txn", () => {
     // mean "rolled back" rather than "never created".
     expect(post2ref).toBeDefined()
     const post2read = rootStore.get(entityFamily(post2ref))
-    expect(post2read).toBeNull()
+    expect(post2read).toBeUndefined()
 
     let post3ref: any
     rootStore.txn(txn => {
@@ -76,15 +64,13 @@ test("clone with txn", () => {
 
 test("data is stored in the scoped store", () => {
     const rootStore = store()
-    const entityFamily = atomFamily(null)
+    const { entityAtom: entityFamily, ...atoms } = createAtoms()
     const adapter = createValdresAdapter({
         operations,
         entities,
         store: rootStore,
         entityAtom: entityFamily,
-        mutationAtom: atomFamily(null),
-        entityUniqueAtom: atomFamily(null),
-        entityIndexAtom: atomFamily([]),
+        ...atoms,
         session: { identityRef: "User/42" },
     })
     const [post] = adapter.createPost({ title: "Foo" })
@@ -127,14 +113,16 @@ test("data is stored in the scoped store", () => {
 
 test("mutation stored in root store", () => {
     const rootStore = store()
-    const entityFamily = atomFamily(null)
-    const mutationFamily = atomFamily(null)
+    const {
+        entityAtom: entityFamily,
+        mutationAtom: mutationFamily,
+        ...atoms
+    } = createAtoms()
     const adapter = createValdresAdapter({
         store: rootStore,
         entityAtom: entityFamily,
         mutationAtom: mutationFamily,
-        entityUniqueAtom: atomFamily(null),
-        entityIndexAtom: atomFamily([]),
+        ...atoms,
         operations,
         session: { identityRef: "User/42" },
         entities,
@@ -155,14 +143,16 @@ test("mutation stored in root store", () => {
 
 const prepareChangeSetTest = ({ optimistic }: { optimistic?: boolean } = {}) => {
     const rootStore = store()
-    const entityFamily = atomFamily(null)
-    const mutationFamily = atomFamily(null)
+    const {
+        entityAtom: entityFamily,
+        mutationAtom: mutationFamily,
+        ...atoms
+    } = createAtoms()
     const adapter = createValdresAdapter({
         store: rootStore,
         entityAtom: entityFamily,
         mutationAtom: mutationFamily,
-        entityUniqueAtom: atomFamily(null),
-        entityIndexAtom: atomFamily([]),
+        ...atoms,
         operations,
         session: { identityRef: "User/42" },
         entities,
@@ -221,13 +211,11 @@ test("duplicateDraft (txn.duplicateChangeSetMutations) clones a changeSet with r
 
 test("onChangeSetInit seeds the base from the version snapshot", () => {
     const rootStore = store()
-    const entityFamily = atomFamily(null)
+    const { entityAtom: entityFamily, ...atoms } = createAtoms()
     const adapter = createValdresAdapter({
         store: rootStore,
         entityAtom: entityFamily,
-        mutationAtom: atomFamily(null),
-        entityUniqueAtom: atomFamily(null),
-        entityIndexAtom: atomFamily([]),
+        ...atoms,
         operations,
         entities,
         session: { identityRef: "User/42" },
@@ -266,7 +254,7 @@ test("onChangeSetInit seeds the base from the version snapshot", () => {
         parents: { ...draftDoc.parents, version: versionRef },
     })
     // The base is not in the live root store.
-    expect(rootStore.get(entityFamily(basePost.ref))).toBeNull()
+    expect(rootStore.get(entityFamily(basePost.ref))).toBeUndefined()
 
     // .changeSet() runs onChangeSetInit, which seeds the version snapshot into
     // the scoped store. Read that scoped store directly (not via readEntity,
@@ -274,7 +262,7 @@ test("onChangeSetInit seeds the base from the version snapshot", () => {
     // onChangeSetInit's seeding specifically.
     const cs = adapter.changeSet(draft.ref)
     const seeded = cs._engineOpts.scopedStore.get(entityFamily(basePost.ref))
-    expect(seeded).not.toBeNull()
+    expect(seeded).toBeDefined()
     expect(seeded.ref).toBe(basePost.ref)
     expect(seeded.data.title).toBe("Base")
 })
@@ -321,13 +309,11 @@ test("initChangeSet not called on operations in changeSet", () => {
 describe("changeSet scope state", () => {
     const prepareVersionedDraft = () => {
         const rootStore = store()
-        const entityFamily = atomFamily<any, [string]>(null)
+        const { entityAtom: entityFamily, ...atoms } = createAtoms()
         const adapter = createValdresAdapter({
             store: rootStore,
             entityAtom: entityFamily,
-            mutationAtom: atomFamily(null),
-            entityUniqueAtom: atomFamily(null),
-            entityIndexAtom: atomFamily([]),
+            ...atoms,
             operations,
             entities,
             session: { identityRef: "User/42" },
@@ -386,9 +372,9 @@ describe("changeSet scope state", () => {
         // cache on the first request below.
         const changeSetAdapter = adapter.changeSet(draft.ref)
         expect(loadBaseSpy).toHaveBeenCalledTimes(1)
-        expect(peekScopeState(rootStore, draft.ref)?.versionRefLoaded).toBe(
-            versionRef,
-        )
+        expect(
+            changeSetAdapter._engineOpts.scopedStore.get(scopeBaseAtom),
+        ).toEqual({ versionRef })
 
         changeSetAdapter.createBlockParagraph({ parentRef: post.ref })
         const callsAfterFirstRequest = loadBaseSpy.mock.calls.length
@@ -400,7 +386,8 @@ describe("changeSet scope state", () => {
         expect(loadBaseSpy.mock.calls.length).toBe(callsAfterFirstRequest)
 
         // A second .changeSet() on the same ref re-enters onChangeSetInit; the
-        // registry flag is what keeps it from seeding the base a second time.
+        // scope-built marker is what keeps it from seeding the base a second
+        // time.
         adapter.changeSet(draft.ref)
         expect(loadBaseSpy.mock.calls.length).toBe(callsAfterFirstRequest)
 
@@ -419,77 +406,75 @@ describe("changeSet scope state", () => {
         expect(peekScopeState(rootStore, draft.ref)?.txnCache).toBe(cache)
     })
 
-    test("re-seeds the base when a destroyed scope is re-opened", () => {
-        // valdres destroys a scope once its last lease detaches, and rebuilds
-        // an empty one on the next store.scope(). The adapter's state describes
-        // the dead scope at that point, so it has to go — otherwise
-        // versionRefLoaded suppresses the seed the new scope needs, and it
-        // comes up without its base. The scope's onDispose hook drops it at the
-        // moment the scope dies.
+    test("re-seeds the base when a disposed scope is re-opened", () => {
+        // A disposed scope is gone for good, and the next store.scope() builds
+        // an empty one under the same name. That scope has to be seeded and
+        // replayed again, and the transaction cache describing the dead scope
+        // has to go with it.
         const { rootStore, entityFamily, adapter, post, draft, basePost } =
             prepareVersionedDraft()
         const cs1 = adapter.changeSet(draft.ref)
-        cs1.createBlockParagraph({ parentRef: post.ref })
-        expect(
-            cs1._engineOpts.scopedStore.get(entityFamily(basePost.ref)),
-        ).not.toBeNull()
+        const [{ block }] = cs1.createBlockParagraph({ parentRef: post.ref })
+        const scope1 = cs1._engineOpts.scopedStore
+        expect(scope1.get(entityFamily(basePost.ref))).toBeDefined()
+        const cache1 = peekScopeState(rootStore, draft.ref)?.txnCache
+        expect(cache1).toBeDefined()
 
-        // Release the only lease -> valdres drops the scope, taking the
-        // adapter's entry for it with it.
-        expect(peekScopeState(rootStore, draft.ref)).toBeDefined()
-        expect(cs1._engineOpts.scopedStore.detach()).toBe(true)
-        expect(peekScopeState(rootStore, draft.ref)).toBeUndefined()
+        scope1.dispose()
+        // The changeSet adapter's scope is gone, so its requests fail rather
+        // than write into a new, unseeded scope under the same name.
+        expect(() => cs1.createBlockParagraph({ parentRef: post.ref })).toThrow(
+            StoreDisposedError,
+        )
 
         const cs2 = adapter.changeSet(draft.ref)
-        expect(
-            cs2._engineOpts.scopedStore.get(entityFamily(basePost.ref)),
-        ).not.toBeNull()
+        const scope2 = cs2._engineOpts.scopedStore
+        expect(scope2).not.toBe(scope1)
+        expect(scope2.get(entityFamily(basePost.ref))).toBeDefined()
+        // The draft's earlier work is replayed into the new scope.
+        expect(scope2.get(entityFamily(block.ref))).toBeDefined()
+        cs2.createBlockParagraph({ parentRef: post.ref })
+        expect(peekScopeState(rootStore, draft.ref)?.txnCache).not.toBe(cache1)
     })
 
-    test("stops shadowing the root once the changeSet is applied", () => {
-        // The scope's values were the draft's optimistic view. Applying moves
-        // that work onto the root, so the scope has to stop shadowing it or a
-        // UI still rendering the draft freezes at pre-apply state forever.
+    test("seeds the base again when the seeding transaction rolled back", () => {
+        // Inside a caller's transaction, onChangeSetInit seeds through that
+        // transaction. If the caller then throws, the seed is discarded, and
+        // the marker saying the base was seeded has to go with it.
+        const { rootStore, entityFamily, adapter, draft, basePost, versionRef } =
+            prepareVersionedDraft()
+        const scope = rootStore.scope(draft.ref)
+        expect(() =>
+            rootStore.txn(txn => {
+                adapter.clone({ txn }).changeSet(draft.ref)
+                throw new Error("rollback")
+            }),
+        ).toThrow("rollback")
+        expect(scope.get(scopeBaseAtom)).toBeNull()
+        expect(scope.get(entityFamily(basePost.ref))).toBeUndefined()
+
+        adapter.changeSet(draft.ref)
+        expect(scope.get(scopeBaseAtom)).toEqual({ versionRef })
+        expect(scope.get(entityFamily(basePost.ref))?.ref).toBe(basePost.ref)
+    })
+
+    test("leaves the scope alone when the changeSet is applied", () => {
+        // Once a changeSet is applied, consumers render from the root and
+        // dispose the scope. Applying neither reverts nor disposes it.
         const { rootStore, entityFamily, adapter, post, draft } =
             prepareVersionedDraft()
         const cs = adapter.changeSet(draft.ref)
-        cs.createBlockParagraph({ parentRef: post.ref })
+        const [{ block }] = cs.createBlockParagraph({ parentRef: post.ref })
         const scopedStore = cs._engineOpts.scopedStore
 
         adapter.applyDraft(draft.ref)
         adapter.updatePostTitle({ ref: post.ref, title: "Renamed after apply" })
 
+        expect(rootStore.get(entityFamily(block.ref))?.ref).toBe(block.ref)
         expect(rootStore.get(entityFamily(post.ref)).data.title).toBe(
             "Renamed after apply",
         )
-        expect(scopedStore.get(entityFamily(post.ref)).data.title).toBe(
-            "Renamed after apply",
-        )
-    })
-
-    test("restores family membership the changeSet deleted", () => {
-        // A draft deleting an entity `del`s it from the scope's family index,
-        // and that tombstone is permanent per key: the value falls through to
-        // the root again, but the member never reappears in the scope's
-        // `get(family)` — so the two read paths disagree forever. Singletons
-        // make it reachable, since they reuse one bare-name ref across a
-        // delete/recreate cycle. unsetAll reverts membership too.
-        const { rootStore, entityFamily, adapter, post, draft } =
-            prepareVersionedDraft()
-        adapter.createOrgSettings({ name: "Acme" })
-        const cs = adapter.changeSet(draft.ref)
-        const scopedStore = cs._engineOpts.scopedStore
-
-        cs.deleteOrgSettings({})
-        const settings = entityFamily("OrgSettings")
-        expect(scopedStore.get(entityFamily)).not.toContain(settings)
-
-        adapter.applyDraft(draft.ref)
-        adapter.createOrgSettings({ name: "Acme again" })
-
-        expect(rootStore.get(entityFamily)).toContain(settings)
-        expect(scopedStore.get(entityFamily)).toContain(settings)
-        expect(scopedStore.get(settings).data.name).toBe("Acme again")
+        expect(scopedStore.get(entityFamily(post.ref)).data.title).toBe("Host")
     })
 
     test("applying a changeSet on a store-less adapter is a no-op", () => {
@@ -508,13 +493,19 @@ describe("changeSet scope state", () => {
         ).not.toThrow()
     })
 
-    test("drops the scope entry when the changeSet is applied", () => {
+    test("drops the scope's cache when the changeSet is applied", () => {
         const { rootStore, adapter, post, draft } = prepareVersionedDraft()
         const changeSetAdapter = adapter.changeSet(draft.ref)
         changeSetAdapter.createBlockParagraph({ parentRef: post.ref })
-        expect(peekScopeState(rootStore, draft.ref)).toBeDefined()
+        const cache = peekScopeState(rootStore, draft.ref)?.txnCache
+        expect(cache).toBeDefined()
 
         adapter.applyDraft(draft.ref)
-        expect(peekScopeState(rootStore, draft.ref)).toBeUndefined()
+        // The next request rebuilds the cache, re-verifies the changeSet and
+        // rejects it as applied.
+        expect(() =>
+            changeSetAdapter.createBlockParagraph({ parentRef: post.ref }),
+        ).toThrow(/has already been applied/)
+        expect(peekScopeState(rootStore, draft.ref)?.txnCache).not.toBe(cache)
     })
 })

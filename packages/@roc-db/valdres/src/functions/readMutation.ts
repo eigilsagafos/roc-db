@@ -6,5 +6,5 @@ export const readMutation: ReadMutationFunction<ValdresEngine> = (
     ref,
 ) => {
     const { mutationAtom, rootTxn } = engineOpts
-    return rootTxn.get(mutationAtom(ref))
+    return rootTxn.get(mutationAtom(ref)) ?? null
 }

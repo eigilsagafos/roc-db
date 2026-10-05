@@ -2,21 +2,18 @@ import {
     createAdapter,
     type Adapter,
     type Entity,
-    type EntityDocument,
-    type Mutation,
     Snowflake,
     type Operation,
     type Ref,
 } from "roc-db"
 import * as functions from "./functions"
-import {
-    // atomFamily,
-    // store as createStore,
-    type Store,
-    type AtomFamily,
-    type TransactionInterface,
-    type Atom,
-} from "valdres"
+import type { Store, Transaction } from "valdres"
+import type {
+    EntityCollection,
+    EntityIndexFamily,
+    EntityUniqueFamily,
+    MutationCollection,
+} from "./types/ValdresEngine"
 
 export const createValdresAdapter = <
     Session extends { identityRef: string; sessionRef?: string },
@@ -27,10 +24,10 @@ export const createValdresAdapter = <
     rootTxn,
     txn,
     session,
-    entityAtom, // = atomFamily<EntityDocument | null, [string]>(null),
-    entityUniqueAtom,
-    entityIndexAtom,
-    mutationAtom, // = atomFamily<Mutation | null, [string]>(null),
+    entityAtom, // = collection<string, EntityDocument>()
+    entityUniqueAtom, // = family((entity, key, value) => atom<Ref | null>(null))
+    entityIndexAtom, // = family((entity, key, value) => atom<Ref[]>([]))
+    mutationAtom, // = collection<string, Mutation>()
     changeSetRef,
     optimistic = true,
     snowflake = new Snowflake(1, 1),
@@ -42,18 +39,12 @@ export const createValdresAdapter = <
     operations: readonly Operation[]
     entities: readonly Entity<any>[]
     store?: Store
-    rootTxn?: TransactionInterface
-    txn?: TransactionInterface
-    entityAtom: AtomFamily<EntityDocument | null, [string]>
-    mutationAtom: AtomFamily<Mutation | null, [string]>
-    entityUniqueAtom: AtomFamily<
-        Ref | null,
-        [string, string, string | number | boolean]
-    >
-    entityIndexAtom: AtomFamily<
-        Ref[],
-        [string, string, string | number | boolean]
-    >
+    rootTxn?: Transaction
+    txn?: Transaction
+    entityAtom: EntityCollection
+    mutationAtom: MutationCollection
+    entityUniqueAtom: EntityUniqueFamily
+    entityIndexAtom: EntityIndexFamily
     changeSetRef?: Ref
     session: Session
     optimistic: boolean
@@ -67,6 +58,8 @@ export const createValdresAdapter = <
     if (!mutationAtom) throw new Error("mutationAtom is required")
     if (!entityUniqueAtom) throw new Error("entityUniqueAtom is required")
     if (!entityIndexAtom) throw new Error("entityIndexAtom is required")
+    // valdres transactions commit synchronously and reject promise callbacks.
+    if (async) throw new Error("The valdres adapter does not support async")
     return createAdapter(
         {
             name: "valdres",
@@ -91,7 +84,6 @@ export const createValdresAdapter = <
             mutationAtom,
             entityUniqueAtom,
             entityIndexAtom,
-            // entityRefListAtom = atomFamily<string, string[]>([]),
             // mutationActions,
         },
     ) as Adapter

@@ -1,42 +1,40 @@
 import type { EntityDocument, Mutation, Ref } from "roc-db"
-import type {
-    AtomFamily,
-    ScopedStore,
-    Store,
-    TransactionInterface,
-} from "valdres"
+import type { Atom, Collection, Store, Transaction } from "valdres"
+
+// Keys of the unique and index lookups: (entity, field, value).
+type LookupArgs = [string, string, string | number | boolean]
+
+// Entities and mutations are enumerated (paging, debounce, changeSet replay),
+// so they live in valdres collections: `entityAtom(ref)` is a row, and
+// `get(entityAtom)` lists the present rows. valdres families have no
+// membership, so the lookups that are only ever addressed by key are plain
+// `family(() => atom(...))` factories.
+export type EntityCollection = Collection<string, EntityDocument>
+export type MutationCollection = Collection<string, Mutation>
+export type EntityUniqueFamily = (...args: LookupArgs) => Atom<Ref | null>
+export type EntityIndexFamily = (...args: LookupArgs) => Atom<Ref[]>
 
 // The engine options valdres supplies to `createAdapter`. This is the *base*
 // shape: at the root adapter there is no active transaction, so `txn`/`rootTxn`
 // are absent. `begin`/`beginRequest` derive the transactional shape from it
 // (see ValdresTxnEngine) before the read/write functions run.
-//
-// The atom generics mirror createValdresAdapter's params (value-first,
-// args-second; see the type-test in test/types).
 export type ValdresEngine = {
     // Present as keys on the base engine (createValdresAdapter always passes
     // them), but undefined at the root adapter where no transaction is active.
     // `begin`/`beginRequest` populate them; write-context functions narrow to
     // ValdresTxnEngine. Kept required-with-`| undefined` (not optional) so the
     // type matches the engine-options object literal createAdapter infers.
-    txn: TransactionInterface | undefined
-    rootTxn: TransactionInterface | undefined
+    txn: Transaction | undefined
+    rootTxn: Transaction | undefined
     store: Store | undefined
-    // Attached by beginRequest when operating inside a changeSet scope. Holds
-    // a scope lease, so it carries `detach()` on top of the Store surface.
-    scopedStore?: ScopedStore
-    scopedStoreAlreadyAttachedBeforeBegin?: boolean
-    entityAtom: AtomFamily<EntityDocument | null, [string]>
-    mutationAtom: AtomFamily<Mutation | null, [string]>
-    entityUniqueAtom: AtomFamily<
-        Ref | null,
-        [string, string, string | number | boolean]
-    >
-    entityIndexAtom: AtomFamily<
-        Ref[],
-        [string, string, string | number | boolean]
-    >
-    entityRefListAtom?: AtomFamily<Ref[], [string]>
+    // Attached by onChangeSetInit: the changeSet's scope, a child Store of
+    // `store`.
+    scopedStore?: Store
+    entityAtom: EntityCollection
+    mutationAtom: MutationCollection
+    entityUniqueAtom: EntityUniqueFamily
+    entityIndexAtom: EntityIndexFamily
+    entityRefListAtom?: (entity: string) => Atom<Ref[]>
 }
 
 // The engine as seen by functions that run inside a transaction (everything
@@ -44,6 +42,6 @@ export type ValdresEngine = {
 // functions narrow the base engine to this via `as ValdresTxnEngine`, which
 // encodes the runtime invariant without any runtime cost.
 export type ValdresTxnEngine = ValdresEngine & {
-    txn: TransactionInterface
-    rootTxn: TransactionInterface
+    txn: Transaction
+    rootTxn: Transaction
 }

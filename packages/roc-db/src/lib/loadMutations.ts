@@ -146,6 +146,10 @@ export const loadMutations = (
     )
     const beginTransaction =
         adapterOptions.functions.begin || defaultBeginTransaction
+    adapterOptions.functions.prepareChangeSets?.(
+        engineOptions,
+        Object.keys(groups).filter(key => key !== "root"),
+    )
 
     if (adapterOptions.async) {
         return beginTransaction(engineOptions, engineOptsTxn =>

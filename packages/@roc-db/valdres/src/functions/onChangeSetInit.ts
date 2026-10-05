@@ -12,9 +12,24 @@ import {
     type Ref,
     type OnChangeSetInitFunction,
 } from "roc-db"
-import type { Store, TransactionInterface } from "valdres"
-import type { ValdresEngine, ValdresTxnEngine } from "../types/ValdresEngine"
-import { getScopeState } from "../lib/scopeState"
+import type { Store, Transaction } from "valdres"
+import type { ValdresEngine } from "../types/ValdresEngine"
+import { isRebased, registerScope, scopeBaseAtom } from "../lib/scopeState"
+import {
+    ChangeSetRebasedError,
+    getScopeTransaction,
+    openChangeSetScope,
+} from "../lib/scopeTransaction"
+
+// Runs `callback` in the caller's transaction when the adapter was given one,
+// and in a transaction of its own otherwise.
+const inTransaction = <Result>(
+    engineOpts: ValdresEngine,
+    callback: (txn: Transaction) => Result,
+): Result =>
+    engineOpts.txn
+        ? callback(engineOpts.txn)
+        : (engineOpts.store as Store).txn(callback as any)
 
 const prepareInitTransaction = (
     adapterOptions: any,
@@ -50,8 +65,7 @@ const getRootMutations = (
     adapterOptions: any,
     changeSetRef: Ref,
 ) => {
-    const store = engineOpts.store as Store
-    const res = store.txn(txn => {
+    const res = inTransaction(engineOpts, txn => {
         return adapterOptions.functions.getChangeSetMutations(
             {
                 engineOpts: {
@@ -72,74 +86,93 @@ export const onChangeSetInit: OnChangeSetInitFunction<ValdresEngine> = (
 ) => {
     const { mutationAtom, entityAtom } = engineOpts
     const store = engineOpts.store as Store
-    const changeSet = store.get(entityAtom(changeSetRef))
+    const changeSet: any = inTransaction(engineOpts, txn =>
+        txn.get(entityAtom(changeSetRef)),
+    )
 
-    const scopedStore = store.scope(changeSetRef)
+    const versionRef = changeSet?.parents?.version
+
+    // Opening a scope is not allowed inside a transaction, so inside the
+    // caller's transaction the scope has to exist already.
+    const scopedStore = engineOpts.txn
+        ? undefined
+        : openChangeSetScope(store, changeSetRef, versionRef)
+    if (scopedStore) registerScope(scopedStore, changeSetRef)
     const rootMutations = getRootMutations(
         engineOpts,
         adapterOptions,
         changeSetRef,
     )
 
-    store.txn(rootTxn => {
-        const versionRef = changeSet?.parents?.version
-        rootTxn.scope(changeSetRef, scopedTxn => {
-            const cache = generateTransactionCache()
-            const scopeState = getScopeState(store, changeSetRef, scopedStore)
-            if (versionRef && !scopeState.versionRefLoaded) {
-                // Seed the base snapshot via the shared helper so all three
-                // seeding sites resolve `parents.version` -> `data.snapshot`
-                // identically (and pick up the assertVersionKind guardrail).
-                // valdres init is synchronous; read via the root txn.
-                loadChangeSetBase(
+    inTransaction(engineOpts, rootTxn => {
+        const scopedTxn = getScopeTransaction(rootTxn, changeSetRef)
+        const base = scopedTxn.get(scopeBaseAtom)
+        if (isRebased(base, versionRef)) {
+            throw new ChangeSetRebasedError(changeSetRef)
+        }
+        const cache = generateTransactionCache()
+        // A scope this function has not built holds at most what later
+        // requests wrote into it. Rebuild it from the base and the whole
+        // history; replaying only part of it on top of the root would
+        // overwrite newer rows with stale ones.
+        const rebuild = !base
+        if (versionRef && rebuild) {
+            // Seed the base snapshot via the shared helper so all three
+            // seeding sites resolve `parents.version` -> `data.snapshot`
+            // identically (and pick up the assertVersionKind guardrail).
+            // valdres init is synchronous; read via the root txn.
+            loadChangeSetBase(
+                {
+                    adapter: adapterOptions,
+                    readEntity: (ref: any) =>
+                        rootTxn.get(entityAtom(ref)) ?? null,
+                } as any,
+                changeSet,
+                cache,
+            )
+        }
+
+        for (const mutation of rootMutations) {
+            const currentScopedMutation: any = scopedTxn.get(
+                mutationAtom(mutation.ref),
+            )
+            if (rebuild || !currentScopedMutation.initialized) {
+                const initTxn = prepareInitTransaction(
+                    adapterOptions,
                     {
-                        adapter: adapterOptions,
-                        readEntity: (ref: any) => rootTxn.get(entityAtom(ref)),
-                    } as any,
-                    changeSet,
+                        ...engineOpts,
+                        txn: scopedTxn,
+                        rootTxn,
+                    },
+                    mutation,
                     cache,
                 )
-                scopeState.versionRefLoaded = versionRef
-            }
-
-            for (const mutation of rootMutations) {
-                const currentScopedMutation: any = scopedTxn.get(
-                    mutationAtom(mutation.ref),
+                runSyncFunctionChain(
+                    initTxn.request.operation.callback(initTxn as any),
                 )
-                if (!currentScopedMutation.initialized) {
-                    const initTxn = prepareInitTransaction(
-                        adapterOptions,
-                        {
-                            ...engineOpts,
-                            txn: scopedTxn as unknown as TransactionInterface,
-                            rootTxn: rootTxn as unknown as TransactionInterface,
-                        },
-                        mutation,
-                        cache,
-                    )
-                    runSyncFunctionChain(
-                        initTxn.request.operation.callback(initTxn as any),
-                    )
-                    scopedTxn.set(mutationAtom(mutation.ref), (curr: any) => {
-                        return {
-                            ...curr,
-                            initialized: true,
-                        }
-                    })
-                }
+                scopedTxn.update(mutationAtom(mutation.ref), (curr: any) => {
+                    return {
+                        ...curr,
+                        initialized: true,
+                    }
+                })
             }
-            for (const [ref, entity] of cache.entities as Map<Ref, any>) {
-                if (entity === DELETED_IN_CHANGE_SET_SYMBOL) {
-                    scopedTxn.reset(entityAtom(ref) as any)
-                } else {
-                    const indexd = validateAndIndexDocument(
-                        adapterOptions.models[entity.entity],
-                        entity,
-                    )
-                    scopedTxn.set(entityAtom(ref), indexd as any)
-                }
+        }
+        for (const [ref, entity] of cache.entities as Map<Ref, any>) {
+            if (entity === DELETED_IN_CHANGE_SET_SYMBOL) {
+                // Hide the root's value in this scope.
+                scopedTxn.delete(entityAtom(ref))
+            } else {
+                const indexd = validateAndIndexDocument(
+                    adapterOptions.models[entity.entity],
+                    entity,
+                )
+                scopedTxn.set(entityAtom(ref), indexd as any)
             }
-        })
+        }
+        if (rebuild) {
+            scopedTxn.set(scopeBaseAtom, { versionRef: versionRef ?? null })
+        }
     })
     return {
         ...engineOpts,
