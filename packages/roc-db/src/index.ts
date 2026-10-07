@@ -11,6 +11,7 @@ export { undo } from "./operations/undo"
 export { redo } from "./operations/redo"
 
 // errors
+export { ApplyChangeSetError } from "./errors/ApplyChangeSetError"
 export { BadRequestError } from "./errors/BadRequestError"
 export { ConflictError } from "./errors/ConflictError"
 export { NotFoundError } from "./errors/NotFoundError"

@@ -1,6 +1,9 @@
+import { createIndexedDBAdapter } from "@roc-db/indexed-db"
 import { createInMemoryAdapter } from "@roc-db/in-memory"
 import { DraftRefSchema, entities, operations } from "@roc-db/test-utils"
 import { describe, expect, test } from "bun:test"
+import { z } from "zod"
+import { ApplyChangeSetError } from "../errors/ApplyChangeSetError"
 import { Query } from "../utils/Query"
 import { QueryChain } from "../utils/QueryChain"
 import { Snowflake } from "../utils/Snowflake"
@@ -41,7 +44,88 @@ export const applyDraftTest = writeOperation(
     },
 )
 
+const throwingChangeSetOp = writeOperation(
+    "throwingChangeSetOp",
+    z.any(),
+    txn =>
+        Query(() => {
+            if (txn.request.isApplyChangeSet) {
+                throw new Error("simulated callback failure")
+            }
+        }),
+    { changeSetOnly: true },
+)
+
 describe("applyChangeSet", () => {
+    test("error during applyChangeSet includes mutation ref and operation name, preserves original error as cause", () => {
+        const adapter = createInMemoryAdapter({
+            operations: [...operations, applyDraftTest, throwingChangeSetOp],
+            entities,
+            session: { identityRef: "User/42" },
+            snowflake,
+        })
+
+        const [post] = adapter.createPost({ title: "Post 1" })
+        const [draft] = adapter.createDraft({ postRef: post.ref })
+
+        const draftAdapter = adapter.changeSet(draft.ref)
+        const [, throwingMutation] = draftAdapter.throwingChangeSetOp({})
+
+        let caught: any
+        try {
+            adapter.applyDraftTest(draft.ref)
+        } catch (err) {
+            caught = err
+        }
+
+        expect(caught).toBeInstanceOf(ApplyChangeSetError)
+        expect(caught.mutationRef).toBe(throwingMutation.ref)
+        expect(caught.operationName).toBe("throwingChangeSetOp")
+        expect(caught.timestamp).toBe(throwingMutation.timestamp)
+        expect(caught.message).toContain(String(throwingMutation.ref))
+        expect(caught.message).toContain("throwingChangeSetOp")
+        expect(caught.message).toContain(String(throwingMutation.timestamp))
+        expect(caught.cause).toBeInstanceOf(Error)
+        expect((caught.cause as Error).message).toBe(
+            "simulated callback failure",
+        )
+    })
+
+    test("async path: error during applyChangeSet includes mutation context, preserves original error as cause", async () => {
+        const adapter = createIndexedDBAdapter({
+            operations: [...operations, applyDraftTest, throwingChangeSetOp],
+            entities,
+            session: { identityRef: "User/42" },
+            dbName: crypto.randomUUID().slice(0, 8),
+            snowflake: new Snowflake(11, 11),
+        })
+
+        const [post] = await adapter.createPost({ title: "Post 1" })
+        const [draft] = await adapter.createDraft({ postRef: post.ref })
+
+        const draftAdapter = adapter.changeSet(draft.ref)
+        const [, throwingMutation] = await draftAdapter.throwingChangeSetOp({})
+
+        let caught: any
+        try {
+            await adapter.applyDraftTest(draft.ref)
+        } catch (err) {
+            caught = err
+        }
+
+        expect(caught).toBeInstanceOf(ApplyChangeSetError)
+        expect(caught.mutationRef).toBe(throwingMutation.ref)
+        expect(caught.operationName).toBe("throwingChangeSetOp")
+        expect(caught.timestamp).toBe(throwingMutation.timestamp)
+        expect(caught.message).toContain(String(throwingMutation.ref))
+        expect(caught.message).toContain("throwingChangeSetOp")
+        expect(caught.message).toContain(String(throwingMutation.timestamp))
+        expect(caught.cause).toBeInstanceOf(Error)
+        expect((caught.cause as Error).message).toBe(
+            "simulated callback failure",
+        )
+    })
+
     test("Test that the changeSet (Cache) on a txn is leveraged", async () => {
         const adapter1 = createInMemoryAdapter({
             operations: [...operations, applyDraftTest],
