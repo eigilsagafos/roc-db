@@ -15,30 +15,31 @@ export class ChangeSetScopeNotOpenError extends Error {
     }
 }
 
-// Thrown when a changeSet's scope was built from another version than the
-// changeSet now names. A scope cannot be cleared inside a transaction, so open
-// the changeSet again with adapter.changeSet(), outside one, to rebuild it.
+// Thrown when a request reaches a changeSet scope built from another version
+// than the changeSet now names. Only adapter.changeSet() can rebuild the scope,
+// so open the changeSet again, inside or outside a transaction.
 export class ChangeSetRebasedError extends Error {
     constructor(readonly changeSetRef: Ref) {
         super(
-            `The valdres scope for changeSet ${changeSetRef} was built from another version. Open it again with adapter.changeSet() outside a transaction.`,
+            `The valdres scope for changeSet ${changeSetRef} was built from another version. Open it again with adapter.changeSet() to rebuild it.`,
         )
         this.name = "ChangeSetRebasedError"
     }
 }
 
 // The scope for `changeSetRef`, opened outside a transaction. A scope built
-// from another version than `versionRef` is disposed and replaced by an empty
-// one, which onChangeSetInit then builds from the new base.
+// from another version than `versionRef` is cleared in place, keeping its
+// identity and subscriptions; onChangeSetInit then builds it from the new base.
 export const openChangeSetScope = (
     store: Store,
     changeSetRef: Ref,
     versionRef: Ref | null | undefined,
 ): Store => {
     const scope = store.scope(changeSetRef)
-    if (!isRebased(scope.get(scopeBaseAtom), versionRef)) return scope
-    scope.dispose()
-    return store.scope(changeSetRef)
+    if (isRebased(scope.get(scopeBaseAtom), versionRef)) {
+        store.txn(txn => txn.scope(scope).resetAll())
+    }
+    return scope
 }
 
 // The transaction cursor for `changeSetRef`'s scope, or undefined when the

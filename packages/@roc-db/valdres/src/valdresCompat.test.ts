@@ -13,7 +13,7 @@ import {
     writeOperation,
 } from "roc-db"
 import { z } from "zod"
-import { selector, store, StoreDisposedError } from "valdres"
+import { selector, store } from "valdres"
 import { createValdresAdapter } from "./createValdresAdapter"
 import { cacheTokenAtom, peekScopeState, scopeBaseAtom } from "./lib/scopeState"
 import {
@@ -676,16 +676,29 @@ describe("valdres 1.0 compatibility", () => {
             return { ...ctx, post, draft, cs, block, setBase }
         }
 
-        test("changeSet() rebuilds the scope from the new version", () => {
+        // The root write that rebases the draft, inside a caller's transaction.
+        const writeBase = (ctx: any, txn: any, versionRef: string) => {
+            const doc: any = txn.get(ctx.entityAtom(ctx.draft.ref))
+            txn.set(ctx.entityAtom(ctx.draft.ref), {
+                ...doc,
+                parents: { ...doc.parents, version: versionRef },
+            })
+        }
+        const keys = (rows: readonly { key: string }[]) =>
+            rows.map(row => row.key).join(",")
+
+        test("changeSet() rebuilds the scope in place from the new version", () => {
             const { entityAtom, adapter, post, draft, cs, block, setBase } =
                 setupVersions()
             expect(cs.readEntity(post.ref).data.title).toBe("V1")
-            const oldScope = cs._engineOpts.scopedStore
+            const scope = cs._engineOpts.scopedStore
 
             setBase("PostVersion/2")
             const rebased = adapter.changeSet(draft.ref)
-            const scope = rebased._engineOpts.scopedStore
-            expect(scope).not.toBe(oldScope)
+            expect(rebased._engineOpts.scopedStore).toBe(scope)
+            expect(scope.get(scopeBaseAtom)).toEqual({
+                versionRef: "PostVersion/2",
+            })
             expect(scope.get(entityAtom(post.ref))?.data.title).toBe("V2")
             expect(rebased.readEntity(post.ref).data.title).toBe("V2")
             // The draft's own work is replayed onto the new base.
@@ -693,10 +706,11 @@ describe("valdres 1.0 compatibility", () => {
             expect(rebased.readEntity(post.ref).children.blocks).toEqual([
                 block.ref,
             ])
-            // The old scope is gone, so the old changeSet adapter fails loudly.
-            expect(() =>
-                cs.createBlockParagraph({ parentRef: post.ref }),
-            ).toThrow(StoreDisposedError)
+            // The changeSet adapter opened before the rebase shares the scope,
+            // so it keeps working and serves the new base.
+            expect(cs.readEntity(post.ref).data.title).toBe("V2")
+            cs.createBlockParagraph({ parentRef: post.ref })
+            expect(rebased.readEntity(post.ref).children.blocks).toHaveLength(2)
         })
 
         test("a request on a stale changeSet adapter is rejected", () => {
@@ -708,31 +722,136 @@ describe("valdres 1.0 compatibility", () => {
             ).toThrow(ChangeSetRebasedError)
         })
 
-        test("a batch replaces the stale scope before loading", () => {
+        test("a batch clears the stale scope in place before loading", () => {
             const { rootStore, adapter, post, draft, cs, setBase } =
                 setupVersions()
-            const oldScope = cs._engineOpts.scopedStore
+            const scope = cs._engineOpts.scopedStore
             setBase("PostVersion/2")
             // prepareChangeSets runs for every changeSet in the batch, even
             // when all of its mutations are already known.
             adapter.loadMutations(
                 adapter.pageMutations({ changeSetRef: draft.ref }),
             )
-            const scope = rootStore.scope(draft.ref)
-            expect(scope).not.toBe(oldScope)
+            expect(rootStore.scope(draft.ref)).toBe(scope)
             expect(scope.get(scopeBaseAtom)).toBeNull()
             const reopened = adapter.changeSet(draft.ref)
+            expect(reopened._engineOpts.scopedStore).toBe(scope)
             expect(reopened.readEntity(post.ref).data.title).toBe("V2")
         })
 
-        test("changeSet() inside a caller's transaction cannot rebuild", () => {
-            const { rootStore, adapter, draft, setBase } = setupVersions()
-            setBase("PostVersion/2")
+        test("rebases in place inside the caller's transaction", () => {
+            const ctx = setupVersions()
+            const { rootStore, entityAtom, adapter, post, draft, cs, block } =
+                ctx
+            const scope = cs._engineOpts.scopedStore
+            // A read-only UI view of the draft that never writes.
+            const view = scope.scope()
+            const counts = { post: 0, block: 0, rows: 0 }
+            const seen: string[] = []
+            view.sub(entityAtom(post.ref), () => {
+                counts.post++
+                seen.push(view.get(entityAtom(post.ref))?.data.title)
+            })
+            view.sub(entityAtom(block.ref), () => counts.block++)
+            view.sub(entityAtom, () => counts.rows++)
+
+            const inTxn: Record<string, unknown> = {}
+            rootStore.txn(txn => {
+                writeBase(ctx, txn, "PostVersion/2")
+                const rebased = adapter.clone({ txn }).changeSet(draft.ref)
+                const draftTxn = txn.scope(scope)
+                inTxn.title = draftTxn.get(entityAtom(post.ref))?.data.title
+                inTxn.viewEqualsDraft =
+                    keys(draftTxn.scope(view).get(entityAtom)) ===
+                    keys(draftTxn.get(entityAtom))
+                inTxn.adapterRead = rebased.readEntity(post.ref).data.title
+            })
+            expect(inTxn).toEqual({
+                title: "V2",
+                viewEqualsDraft: true,
+                adapterRead: "V2",
+            })
+            // Same scope; the view and its subscriptions survive.
+            expect(rootStore.scope(draft.ref)).toBe(scope)
+            expect(view.get(entityAtom(post.ref))?.data.title).toBe("V2")
+            expect(keys(view.get(entityAtom))).toBe(keys(scope.get(entityAtom)))
+            // The changed row is notified once, with the final state only.
+            expect(counts.post).toBe(1)
+            expect(seen).toEqual(["V2"])
+            expect(counts.block).toBeLessThanOrEqual(1)
+            expect(counts.rows).toBeLessThanOrEqual(1)
+        })
+
+        test("a failure before apply leaves the draft on its old base", () => {
+            const ctx = setupVersions()
+            const { rootStore, entityAtom, adapter, post, draft, cs } = ctx
+            const scope = cs._engineOpts.scopedStore
+            const view = scope.scope()
+            let notified = 0
+            view.sub(entityAtom, () => notified++)
+            view.sub(entityAtom(post.ref), () => notified++)
+            const rows = scope.get(entityAtom)
+            const postBefore = scope.get(entityAtom(post.ref))
+
             expect(() =>
-                rootStore.txn(txn =>
-                    adapter.clone({ txn }).changeSet(draft.ref),
-                ),
-            ).toThrow(ChangeSetRebasedError)
+                rootStore.txn(txn => {
+                    writeBase(ctx, txn, "PostVersion/2")
+                    adapter.clone({ txn }).changeSet(draft.ref)
+                    throw new Error("caller failed")
+                }),
+            ).toThrow("caller failed")
+            expect(rootStore.get(entityAtom(draft.ref))?.parents.version).toBe(
+                "PostVersion/1",
+            )
+            expect(scope.get(entityAtom)).toBe(rows)
+            expect(scope.get(entityAtom(post.ref))).toBe(postBefore)
+            expect(scope.get(scopeBaseAtom)).toEqual({
+                versionRef: "PostVersion/1",
+            })
+            expect(notified).toBe(0)
+            expect(cs.readEntity(post.ref).data.title).toBe("V1")
+        })
+
+        test("later root and draft writes reach a view after the rebase", () => {
+            const ctx = setupVersions()
+            const { rootStore, entityAtom, adapter, post, draft, cs } = ctx
+            const scope = cs._engineOpts.scopedStore
+            const view = scope.scope()
+            rootStore.txn(txn => {
+                writeBase(ctx, txn, "PostVersion/2")
+                adapter.clone({ txn }).changeSet(draft.ref)
+            })
+            let notified = 0
+            view.sub(entityAtom, () => notified++)
+            const [{ block }] = cs.createBlockParagraph({ parentRef: post.ref })
+            const [other] = adapter.createPost({ title: "Later", tags: [] })
+            expect(notified).toBe(2)
+            expect(view.get(entityAtom(block.ref))?.ref).toBe(block.ref)
+            expect(view.get(entityAtom(other.ref))?.ref).toBe(other.ref)
+            expect(keys(view.get(entityAtom))).toBe(keys(scope.get(entityAtom)))
+        })
+
+        test("an in-place rebase equals a fresh build", () => {
+            const ctx = setupVersions()
+            const { rootStore, entityAtom, mutationAtom, adapter, draft, cs } =
+                ctx
+            const scope = cs._engineOpts.scopedStore
+            rootStore.txn(txn => {
+                writeBase(ctx, txn, "PostVersion/2")
+                adapter.clone({ txn }).changeSet(draft.ref)
+            })
+            const inPlace = {
+                order: keys(scope.get(entityAtom)),
+                rows: scope.get(entityAtom).map(row => scope.get(row)),
+                mutations: keys(scope.get(mutationAtom)),
+            }
+            scope.dispose()
+            const fresh = adapter.changeSet(draft.ref)._engineOpts.scopedStore
+            expect(keys(fresh.get(entityAtom))).toBe(inPlace.order)
+            expect(fresh.get(entityAtom).map(row => fresh.get(row))).toEqual(
+                inPlace.rows,
+            )
+            expect(keys(fresh.get(mutationAtom))).toBe(inPlace.mutations)
         })
     })
 
