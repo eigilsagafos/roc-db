@@ -1,30 +1,19 @@
+import { filterAndPageMutations, normalizePageMutationsArgs } from "roc-db"
 import type { PageMutationsFunction } from "roc-db"
+import { readAllMutations } from "../lib/readAllMutations"
 import type { IndexedDBTxnEngine } from "../types/IndexedDBEngine"
+import type { IndexedDBReadTransaction } from "../types/IndexedDBReadTransaction"
 
-export const pageMutations: PageMutationsFunction = async (txn, args) => {
-    const { size, changeSetRef, skip } = args
-    const objectStore = (txn.engineOpts as IndexedDBTxnEngine).txn.objectStore(
-        "mutations",
+// Async adapter: the runtime returns a Promise, so the body cannot satisfy the
+// synchronous alias return directly. Params are typed manually and the value is
+// cast to the alias for the AdapterFunctions check.
+export const pageMutations: PageMutationsFunction = (async (
+    txn: IndexedDBReadTransaction,
+    args: any,
+) => {
+    const normalized = normalizePageMutationsArgs(args)
+    const mutations = await readAllMutations(
+        txn.engineOpts as IndexedDBTxnEngine,
     )
-    let idbRequest: IDBRequest
-    if (changeSetRef) {
-        const index = objectStore.index("byChangeSetRef")
-        const range = IDBKeyRange.only(changeSetRef)
-        idbRequest = index.openCursor(range)
-    } else {
-        idbRequest = objectStore.openCursor()
-    }
-
-    return new Promise((resolve, reject) => {
-        const results: any[] = []
-        idbRequest.onsuccess = () => {
-            const cursor = idbRequest.result
-            if (cursor) {
-                results.push(cursor.value)
-                cursor.continue()
-            } else {
-                resolve(results)
-            }
-        }
-    })
-}
+    return filterAndPageMutations(mutations, normalized)
+}) as unknown as PageMutationsFunction

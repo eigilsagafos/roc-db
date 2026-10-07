@@ -1,4 +1,4 @@
-import { pageEntities, pageMutations, redo, undo } from "roc-db"
+import { mutationFacets, pageEntities, pageMutations, redo, undo } from "roc-db"
 import { applyDraft } from "./applyDraft"
 import { createBlockImage } from "./createBlockImage"
 import { createBlockParagrah } from "./createBlockParagraph"
@@ -40,6 +40,7 @@ export const operations: any[] = [
     // Built-ins are opt-in now; register them explicitly so the fixtures keep
     // exposing adapter.undo()/redo()/pageMutations()/pageEntities().
     pageMutations,
+    mutationFacets,
     pageEntities,
     undo,
     redo,
