@@ -19,6 +19,8 @@
     "indexed-db-conformance",
     "strict-types-and-bug-fixes",
     "valdres-beta-compat",
+    "valdres-resetall-rebase",
+    "valdres-v1-beta",
     "version-aware-operations"
   ]
 }
