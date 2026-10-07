@@ -15,11 +15,7 @@ import {
 import type { Store, Transaction } from "valdres"
 import type { ValdresEngine } from "../types/ValdresEngine"
 import { isRebased, registerScope, scopeBaseAtom } from "../lib/scopeState"
-import {
-    ChangeSetRebasedError,
-    getScopeTransaction,
-    openChangeSetScope,
-} from "../lib/scopeTransaction"
+import { getScopeTransaction } from "../lib/scopeTransaction"
 
 // Runs `callback` in the caller's transaction when the adapter was given one,
 // and in a transaction of its own otherwise.
@@ -94,9 +90,7 @@ export const onChangeSetInit: OnChangeSetInitFunction<ValdresEngine> = (
 
     // Opening a scope is not allowed inside a transaction, so inside the
     // caller's transaction the scope has to exist already.
-    const scopedStore = engineOpts.txn
-        ? undefined
-        : openChangeSetScope(store, changeSetRef, versionRef)
+    const scopedStore = engineOpts.txn ? undefined : store.scope(changeSetRef)
     if (scopedStore) registerScope(scopedStore, changeSetRef)
     const rootMutations = getRootMutations(
         engineOpts,
@@ -106,10 +100,14 @@ export const onChangeSetInit: OnChangeSetInitFunction<ValdresEngine> = (
 
     inTransaction(engineOpts, rootTxn => {
         const scopedTxn = getScopeTransaction(rootTxn, changeSetRef)
-        const base = scopedTxn.get(scopeBaseAtom)
-        if (isRebased(base, versionRef)) {
-            throw new ChangeSetRebasedError(changeSetRef)
+        // A scope built from another version than the changeSet now names was
+        // rebased. Clear every override it holds in this same transaction, so
+        // it inherits the live root again, and rebuild it below. The scope
+        // keeps its identity, its subscriptions and its descendants.
+        if (isRebased(scopedTxn.get(scopeBaseAtom), versionRef)) {
+            scopedTxn.resetAll()
         }
+        const base = scopedTxn.get(scopeBaseAtom)
         const cache = generateTransactionCache()
         // A scope this function has not built holds at most what later
         // requests wrote into it. Rebuild it from the base and the whole

@@ -21,9 +21,10 @@ export type ScopeState = {
 // anywhere else (prepareChangeSets, application code, a re-creation after
 // disposal) only holds what later requests wrote, so onChangeSetInit rebuilds
 // it. A scope built from another version than the changeSet now names was
-// rebased, and is replaced (see openChangeSetScope). Only ever set in a scope,
-// never in the root. Being valdres state, it rolls back with the transaction
-// that built the scope.
+// rebased: onChangeSetInit clears it with resetAll() and rebuilds it in the same
+// transaction. Only ever set in a scope, never in the root. Being valdres
+// state, it rolls back with the transaction that built the scope, and
+// resetAll() clears it.
 export const scopeBaseAtom: Atom<{ versionRef: Ref | null } | null> = atom<{
     versionRef: Ref | null
 } | null>(null)
@@ -37,8 +38,8 @@ export const isRebased = (
 // Proves a scope's txnCache describes its committed state. Every write request
 // (and every request that rebuilt the cache) replaces the token in the scope and
 // in the registry, in the request's transaction. If that transaction rolls
-// back, or the scope is disposed and re-created, the two no longer match and
-// the cache is rebuilt.
+// back, the scope is disposed and re-created, or a rebase clears the scope, the
+// two no longer match and the cache is rebuilt.
 export const cacheTokenAtom: Atom<object | null> = atom<object | null>(null)
 
 // Weak on the store so a discarded store takes its scope state with it.
