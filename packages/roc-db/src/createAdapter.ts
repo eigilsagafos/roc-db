@@ -11,6 +11,7 @@ import type { AdapterFunctions } from "./types/AdapterFunctions"
 import type { Mutation } from "./types/Mutation"
 import type { Operation } from "./types/Operation"
 import type { Ref } from "./types/Ref"
+import type { ReplayDivergenceConfig } from "./types/ReplayDivergence"
 import type { RocDBRequest } from "./types/RocDBRequest"
 import { Snowflake } from "./utils/Snowflake"
 import { generateRef } from "./utils/generateRef"
@@ -40,6 +41,9 @@ type AdapterOptions<
     async?: boolean
     changeSetRef?: Ref
     optimistic?: boolean
+    // Replay-divergence detection policy, read by lib/verifyReplayDivergence on
+    // the replay/load path.
+    replayDivergence?: ReplayDivergenceConfig
     // Optional per-operation validation hooks, invoked from lib/commit.
     validateCreate?: (txn: any, document: any) => void
     validateUpdate?: (txn: any, document: any, originalDocument: any) => void
