@@ -41,7 +41,9 @@ jobs:
             - name: Install
               run: bun install
             - name: Require changeset
-              if: github.event_name == 'pull_request'
+              # The Changesets version PR consumes changesets instead of adding
+              # them, so it can never pass this check.
+              if: github.event_name == 'pull_request' && github.head_ref != 'changeset-release/main'
               run: bunx changeset status --since=origin/main
             - name: Typecheck
               run: bun run typecheck
