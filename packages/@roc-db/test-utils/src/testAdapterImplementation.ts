@@ -657,7 +657,9 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
                 })
 
             expect(mutations).toHaveLength(1)
-            expect(mutations[0].operation.name).toBe("createBlockRowReadingRoot")
+            expect(mutations[0].operation.name).toBe(
+                "createBlockRowReadingRoot",
+            )
             const newRow = [...refMap.values()][0]
             expect(newRow).toBeDefined()
             const targetCs = adapter1.changeSet(newDraftRef)
@@ -856,6 +858,407 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
             // //     parentRef: post.ref,
             // // })
             // console.log(res)
+        })
+    })
+
+    describe("debounce ordering", () => {
+        // Keeps consecutive writes off the same millisecond, where equal
+        // timestamps fall back to id order and hide the ordering under test.
+        const tick = () => Bun.sleep(2)
+
+        // Models an app's sync queue that sends one mutation per request: a
+        // newer version of a queued mutation takes the queued version's slot,
+        // and a version of an already sent mutation is queued last.
+        const createSyncQueue = (server: any) => {
+            const queue: any[] = []
+            return {
+                add: ([result, mutation]: [any, any]) => {
+                    const index = queue.findIndex(m => m.ref === mutation.ref)
+                    if (index === -1) queue.push(mutation)
+                    else queue[index] = mutation
+                    return result
+                },
+                flush: async () => {
+                    while (queue.length) {
+                        await tick()
+                        await server.persistOptimisticMutations([queue[0]])
+                        queue.shift()
+                    }
+                },
+            }
+        }
+
+        // Replays everything the source stores into a fresh adapter, as a
+        // reload or another user does.
+        const replay = async (source: any) => {
+            const mutations = await source.pageMutations({ size: 1000 })
+            const replayed = await createAdapter({ optimistic: true })
+            await replayed.loadMutations(mutations)
+            return replayed
+        }
+
+        const setupClient = async () => {
+            const server = await createAdapter()
+            const client = await createAdapter({ optimistic: true })
+            const queue = createSyncQueue(server)
+            const post = queue.add(
+                await client.createPost({ title: "Post", tags: [] }),
+            )
+            const draft = queue.add(
+                await client.createDraft({ postRef: post.ref }),
+            )
+            const changeSet = client.changeSet(draft.ref)
+            const createParagraph = async () =>
+                queue.add(
+                    await changeSet.createBlockParagraph({
+                        parentRef: post.ref,
+                    }),
+                ).block
+            const holder = await createParagraph()
+            await queue.flush()
+            return {
+                server,
+                queue,
+                post,
+                draft,
+                changeSet,
+                createParagraph,
+                holder,
+            }
+        }
+
+        test("forward: a version that reads an entity created after the previous version syncs", async () => {
+            const { server, queue, draft, changeSet, createParagraph, holder } =
+                await setupClient()
+            queue.add(
+                await changeSet.updateBlockParagraphMentions({
+                    ref: holder.ref,
+                    mentions: [],
+                }),
+            )
+            const mentioned = await createParagraph()
+            queue.add(
+                await changeSet.updateBlockParagraphMentions({
+                    ref: holder.ref,
+                    mentions: [mentioned.ref],
+                }),
+            )
+            await queue.flush()
+
+            const replayed = (await replay(server)).changeSet(draft.ref)
+            const replayedHolder = await replayed.readEntity(holder.ref)
+            expect(replayedHolder.data.mentions).toEqual([mentioned.ref])
+        })
+
+        test("reverse: a version that frees an entity before it is deleted replays", async () => {
+            const {
+                server,
+                queue,
+                post,
+                draft,
+                changeSet,
+                createParagraph,
+                holder,
+            } = await setupClient()
+            const first = await createParagraph()
+            const second = await createParagraph()
+            const third = await createParagraph()
+            queue.add(
+                await changeSet.setBlockParagraphMentions({
+                    ref: holder.ref,
+                    mentions: [first.ref],
+                }),
+            )
+            await queue.flush()
+            queue.add(
+                await changeSet.updateBlockParagraphMentions({
+                    ref: holder.ref,
+                    mentions: [second.ref],
+                }),
+            )
+            await queue.flush()
+            queue.add(
+                await changeSet.deleteUnmentionedBlockParagraph({
+                    ref: first.ref,
+                    mentionedByRef: holder.ref,
+                }),
+            )
+            await queue.flush()
+            queue.add(
+                await changeSet.updateBlockParagraphMentions({
+                    ref: holder.ref,
+                    mentions: [third.ref],
+                }),
+            )
+            await queue.flush()
+
+            const replayed = (await replay(server)).changeSet(draft.ref)
+            const replayedHolder = await replayed.readEntity(holder.ref)
+            expect(replayedHolder.data.mentions).toEqual([third.ref])
+            const replayedPost = await replayed.readEntity(post.ref)
+            expect(replayedPost.children.blocks).not.toContain(first.ref)
+        })
+
+        test("copy: an entity copied between two versions keeps the version it copied", async () => {
+            const { server, queue, draft, changeSet, createParagraph, holder } =
+                await setupClient()
+            const first = await createParagraph()
+            const second = await createParagraph()
+            queue.add(
+                await changeSet.updateBlockParagraphMentions({
+                    ref: holder.ref,
+                    mentions: [first.ref],
+                }),
+            )
+            await queue.flush()
+            const copy = queue.add(
+                await changeSet.duplicateBlockParagraph({ ref: holder.ref }),
+            )
+            await queue.flush()
+            queue.add(
+                await changeSet.updateBlockParagraphMentions({
+                    ref: holder.ref,
+                    mentions: [second.ref],
+                }),
+            )
+            await queue.flush()
+            expect(copy.data.mentions).toEqual([first.ref])
+
+            const replayed = (await replay(server)).changeSet(draft.ref)
+            const replayedCopy = await replayed.readEntity(copy.ref)
+            expect(replayedCopy.data.mentions).toEqual([first.ref])
+            const replayedHolder = await replayed.readEntity(holder.ref)
+            expect(replayedHolder.data.mentions).toEqual([second.ref])
+        })
+
+        test("server-side: non-optimistic versions around another write replay", async () => {
+            const server = await createAdapter()
+            const [post] = await server.createPost({ title: "Post", tags: [] })
+            const [draft] = await server.createDraft({ postRef: post.ref })
+            const changeSet = server.changeSet(draft.ref)
+            const [{ block: holder }] = await changeSet.createBlockParagraph({
+                parentRef: post.ref,
+            })
+            await changeSet.updateBlockParagraphMentions({
+                ref: holder.ref,
+                mentions: [],
+            })
+            await tick()
+            const [{ block: mentioned }] = await changeSet.createBlockParagraph(
+                { parentRef: post.ref },
+            )
+            await tick()
+            await changeSet.updateBlockParagraphMentions({
+                ref: holder.ref,
+                mentions: [mentioned.ref],
+            })
+            // Adapters that replay the changeSet on every write do so here.
+            await changeSet.createBlockParagraph({ parentRef: post.ref })
+
+            const replayed = (await replay(server)).changeSet(draft.ref)
+            const replayedHolder = await replayed.readEntity(holder.ref)
+            expect(replayedHolder.data.mentions).toEqual([mentioned.ref])
+        })
+
+        test("old client: merged versions whose row is no longer last persist once and replay", async () => {
+            const {
+                server,
+                queue,
+                post,
+                draft,
+                changeSet,
+                createParagraph,
+                holder,
+            } = await setupClient()
+            const first = await createParagraph()
+            const second = await createParagraph()
+            const third = await createParagraph()
+            queue.add(
+                await changeSet.setBlockParagraphMentions({
+                    ref: holder.ref,
+                    mentions: [first.ref],
+                }),
+            )
+            const [, versionMutation] =
+                await changeSet.updateBlockParagraphMentions({
+                    ref: holder.ref,
+                    mentions: [second.ref],
+                })
+            queue.add([undefined, versionMutation])
+            queue.add(
+                await changeSet.deleteUnmentionedBlockParagraph({
+                    ref: first.ref,
+                    mentionedByRef: holder.ref,
+                }),
+            )
+            await queue.flush()
+            // What a client that merges into any matching row sends next.
+            const mergedPayload = { ref: holder.ref, mentions: [third.ref] }
+            await tick()
+            const resentTimestamp = new Date().toISOString()
+            await server.persistOptimisticMutations([
+                {
+                    ...versionMutation,
+                    payload: mergedPayload,
+                    debounceCount: versionMutation.debounceCount + 1,
+                    timestamp: resentTimestamp,
+                },
+            ])
+
+            // A resend of the same version is not persisted twice.
+            await expect(
+                (async () =>
+                    server.persistOptimisticMutations([
+                        {
+                            ...versionMutation,
+                            payload: mergedPayload,
+                            debounceCount: versionMutation.debounceCount + 1,
+                            timestamp: resentTimestamp,
+                        },
+                    ]))(),
+            ).rejects.toThrow("Mutation already synced")
+            // The client's next version coalesces into the row the server
+            // persisted the previous one in.
+            await tick()
+            const finalPayload = { ref: holder.ref, mentions: [] }
+            await server.persistOptimisticMutations([
+                {
+                    ...versionMutation,
+                    payload: finalPayload,
+                    debounceCount: versionMutation.debounceCount + 2,
+                    timestamp: new Date().toISOString(),
+                },
+            ])
+
+            const stored = await server.pageMutations({ size: 1000 })
+            const versions = stored.filter(
+                (m: any) => m.operation.name === "updateBlockParagraphMentions",
+            )
+            expect(versions).toHaveLength(2)
+            expect(versions.map((m: any) => m.payload)).toContainEqual({
+                ref: holder.ref,
+                mentions: [second.ref],
+            })
+            expect(versions.map((m: any) => m.payload)).toContainEqual(
+                finalPayload,
+            )
+            const replayed = (await replay(server)).changeSet(draft.ref)
+            const replayedHolder = await replayed.readEntity(holder.ref)
+            expect(replayedHolder.data.mentions).toEqual([])
+            const replayedPost = await replayed.readEntity(post.ref)
+            expect(replayedPost.children.blocks).not.toContain(first.ref)
+        })
+
+        test("old client: a merged version and a write depending on it in one batch replay in order", async () => {
+            const { server, queue, draft, changeSet, createParagraph, holder } =
+                await setupClient()
+            const first = await createParagraph()
+            const second = await createParagraph()
+            const [, versionMutation] =
+                await changeSet.updateBlockParagraphMentions({
+                    ref: holder.ref,
+                    mentions: [first.ref],
+                })
+            queue.add([undefined, versionMutation])
+            await queue.flush()
+            await createParagraph()
+            await queue.flush()
+            // An old client merges [second] into the synced row, then deletes
+            // the paragraph that version freed, and sends both together.
+            await tick()
+            const [, version] = await changeSet.updateBlockParagraphMentions({
+                ref: holder.ref,
+                mentions: [second.ref],
+            })
+            const mergedVersion = {
+                ...versionMutation,
+                payload: version.payload,
+                debounceCount: versionMutation.debounceCount + 1,
+                timestamp: version.timestamp,
+            }
+            await tick()
+            const [, deleteMutation] =
+                await changeSet.deleteUnmentionedBlockParagraph({
+                    ref: first.ref,
+                    mentionedByRef: holder.ref,
+                })
+            await tick()
+            await server.persistOptimisticMutations([
+                mergedVersion,
+                deleteMutation,
+            ])
+
+            const replayed = (await replay(server)).changeSet(draft.ref)
+            const replayedHolder = await replayed.readEntity(holder.ref)
+            expect(replayedHolder.data.mentions).toEqual([second.ref])
+        })
+
+        test("consecutive versions coalesce into the row after an intervening write", async () => {
+            const { changeSet, createParagraph, holder } = await setupClient()
+            const [, version1] = await changeSet.updateBlockParagraphMentions({
+                ref: holder.ref,
+                mentions: [],
+            })
+            await tick()
+            const mentioned = await createParagraph()
+            await tick()
+            const [, version2] = await changeSet.updateBlockParagraphMentions({
+                ref: holder.ref,
+                mentions: [mentioned.ref],
+            })
+            const [, version3] = await changeSet.updateBlockParagraphMentions({
+                ref: holder.ref,
+                mentions: [],
+            })
+            expect(version2.ref).not.toBe(version1.ref)
+            expect(version3.ref).toBe(version2.ref)
+            expect(version3.debounceCount).toBe(version2.debounceCount + 1)
+        })
+
+        test("another identity's write in the changeSet, or the identity's own write elsewhere, ends coalescing", async () => {
+            const engineArgs = await generateArgs()
+            const adapterA = await createAdapter({
+                session: { identityRef: "User/A" },
+                engineArgs,
+            })
+            const adapterB = await createAdapter({
+                session: { identityRef: "User/B" },
+                engineArgs,
+            })
+            const [post] = await adapterA.createPost({
+                title: "Post",
+                tags: [],
+            })
+            const [draft] = await adapterA.createDraft({ postRef: post.ref })
+            const changeSetA = adapterA.changeSet(draft.ref)
+            const changeSetB = adapterB.changeSet(draft.ref)
+            const [{ block: holder }] = await changeSetA.createBlockParagraph({
+                parentRef: post.ref,
+            })
+            const update = async () => {
+                await tick()
+                const [, mutation] =
+                    await changeSetA.updateBlockParagraphMentions({
+                        ref: holder.ref,
+                        mentions: [],
+                    })
+                return mutation
+            }
+
+            const version1 = await update()
+            await tick()
+            await changeSetB.createBlockParagraph({ parentRef: post.ref })
+            const version2 = await update()
+            await tick()
+            await adapterA.createPost({ title: "Elsewhere", tags: [] })
+            const version3 = await update()
+            await tick()
+            await adapterB.createPost({ title: "Not A", tags: [] })
+            const version4 = await update()
+
+            expect(version2.ref).not.toBe(version1.ref)
+            expect(version3.ref).not.toBe(version2.ref)
+            expect(version4.ref).toBe(version3.ref)
         })
     })
 }

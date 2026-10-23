@@ -15,8 +15,8 @@ describe("createIndexedDBAdapter", () => {
 })
 
 // White-box regression test that can't be expressed through the shared
-// black-box conformance suite: it seeds a corrupt store state directly.
-describe("findDebounceMutation with multiple matches", () => {
+// black-box conformance suite: it seeds store state directly.
+describe("debounce with multiple matching rows", () => {
     // Open the same named database the adapter uses and commit rows straight
     // into the "mutations" store, bypassing the adapter's write path.
     const seedMutations = (dbName: string, rows: any[]) =>
@@ -47,7 +47,7 @@ describe("findDebounceMutation with multiple matches", () => {
             ),
         ])
 
-    test("rejects instead of hanging when two debounced mutations collide", async () => {
+    test("merges into the latest matching row", async () => {
         const dbName = crypto.randomUUID().slice(0, 8)
         const adapter = createIndexedDBAdapter({
             operations,
@@ -59,13 +59,11 @@ describe("findDebounceMutation with multiple matches", () => {
 
         const [post] = await adapter.createPost({ title: "Title 1" })
 
-        // Two mutations that both satisfy the debounce match criteria for an
-        // updatePostTitle on this post from this identity, inside the debounce
-        // window. This is a state the write path should never produce, but the
-        // guard for it must surface as a rejection rather than an unsettled
-        // promise (a thrown error inside an IDBRequest.onsuccess handler does
-        // not reject the surrounding Promise).
+        // Two mutations that both match an updatePostTitle on this post from
+        // this identity, inside the debounce window. Only the later one is
+        // the latest mutation, so the write merges into it.
         const now = new Date().toISOString()
+        const seededIds = new Snowflake(10, 11)
         const baseMutation = {
             timestamp: now,
             operation: { name: "updatePostTitle", version: 1 },
@@ -77,17 +75,19 @@ describe("findDebounceMutation with multiple matches", () => {
             identityRef: "User/42",
             persistedAt: now,
         }
+        const earlierRef = `Mutation/${seededIds.generate()}`
+        const laterRef = `Mutation/${seededIds.generate()}`
         await seedMutations(dbName, [
-            { ...baseMutation, ref: "Mutation/collision-1" },
-            { ...baseMutation, ref: "Mutation/collision-2" },
+            { ...baseMutation, ref: earlierRef },
+            { ...baseMutation, ref: laterRef },
         ])
 
-        await expect(
-            withTimeout(
-                adapter.updatePostTitle({ ref: post.ref, title: "New title" }),
-                1000,
-                "updatePostTitle",
-            ),
-        ).rejects.toThrow("Unhandled multiple debounced mutations")
+        const [, mutation] = await withTimeout(
+            adapter.updatePostTitle({ ref: post.ref, title: "New title" }),
+            1000,
+            "updatePostTitle",
+        )
+        expect(mutation.ref).toBe(laterRef)
+        expect(mutation.debounceCount).toBe(1)
     })
 })

@@ -1,6 +1,6 @@
 export { batchReadEntities } from "./batchReadEntities"
 export { commit } from "./commit"
-export { findDebounceMutation } from "./findDebounceMutation"
+export { findRecentMutations } from "./findRecentMutations"
 export { getChangeSetMutations } from "./getChangeSetMutations"
 export { pageEntities } from "./pageEntities"
 export { pageEntitiesByIndex } from "./pageEntitiesByIndex"

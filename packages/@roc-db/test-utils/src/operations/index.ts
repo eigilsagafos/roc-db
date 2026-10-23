@@ -12,6 +12,8 @@ import { createUnknownRef } from "./createUnknownRef"
 import { createUser } from "./createUser"
 import { deleteBlocks } from "./deleteBlocks"
 import { deleteDraft } from "./deleteDraft"
+import { deleteUnmentionedBlockParagraph } from "./deleteUnmentionedBlockParagraph"
+import { duplicateBlockParagraph } from "./duplicateBlockParagraph"
 import { deleteOrgSettings } from "./deleteOrgSettings"
 import { deletePost } from "./deletePost"
 import { duplicateDraft } from "./duplicateDraft"
@@ -28,6 +30,10 @@ import { readPost } from "./readPost"
 import { readPostBySlug } from "./readPostBySlug"
 import { testTransactionalEdits } from "./testTransactionalEdits"
 import { updateBlockParagraph } from "./updateBlockParagraph"
+import {
+    setBlockParagraphMentions,
+    updateBlockParagraphMentions,
+} from "./updateBlockParagraphMentions"
 import { updateOrgSettingsName } from "./updateOrgSettingsName"
 import { updatePost } from "./updatePost"
 import { updatePostDescription } from "./updatePostDescription"
@@ -57,6 +63,8 @@ export const operations: any[] = [
     crudBySlug,
     deleteBlocks,
     deleteDraft,
+    deleteUnmentionedBlockParagraph,
+    duplicateBlockParagraph,
     deleteOrgSettings,
     deletePost,
     duplicateDraft,
@@ -73,6 +81,8 @@ export const operations: any[] = [
     pageSplat,
     testTransactionalEdits,
     updateBlockParagraph,
+    updateBlockParagraphMentions,
+    setBlockParagraphMentions,
     updateOrgSettingsName,
     updatePost,
     updatePostDescription,
