@@ -4,6 +4,7 @@ import {
     type Adapter,
     type Entity,
     type Operation,
+    type ReplayDivergenceConfig,
 } from "roc-db"
 import * as functions from "./functions"
 
@@ -14,6 +15,7 @@ export const createIndexedDBAdapter = ({
     dbName = "roc-db",
     optimistic = false,
     snowflake = new Snowflake(1, 1),
+    replayDivergence,
 }: {
     operations: readonly Operation[]
     entities: readonly Entity<any>[]
@@ -21,6 +23,7 @@ export const createIndexedDBAdapter = ({
     dbName?: string
     optimistic?: boolean
     snowflake?: Snowflake
+    replayDivergence?: ReplayDivergenceConfig
 }) => {
     return createAdapter(
         {
@@ -32,6 +35,7 @@ export const createIndexedDBAdapter = ({
             session,
             snowflake,
             async: true,
+            replayDivergence,
         },
         {
             dbName,
