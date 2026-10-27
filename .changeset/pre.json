@@ -13,6 +13,7 @@
     "builtin-operations-opt-in",
     "changeset-ref-in-error",
     "debounce-changeset-scope",
+    "debounce-consecutive-only",
     "duplicate-changeset-mutations",
     "duplicate-server-authoritative",
     "fix-type-declaration-emit",
