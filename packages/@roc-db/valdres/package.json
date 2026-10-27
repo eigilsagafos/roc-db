@@ -1,6 +1,6 @@
 {
     "name": "@roc-db/valdres",
-    "version": "0.2.0-pre.103",
+    "version": "0.2.0-pre.104",
     "type": "module",
     "exports": {
         ".": "./src/index.ts"
@@ -19,10 +19,10 @@
     "dependencies": {},
     "devDependencies": {
         "@faker-js/faker": "9.3.0",
-        "@roc-db/test-utils": "0.2.0-pre.102",
+        "@roc-db/test-utils": "0.2.0-pre.103",
         "@types/bun": "1.2.19",
         "bun": "1.2.19",
-        "roc-db": "0.2.0-pre.104",
+        "roc-db": "0.2.0-pre.105",
         "expect-type": "1.1.0",
         "prettier": "3.4.1",
         "valdres": "1.0.0-beta.42"
