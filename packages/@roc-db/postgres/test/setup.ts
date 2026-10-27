@@ -1,6 +1,7 @@
 import { beforeAll, afterAll } from "bun:test"
 import "@roc-db/test-utils/setup"
 import postgres from "postgres"
+import { POSTGRES_TEST_URL } from "./createTestDatabase"
 
 beforeAll(async () => {
     if (!globalThis.rootSql) {
@@ -12,9 +13,7 @@ beforeAll(async () => {
 })
 
 const runSetup = async () => {
-    const rootSql = await postgres(
-        "postgres://postgres:password@localhost:5432",
-    )
+    const rootSql = await postgres(POSTGRES_TEST_URL)
     globalThis.rootSql = rootSql
 }
 

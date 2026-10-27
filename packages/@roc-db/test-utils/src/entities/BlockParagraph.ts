@@ -6,6 +6,7 @@ import { BlockRefSchema } from "../schemas/BlockRefSchema"
 export const BlockParagraph = new Entity("BlockParagraph", {
     data: z.object({
         content: z.string().optional(),
+        mentions: z.array(z.string()).optional(),
     }),
     parents: z.object({
         parent: z.union([PostEntity.refSchema, BlockRefSchema]),

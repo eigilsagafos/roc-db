@@ -3,7 +3,6 @@ import type { Mutation } from "./Mutation"
 import type { Ref } from "./Ref"
 import type { RocDBRequest } from "./RocDBRequest"
 import type { Transaction } from "./Transaction"
-import type { WriteRequest } from "./WriteRequest"
 
 // --- Optional lifecycle hooks. Core falls back to a default (begin/beginRequest)
 // or simply skips the hook (end/onChangeSetInit/onChangeSetApplied) when absent. ---
@@ -54,14 +53,20 @@ export type CommitFunction<EngineOpts extends any = any> = (
     changes: { created: any[]; updated: any[]; deleted: Ref[] },
 ) => any
 
-export type FindDebounceMutationFunction<EngineOpts extends any = any> = (
-    // Debounce is a write-only concern; core only calls this for write requests.
-    request: WriteRequest,
+// Lists the mutations written after `since` (by `timestamp` or `persistedAt`)
+// that are in the changeSet `changeSetRef` (`null` for root) or were written by
+// `identityRef`, in any order. Core picks the mutation a debounced write merges
+// into from these, so returning more mutations than asked for is harmless.
+export type FindRecentMutationsFunction<EngineOpts extends any = any> = (
     engineOpts: EngineOpts,
-    now: Date,
-    operationName: string,
-    identityRef: string,
-) => Mutation | null | undefined
+    query: RecentMutationsQuery,
+) => Mutation[]
+
+export type RecentMutationsQuery = {
+    changeSetRef: Ref | null
+    identityRef: string
+    since: string
+}
 
 export type GetChangeSetMutationsFunction<EngineOpts extends any = any> = (
     txn: Transaction<EngineOpts>,
@@ -146,7 +151,7 @@ export type AdapterFunctions<EngineOpts extends any = any> = {
     prepareChangeSets?: PrepareChangeSetsFunction<EngineOpts>
     // Required engine functions.
     commit: CommitFunction<EngineOpts>
-    findDebounceMutation: FindDebounceMutationFunction<EngineOpts>
+    findRecentMutations: FindRecentMutationsFunction<EngineOpts>
     getChangeSetMutations: GetChangeSetMutationsFunction<EngineOpts>
     pageEntities: PageEntitiesFunction<EngineOpts>
     pageEntitiesByIndex: PageEntitiesByIndexFunction<EngineOpts>

@@ -1,5 +1,10 @@
 import { BadRequestError } from "../errors/BadRequestError"
 import type { WriteRequest } from "../types/WriteRequest"
+import {
+    findDebounceTarget,
+    mergeDebouncedVersion,
+    recentMutationsQuery,
+} from "./debounce"
 import { generateMutationDoc } from "./generateMutationDoc"
 
 export const createMutationAsync = async (
@@ -23,23 +28,14 @@ export const createMutationAsync = async (
     }
     const now = new Date()
     if (request.operation.debounce) {
-        const res = await adapter.functions.findDebounceMutation(
-            request,
+        const identityRef = adapter.session.identityRef
+        const recent = await adapter.functions.findRecentMutations(
             engine,
-            now,
-            request.operation.name,
-            adapter.session.identityRef,
+            recentMutationsQuery(request, now, identityRef),
         )
-        if (res) {
-            return [
-                {
-                    ...res,
-                    timestamp: now.toISOString(),
-                    debounceCount: res.debounceCount + 1,
-                    payload,
-                },
-                [],
-            ]
+        const target = findDebounceTarget(request, recent, now, identityRef)
+        if (target) {
+            return [mergeDebouncedVersion(target, adapter, payload, now), []]
         }
     }
     return [generateMutationDoc(request, adapter, payload, now), []]

@@ -4,6 +4,7 @@ import type { Mutation } from "../types/Mutation"
 import type { WriteOperation } from "../types/WriteOperation"
 import type { WriteRequest } from "../types/WriteRequest"
 import { deepEqual } from "../utils/deepPatch"
+import { rebaseDebouncedVersion, rebaseQuery } from "./debounce"
 import { defaultBeginRequest } from "./defaultBeginRequest"
 import { defaultBeginTransaction } from "./defaultBeginTransaction"
 import { executeWriteRequestAsyncInternal } from "./executeWriteRequestAsync"
@@ -19,13 +20,16 @@ const shouldSkipMutationImport = (mutation: Mutation, existing: Mutation) => {
     // return true
 }
 
+const after = (timestamp: string) =>
+    new Date(Math.max(Date.now(), Date.parse(timestamp) + 1)).toISOString()
+
 const persistOptimisticMutationsSync = (
     adapterOptions: AdapterOptions,
     engineOptsTxn: any,
     groups: Record<string, Mutation[]>,
     operations: WriteOperation[],
 ) => {
-    const persistedAt = new Date().toISOString()
+    let persistedAt = new Date().toISOString()
     const results = []
     const beginRequest =
         adapterOptions.functions.beginRequest || defaultBeginRequest
@@ -46,12 +50,29 @@ const persistOptimisticMutationsSync = (
             }
             const operation = findOperation(operations, mutation)
             validatePayload(operation, mutation)
+            const version =
+                existing && mutation.debounceCount > existing.debounceCount
+                    ? rebaseDebouncedVersion(
+                          adapterOptions,
+                          operation,
+                          mutation,
+                          existing,
+                          adapterOptions.functions.findRecentMutations(
+                              engineOptsTxn,
+                              rebaseQuery(operation, mutation, existing),
+                          ),
+                      )
+                    : mutation
+            // A batch shares one persistedAt and replay breaks ties by id, but
+            // a rebased version's new id says nothing about its place in the
+            // batch. Give it, and the mutations after it, later persistedAts.
+            if (version.ref !== mutation.ref) persistedAt = after(persistedAt)
             const request: WriteRequest = {
                 type: "write",
                 operation,
-                payload: mutation.payload,
-                changeSetRef: mutation.changeSetRef ?? null,
-                optimisticMutation: { ...mutation, persistedAt },
+                payload: version.payload,
+                changeSetRef: version.changeSetRef ?? null,
+                optimisticMutation: { ...version, persistedAt },
             }
 
             const [, persistedMutation] = beginRequest(
@@ -62,11 +83,12 @@ const persistOptimisticMutationsSync = (
                         request,
                         engineOptsReq,
                         adapterOptions,
-                        mutation.payload,
+                        version.payload,
                         txnCache,
                     ),
             )
             results.push(persistedMutation)
+            if (version.ref !== mutation.ref) persistedAt = after(persistedAt)
         }
     }
 
@@ -90,7 +112,7 @@ const persistOptimisticMutationsAsync = async (
     groups: Record<string, Mutation[]>,
     operations: WriteOperation[],
 ) => {
-    const persistedAt = new Date().toISOString()
+    let persistedAt = new Date().toISOString()
     const results = []
     const beginRequest =
         adapterOptions.functions.beginRequest || defaultBeginRequest
@@ -112,12 +134,29 @@ const persistOptimisticMutationsAsync = async (
             }
             const operation = findOperation(operations, mutation)
             validatePayload(operation, mutation)
+            const version =
+                existing && mutation.debounceCount > existing.debounceCount
+                    ? rebaseDebouncedVersion(
+                          adapterOptions,
+                          operation,
+                          mutation,
+                          existing,
+                          await adapterOptions.functions.findRecentMutations(
+                              engineOptsTxn,
+                              rebaseQuery(operation, mutation, existing),
+                          ),
+                      )
+                    : mutation
+            // A batch shares one persistedAt and replay breaks ties by id, but
+            // a rebased version's new id says nothing about its place in the
+            // batch. Give it, and the mutations after it, later persistedAts.
+            if (version.ref !== mutation.ref) persistedAt = after(persistedAt)
             const request: WriteRequest = {
                 type: "write",
                 operation,
-                payload: mutation.payload,
-                changeSetRef: mutation.changeSetRef ?? null,
-                optimisticMutation: { ...mutation, persistedAt },
+                payload: version.payload,
+                changeSetRef: version.changeSetRef ?? null,
+                optimisticMutation: { ...version, persistedAt },
             }
             const [, persistedMutation] = await beginRequest(
                 request,
@@ -127,11 +166,12 @@ const persistOptimisticMutationsAsync = async (
                         request,
                         engineOptsReq,
                         adapterOptions,
-                        mutation.payload,
+                        version.payload,
                         txnCache,
                     ),
             )
             results.push(persistedMutation)
+            if (version.ref !== mutation.ref) persistedAt = after(persistedAt)
         }
     }
 

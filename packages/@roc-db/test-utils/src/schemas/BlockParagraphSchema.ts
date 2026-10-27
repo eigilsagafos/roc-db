@@ -5,6 +5,7 @@ import { PostRefSchema } from "./PostRefSchema"
 export const BlockParagraphSchema = entitySchemaGenerator("BlockParagraph", {
     data: z.object({
         content: z.string().optional(),
+        mentions: z.array(z.string()).optional(),
     }),
     parents: z.object({
         parent: PostRefSchema,
