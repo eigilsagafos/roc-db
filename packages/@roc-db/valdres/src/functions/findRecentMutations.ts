@@ -22,7 +22,6 @@ export const findRecentMutations: FindRecentMutationsFunction<ValdresEngine> = (
         if (mutation.identityRef !== identityRef) return false
         if (identityMutations === undefined) return afterSince(mutation)
         if (identityMutations === "none") return false
-        if (identityMutations === "root" && scope !== null) return false
         return mutation.timestamp > since
     }
     const res: Mutation[] = []

@@ -69,10 +69,10 @@ export type RecentMutationsQuery = {
     // Whether the scope's mutations from every identity are needed, written
     // after `since` by `timestamp` or `persistedAt`. Default true.
     scopeMutations?: boolean
-    // Which of `identityRef`'s mutations written after `since` by `timestamp`
-    // are needed: in any scope, root only, or none. Unset means in any scope
-    // by either clock, which is what roc-db 0.2.0-pre.105 asks for.
-    identityMutations?: "anywhere" | "root" | "none"
+    // Whether `identityRef`'s mutations in any scope written after `since` by
+    // `timestamp` are needed. Unset means they are, by either clock, which is
+    // what roc-db 0.2.0-pre.105 asks for.
+    identityMutations?: "anywhere" | "none"
 }
 
 export type GetChangeSetMutationsFunction<EngineOpts extends any = any> = (

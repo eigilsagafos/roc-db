@@ -51,9 +51,7 @@ const persistOptimisticMutationsSync = (
             const operation = findOperation(operations, mutation)
             validatePayload(operation, mutation)
             const version =
-                existing &&
-                mutation.changeSetRef &&
-                mutation.debounceCount > existing.debounceCount
+                existing && mutation.debounceCount > existing.debounceCount
                     ? rebaseDebouncedVersion(
                           adapterOptions,
                           operation,
@@ -143,9 +141,7 @@ const persistOptimisticMutationsAsync = async (
             const operation = findOperation(operations, mutation)
             validatePayload(operation, mutation)
             const version =
-                existing &&
-                mutation.changeSetRef &&
-                mutation.debounceCount > existing.debounceCount
+                existing && mutation.debounceCount > existing.debounceCount
                     ? rebaseDebouncedVersion(
                           adapterOptions,
                           operation,

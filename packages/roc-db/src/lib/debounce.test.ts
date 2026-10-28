@@ -139,13 +139,13 @@ describe("findDebounceTarget", () => {
         ).toBe(target)
     })
 
-    test("at root, another identity's later write does not block the merge", () => {
+    test("at root, another identity's later write blocks the merge", () => {
         const rootRequest = { ...request, changeSetRef: null }
         const target = mutation(1, { changeSetRef: null })
         const other = mutation(2, {
-            operation: { name: "createSession", version: 1 },
+            operation: { name: "createPost", version: 1 },
             changeSetRef: null,
-            identityRef: "System",
+            identityRef: "User/B",
             timestamp: "2026-01-01T00:00:06.000Z",
         })
         for (const optimistic of [true, false]) {
@@ -157,11 +157,11 @@ describe("findDebounceTarget", () => {
                     "User/A",
                     optimistic,
                 ),
-            ).toBe(target)
+            ).toBeUndefined()
         }
     })
 
-    test("at root on a server, the latest of several matching rows is the target", () => {
+    test("of several matching rows, only the latest can be the target", () => {
         const rootRequest = { ...request, changeSetRef: null }
         const earlier = mutation(1, { changeSetRef: null })
         const later = mutation(2, {

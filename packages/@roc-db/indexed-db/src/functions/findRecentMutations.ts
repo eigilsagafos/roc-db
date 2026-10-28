@@ -75,7 +75,6 @@ export const findRecentMutations: FindRecentMutationsFunction = (async (
         if (mutation.identityRef !== identityRef) return false
         if (identityMutations === undefined) return afterSince(mutation)
         if (identityMutations === "none") return false
-        if (identityMutations === "root" && scope !== null) return false
         return mutation.timestamp > since
     })
 }) as unknown as FindRecentMutationsFunction

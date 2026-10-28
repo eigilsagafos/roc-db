@@ -7,8 +7,7 @@ import { postgresRowToMutation } from "../lib/postgresRowToMutation"
 // synchronous `Mutation[]` alias return directly. Params are typed manually and
 // the value is cast to the alias for the AdapterFunctions check.
 //
-// Each condition is served by its own index: `change_set_id` for a changeSet's
-// mutations, `(identity_ref, timestamp)` for the identity's.
+// The scope conditions are served by the indexes in mutationsTableIndexes.
 export const findRecentMutations: FindRecentMutationsFunction = (async (
     engineOpts: PostgresTxnEngine,
     {
@@ -36,10 +35,6 @@ export const findRecentMutations: FindRecentMutationsFunction = (async (
     } else if (identityMutations === "anywhere") {
         conditions.push(
             sqlTxn`(identity_ref = ${identityRef} AND timestamp > ${since})`,
-        )
-    } else if (identityMutations === "root") {
-        conditions.push(
-            sqlTxn`(identity_ref = ${identityRef} AND timestamp > ${since} AND change_set_id IS NULL)`,
         )
     }
     if (!conditions.length) return []

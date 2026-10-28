@@ -85,7 +85,7 @@ describe("in-memory adapter from roc-db 0.2.0-pre.105", () => {
     })
     const tick = () => Bun.sleep(2)
 
-    test("another identity's root write does not end coalescing", async () => {
+    test("another identity's root write ends coalescing", async () => {
         const engine = createEngine()
         const adapter = createLegacyAdapter("User/A", engine)
         const system = createLegacyAdapter("System", engine)
@@ -97,6 +97,22 @@ describe("in-memory adapter from roc-db 0.2.0-pre.105", () => {
         })
         await tick()
         system.createPost({ title: "Session", tags: [] })
+        await tick()
+        const [, version2] = adapter.updatePostTitle({
+            ref: post.ref,
+            title: "Drafted",
+        })
+        expect(version2.ref).not.toBe(version1.ref)
+    })
+
+    test("consecutive root writes coalesce", async () => {
+        const adapter = createLegacyAdapter("User/A", createEngine())
+        const [post] = adapter.createPost({ title: "Tag", tags: [] })
+        await tick()
+        const [, version1] = adapter.updatePostTitle({
+            ref: post.ref,
+            title: "Dra",
+        })
         await tick()
         const [, version2] = adapter.updatePostTitle({
             ref: post.ref,

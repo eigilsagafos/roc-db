@@ -39,29 +39,21 @@ const inChangeSet = (mutation: Mutation, changeSetRef: string | null) =>
 const debounceSince = (request: DebounceRequest, now: Date) =>
     new Date(now.getTime() - request.operation.debounce * 1000).toISOString()
 
-// What findDebounceTarget needs to know about: the changeSet's mutations from
+// What findDebounceTarget needs to know about: the scope's mutations from
 // every identity, and on an optimistic adapter (a client with a sync queue)
-// the identity's mutations anywhere. A server merging a root write only needs
-// the identity's root mutations.
+// the identity's mutations anywhere.
 export const recentMutationsQuery = (
     request: DebounceRequest,
     now: Date,
     identityRef: string,
     optimistic: boolean,
-): RecentMutationsQuery => {
-    const changeSetRef = request.changeSetRef ?? null
-    return {
-        changeSetRef,
-        identityRef,
-        since: debounceSince(request, now),
-        scopeMutations: changeSetRef !== null,
-        identityMutations: optimistic
-            ? "anywhere"
-            : changeSetRef === null
-              ? "root"
-              : "none",
-    }
-}
+): RecentMutationsQuery => ({
+    changeSetRef: request.changeSetRef ?? null,
+    identityRef,
+    since: debounceSince(request, now),
+    scopeMutations: true,
+    identityMutations: optimistic ? "anywhere" : "none",
+})
 
 const isLatestFirst = (a: Mutation, b: Mutation) =>
     isLaterOn(a, b, "timestamp") ? -1 : 1
@@ -70,13 +62,13 @@ const isLatestFirst = (a: Mutation, b: Mutation) =>
  * Picks the mutation a debounced write merges into, from the mutations
  * `findRecentMutations` returned for `recentMutationsQuery`.
  *
- * A row has a single position in replay order, so in a changeSet only a
- * consecutive write merges: the target must be the latest mutation in the
- * changeSet from any identity, on either clock. Root mutations are not
- * replayed, so any matching root row qualifies. On an optimistic adapter the
- * identity must also not have written anything after the target, anywhere,
- * which keeps its sync queue in order. Otherwise the write gets a new row,
- * which later consecutive writes merge into.
+ * A row has a single position in replay order, so only a consecutive write
+ * merges, which keeps replaying the stored mutations equal to what happened:
+ * the target must be the latest mutation in its changeSet (or root) from any
+ * identity, on either clock. On an optimistic adapter the identity must also
+ * not have written anything after the target, anywhere, which keeps its sync
+ * queue in order. Otherwise the write gets a new row, which later consecutive
+ * writes merge into.
  */
 export const findDebounceTarget = (
     request: DebounceRequest,
@@ -91,8 +83,7 @@ export const findDebounceTarget = (
         recent.some(
             mutation =>
                 mutation.ref !== candidate.ref &&
-                ((changeSetRef !== null &&
-                    inChangeSet(mutation, changeSetRef) &&
+                ((inChangeSet(mutation, changeSetRef) &&
                     isLater(mutation, candidate)) ||
                     (optimistic &&
                         mutation.identityRef === identityRef &&
@@ -111,9 +102,9 @@ export const findDebounceTarget = (
         .sort(isLatestFirst)[0]
 }
 
-// What to look up before persisting a debounced version of `existing` in its
-// changeSet: the mutations written after it, which include the rows the
-// version could merge into.
+// What to look up before persisting a debounced version of `existing`: the
+// mutations in its scope written after it, which include the rows the version
+// could merge into.
 export const rebaseQuery = (
     operation: WriteOperation,
     mutation: Mutation,
@@ -142,14 +133,12 @@ export const rebaseQuery = (
 
 /**
  * A client sends a debounced version under the ref of the row it merged into.
- * If other mutations in the changeSet now follow that row (the client merged
+ * If other mutations in its scope now follow that row (the client merged
  * across them, or had not seen another user's write yet), updating the row in
  * place would move the version past them. Persist the version as a fresh
  * debounced write from its identity instead: merged into the row it would merge
  * into today, or as a new row. Returns `null` for a retry of a version already
  * persisted that way, which is skipped like any resend.
- *
- * Only changeSet versions are rebased: root mutations are not replayed.
  */
 export const rebaseDebouncedVersion = (
     adapter: any,
@@ -169,6 +158,7 @@ export const rebaseDebouncedVersion = (
     const resent = recent.some(
         other =>
             other.ref !== existing.ref &&
+            inChangeSet(other, changeSetRef) &&
             other.identityRef === mutation.identityRef &&
             other.operation.name === mutation.operation.name &&
             other.timestamp === mutation.timestamp &&

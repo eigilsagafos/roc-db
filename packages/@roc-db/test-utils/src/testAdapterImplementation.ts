@@ -1285,42 +1285,45 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
             expect(version2.ref).not.toBe(version1.ref)
         })
 
-        test("root: another identity's root write does not end coalescing", async () => {
+        // A frees slug "x", B takes it, A edits the slug again. Merging A's
+        // second edit into its first row would replay B's create while A's
+        // post still has "x".
+        test("root: another identity's root write ends coalescing, so the log replays", async () => {
             const engineArgs = await generateArgs()
-            const adapter = await createAdapter({
+            const adapterA = await createAdapter({
                 session: { identityRef: "User/A" },
                 engineArgs,
             })
-            const system = await createAdapter({
-                session: { identityRef: "System" },
+            const adapterB = await createAdapter({
+                session: { identityRef: "User/B" },
                 engineArgs,
             })
-            const [post] = await adapter.createPost({ title: "Tag", tags: [] })
-            await tick()
-            const [, version1] = await adapter.updatePostTitle({
-                ref: post.ref,
-                title: "Dra",
+            const [post] = await adapterA.createPost({
+                title: "A",
+                tags: [],
+                slug: "x",
             })
             await tick()
-            await system.createPost({ title: "Session", tags: [] })
-            await tick()
-            const [, version2] = await adapter.updatePostTitle({
+            const [, version1] = await adapterA.updatePostSlug({
                 ref: post.ref,
-                title: "Drafted",
+                slug: "y",
             })
-            expect(version2.ref).toBe(version1.ref)
-            expect(version2.debounceCount).toBe(version1.debounceCount + 1)
+            await tick()
+            await adapterB.createPost({ title: "B", tags: [], slug: "x" })
+            await tick()
+            const [, version2] = await adapterA.updatePostSlug({
+                ref: post.ref,
+                slug: "z",
+            })
+            expect(version2.ref).not.toBe(version1.ref)
+
+            const replayed = await replay(adapterA)
+            expect((await replayed.readPost(post.ref)).data.slug).toBe("z")
         })
 
-        test("root: a synced version after another identity's root write keeps its ref", async () => {
-            const serverEngineArgs = await generateArgs()
+        test("root: a synced version merged across another identity's root write is re-filed, so the log replays", async () => {
             const server = await createAdapter({
-                session: { identityRef: "Server" },
-                engineArgs: serverEngineArgs,
-            })
-            const system = await createAdapter({
-                session: { identityRef: "System" },
-                engineArgs: serverEngineArgs,
+                session: { identityRef: "User/B" },
             })
             const client = await createAdapter({
                 optimistic: true,
@@ -1328,31 +1331,47 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
             })
             const queue = createSyncQueue(server)
             const post = queue.add(
-                await client.createPost({ title: "Tag", tags: [] }),
+                await client.createPost({ title: "A", tags: [], slug: "x" }),
             )
             await tick()
-            const [, version1] = await client.updatePostTitle({
+            const [, version1] = await client.updatePostSlug({
                 ref: post.ref,
-                title: "Dra",
+                slug: "y",
             })
             queue.add([undefined, version1])
             await queue.flush()
             await tick()
-            await system.createPost({ title: "Session", tags: [] })
+            await server.createPost({ title: "B", tags: [], slug: "x" })
             await tick()
-            const [, version2] = await client.updatePostTitle({
+            // The client has not seen B's write, so it merges.
+            const [, version2] = await client.updatePostSlug({
                 ref: post.ref,
-                title: "Drafted",
+                slug: "z",
             })
             expect(version2.ref).toBe(version1.ref)
             const [persisted] = await server.persistOptimisticMutations([
                 version2,
             ])
+            expect(persisted.ref).not.toBe(version1.ref)
+            expect((await server.readMutation(version1.ref)).payload.slug).toBe(
+                "y",
+            )
 
-            expect(persisted.ref).toBe(version1.ref)
-            const stored = await server.readMutation(version1.ref)
-            expect(stored.debounceCount).toBe(version2.debounceCount)
-            expect(stored.payload).toEqual(version2.payload)
+            // A retry is skipped, and the client's next version coalesces
+            // into the re-filed row.
+            await server.persistOptimisticMutations([version2])
+            await tick()
+            const [, version3] = await client.updatePostSlug({
+                ref: post.ref,
+                slug: "w",
+            })
+            const [persisted3] = await server.persistOptimisticMutations([
+                version3,
+            ])
+            expect(persisted3.ref).toBe(persisted.ref)
+
+            const replayed = await replay(server)
+            expect((await replayed.readPost(post.ref)).data.slug).toBe("w")
         })
     })
 }
