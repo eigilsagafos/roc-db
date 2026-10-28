@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import type { Mutation } from "../types/Mutation"
-import { findDebounceTarget } from "./debounce"
+import { findDebounceTarget, rebaseDebouncedVersion } from "./debounce"
+import { Snowflake } from "../utils/Snowflake"
 
 const now = new Date("2026-01-01T00:00:10.000Z")
 const request = {
@@ -177,5 +178,46 @@ describe("findDebounceTarget", () => {
                 false,
             ),
         ).toBe(later)
+    })
+})
+
+describe("rebaseDebouncedVersion", () => {
+    const adapter = { snowflake: new Snowflake(1, 1) }
+    const operation = request.operation
+    const existing = mutation(1, { persistedAt: "2026-01-01T00:00:05.000Z" })
+    const refiled = mutation(3, {
+        timestamp: "2026-01-01T00:00:07.000Z",
+        persistedAt: "2026-01-01T00:00:08.000Z",
+        payload: { ref: "Post/1", title: "v2" },
+        sessionRef: "Session/1",
+    } as any)
+    const version = (overrides: any) => ({
+        ...existing,
+        timestamp: "2026-01-01T00:00:07.000Z",
+        payload: { ref: "Post/1", title: "v2" },
+        debounceCount: 1,
+        sessionRef: "Session/1",
+        ...overrides,
+    })
+
+    test("skips a resend of a version re-filed for the same session", () => {
+        expect(
+            rebaseDebouncedVersion(adapter, operation, version({}), existing, [
+                existing,
+                refiled,
+            ]),
+        ).toBeNull()
+    })
+
+    test("does not skip an identical version from another session", () => {
+        expect(
+            rebaseDebouncedVersion(
+                adapter,
+                operation,
+                version({ sessionRef: "Session/2" }),
+                existing,
+                [existing, refiled],
+            ),
+        ).not.toBeNull()
     })
 })

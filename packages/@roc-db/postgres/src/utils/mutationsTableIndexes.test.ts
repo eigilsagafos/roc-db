@@ -12,3 +12,13 @@ test("names indexes after the table in a schema-qualified name", () => {
         'CREATE INDEX IF NOT EXISTS "mutations_root_timestamp_idx" ON "shiftx"."mutations" (timestamp) WHERE change_set_id IS NULL',
     )
 })
+
+test("index names stay distinct within PostgreSQL's 63-byte identifier limit", () => {
+    const names = mutationsTableIndexes("t".repeat(59)).map(
+        statement => statement.match(/INDEX IF NOT EXISTS "([^"]+)"/)![1],
+    )
+    expect(new Set(names).size).toBe(names.length)
+    for (const name of names) {
+        expect(new TextEncoder().encode(name).length).toBeLessThanOrEqual(63)
+    }
+})

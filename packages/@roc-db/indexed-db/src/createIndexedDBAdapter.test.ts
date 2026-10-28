@@ -91,3 +91,74 @@ describe("debounce with multiple matching rows", () => {
         expect(mutation.debounceCount).toBe(1)
     })
 })
+
+describe("database created by an earlier adapter version", () => {
+    // The schema adapter versions up to 0.2.0-pre.101 create (version 1).
+    const createVersion1Database = (dbName: string) =>
+        new Promise<void>((resolve, reject) => {
+            const openReq = indexedDB.open(dbName, 1)
+            openReq.onupgradeneeded = () => {
+                const db = openReq.result
+                const entities = db.createObjectStore("entities", {
+                    keyPath: "ref",
+                })
+                const mutations = db.createObjectStore("mutations", {
+                    keyPath: "ref",
+                })
+                entities.createIndex(
+                    "unique_constraint_0",
+                    ["entity", "unique_constraint_0"],
+                    { unique: true },
+                )
+                entities.createIndex(
+                    "unique_constraint_1",
+                    ["entity", "unique_constraint_1"],
+                    { unique: true },
+                )
+                entities.createIndex("byIndexEntry", "index_entries", {
+                    multiEntry: true,
+                })
+                mutations.createIndex("timestamp", "timestamp", {
+                    unique: false,
+                })
+                mutations.createIndex("byChangeSetRef", "changeSetRef", {
+                    unique: false,
+                })
+            }
+            openReq.onsuccess = () => {
+                openReq.result.close()
+                resolve()
+            }
+            openReq.onerror = () => reject(openReq.error)
+        })
+
+    const mutationIndexNames = (dbName: string) =>
+        new Promise<string[]>((resolve, reject) => {
+            const openReq = indexedDB.open(dbName)
+            openReq.onsuccess = () => {
+                const db = openReq.result
+                const names = Array.from(
+                    db.transaction(["mutations"]).objectStore("mutations")
+                        .indexNames,
+                )
+                db.close()
+                resolve(names)
+            }
+            openReq.onerror = () => reject(openReq.error)
+        })
+
+    test("is upgraded with a persistedAt index", async () => {
+        const dbName = crypto.randomUUID().slice(0, 8)
+        await createVersion1Database(dbName)
+        const adapter = createIndexedDBAdapter({
+            operations,
+            entities,
+            session: { identityRef: "User/42" },
+            snowflake: new Snowflake(10, 10),
+            dbName,
+        })
+        const [post] = await adapter.createPost({ title: "Title" })
+        expect((await adapter.readPost(post.ref)).data.title).toBe("Title")
+        expect(await mutationIndexNames(dbName)).toContain("persistedAt")
+    })
+})

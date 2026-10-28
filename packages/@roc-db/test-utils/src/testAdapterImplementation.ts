@@ -1373,5 +1373,105 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
             const replayed = await replay(server)
             expect((await replayed.readPost(post.ref)).data.slug).toBe("w")
         })
+
+        // A client that has not seen another identity's root write merges its
+        // next versions into the synced row, so the server re-files them.
+        const setupRefiledRootVersions = async () => {
+            const server = await createAdapter({
+                session: { identityRef: "User/B" },
+            })
+            const client = await createAdapter({
+                optimistic: true,
+                session: { identityRef: "User/A" },
+            })
+            const queue = createSyncQueue(server)
+            const post = queue.add(
+                await client.createPost({ title: "v0", tags: [] }),
+            )
+            await tick()
+            const [, version1] = await client.updatePostTitle({
+                ref: post.ref,
+                title: "v1",
+            })
+            queue.add([undefined, version1])
+            await queue.flush()
+            await tick()
+            await server.createPost({ title: "B", tags: [] })
+            await tick()
+            const [, version2] = await client.updatePostTitle({
+                ref: post.ref,
+                title: "v2",
+            })
+            await tick()
+            const [, version3] = await client.updatePostTitle({
+                ref: post.ref,
+                title: "v3",
+            })
+            expect(version3.ref).toBe(version1.ref)
+            return { server, post, version2, version3 }
+        }
+
+        test("a delayed retry of a re-filed version does not overwrite the newer version merged into its row", async () => {
+            const { server, post, version2, version3 } =
+                await setupRefiledRootVersions()
+            await server.persistOptimisticMutations([version2])
+            await tick()
+            await server.persistOptimisticMutations([version3])
+            await tick()
+            await server.persistOptimisticMutations([version2])
+
+            expect((await server.readPost(post.ref)).data.title).toBe("v3")
+            const replayed = await replay(server)
+            expect((await replayed.readPost(post.ref)).data.title).toBe("v3")
+        })
+
+        test("a delayed retry of a re-filed version is not re-filed once other writes follow the newer version", async () => {
+            const { server, post, version2, version3 } =
+                await setupRefiledRootVersions()
+            await server.persistOptimisticMutations([version2])
+            await tick()
+            await server.persistOptimisticMutations([version3])
+            await tick()
+            await server.createPost({ title: "B2", tags: [] })
+            await tick()
+            await server.persistOptimisticMutations([version2])
+
+            expect((await server.readPost(post.ref)).data.title).toBe("v3")
+            const replayed = await replay(server)
+            expect((await replayed.readPost(post.ref)).data.title).toBe("v3")
+        })
+
+        test("root: a mutation written before the window but persisted after the row ends coalescing", async () => {
+            const server = await createAdapter({
+                session: { identityRef: "User/S" },
+            })
+            const client = await createAdapter({
+                optimistic: true,
+                session: { identityRef: "User/C" },
+            })
+            const [post] = await server.createPost({ title: "v0", tags: [] })
+            // An offline client wrote this a minute ago and syncs it now.
+            const [, offline] = await client.createPost({
+                title: "Offline",
+                tags: [],
+            })
+            const offlineMutation = {
+                ...offline,
+                timestamp: new Date(Date.now() - 60_000).toISOString(),
+            }
+            await tick()
+            const [, version1] = await server.updatePostTitle({
+                ref: post.ref,
+                title: "v1",
+            })
+            await tick()
+            await server.persistOptimisticMutations([offlineMutation])
+            await tick()
+            const [, version2] = await server.updatePostTitle({
+                ref: post.ref,
+                title: "v2",
+            })
+            expect(version2.ref).not.toBe(version1.ref)
+        })
     })
 }
