@@ -43,16 +43,17 @@ export const findRecentMutations: FindRecentMutationsFunction = (async (
     )
     const wantsScope = scopeMutations !== false
     const results = new Map<string, Mutation>()
-    // There is no persistedAt index, so a changeSet's mutations persisted
-    // recently but written earlier come from the changeSet index. The
-    // timestamp index serves the identity's mutations and root (a null key is
-    // not in the changeSet index), where only the timestamp is needed.
+    // A changeSet's mutations come from the changeSet index. Root mutations
+    // are not in it (a null key is not indexed), so they come from the
+    // timestamp and persistedAt indexes, which also serve the identity's.
+    const wantsRoot = wantsScope && !changeSetRef
+    const after = IDBKeyRange.lowerBound(since, true)
     await Promise.all([
-        (identityMutations !== "none" || (wantsScope && !changeSetRef)) &&
+        (identityMutations !== "none" || wantsRoot) &&
+            collect(objectStore.index("timestamp").openCursor(after), results),
+        (identityMutations === undefined || wantsRoot) &&
             collect(
-                objectStore
-                    .index("timestamp")
-                    .openCursor(IDBKeyRange.lowerBound(since, true)),
+                objectStore.index("persistedAt").openCursor(after),
                 results,
             ),
         wantsScope &&

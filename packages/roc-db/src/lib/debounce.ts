@@ -138,7 +138,8 @@ export const rebaseQuery = (
  * place would move the version past them. Persist the version as a fresh
  * debounced write from its identity instead: merged into the row it would merge
  * into today, or as a new row. Returns `null` for a retry of a version already
- * persisted that way, which is skipped like any resend.
+ * persisted that way, or of one a later version from the same session already
+ * replaced, which is skipped like any resend.
  */
 export const rebaseDebouncedVersion = (
     adapter: any,
@@ -155,16 +156,22 @@ export const rebaseDebouncedVersion = (
             isLater(other, existing),
     )
     if (!followed) return mutation
-    const resent = recent.some(
+    // The client's versions of a row are written in order, so a row from the
+    // same session that already holds a later version, or this exact one,
+    // makes this a retry or a resend.
+    const superseded = recent.some(
         other =>
             other.ref !== existing.ref &&
             inChangeSet(other, changeSetRef) &&
             other.identityRef === mutation.identityRef &&
+            (other.sessionRef ?? null) === (mutation.sessionRef ?? null) &&
             other.operation.name === mutation.operation.name &&
-            other.timestamp === mutation.timestamp &&
-            deepEqual(other.payload, mutation.payload),
+            other.payload?.ref === mutation.payload?.ref &&
+            (other.timestamp > mutation.timestamp ||
+                (other.timestamp === mutation.timestamp &&
+                    deepEqual(other.payload, mutation.payload))),
     )
-    if (resent) return null
+    if (superseded) return null
     const target = findDebounceTarget(
         { operation, payload: mutation.payload, changeSetRef },
         recent,

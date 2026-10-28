@@ -35,7 +35,7 @@ export const createIndexedDBAdapter = ({
         },
         {
             dbName,
-            version: 1,
+            version: 2,
         },
     ) as Adapter
 }
