@@ -1,6 +1,7 @@
 import postgres from "postgres"
 import { ENTITIES_TABLE_BODY_SCHEMA } from "../src/utils/ENTITIES_TABLE_BODY_SCHEMA"
 import { MUTATIONS_TABLE_BODY_SCHEMA } from "../src/utils/MUTATIONS_TABLE_BODY_SCHEMA"
+import { mutationsTableIndexes } from "../src/utils/mutationsTableIndexes"
 
 export const POSTGRES_TEST_URL =
     process.env.POSTGRES_TEST_URL ??
@@ -21,6 +22,7 @@ export const createTestDatabase = async client => {
         CREATE TABLE mutations (
           ${MUTATIONS_TABLE_BODY_SCHEMA}
         );
+        ${mutationsTableIndexes("mutations").join(";\n")};
     `)
     return childSql
 }

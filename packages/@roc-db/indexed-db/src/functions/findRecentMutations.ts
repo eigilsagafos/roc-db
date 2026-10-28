@@ -30,23 +30,34 @@ const collect = (
 // the value is cast to the alias for the AdapterFunctions check.
 export const findRecentMutations: FindRecentMutationsFunction = (async (
     engine: IndexedDBEngine,
-    { changeSetRef, identityRef, since }: RecentMutationsQuery,
+    {
+        changeSetRef,
+        identityRef,
+        since,
+        scopeMutations,
+        identityMutations,
+    }: RecentMutationsQuery,
 ) => {
     const objectStore = (engine as IndexedDBTxnEngine).txn.objectStore(
         "mutations",
     )
+    const wantsScope = scopeMutations !== false
     const results = new Map<string, Mutation>()
-    // There is no persistedAt index, so a changeSet's mutations persisted
-    // recently but written earlier come from the changeSet index. Root
-    // mutations are not in that index (a null key is not indexed).
+    // A changeSet's mutations come from the changeSet index. Root mutations
+    // are not in it (a null key is not indexed), so they come from the
+    // timestamp and persistedAt indexes, which also serve the identity's.
+    const wantsRoot = wantsScope && !changeSetRef
+    const after = IDBKeyRange.lowerBound(since, true)
     await Promise.all([
-        collect(
-            objectStore
-                .index("timestamp")
-                .openCursor(IDBKeyRange.lowerBound(since, true)),
-            results,
-        ),
-        changeSetRef &&
+        (identityMutations !== "none" || wantsRoot) &&
+            collect(objectStore.index("timestamp").openCursor(after), results),
+        (identityMutations === undefined || wantsRoot) &&
+            collect(
+                objectStore.index("persistedAt").openCursor(after),
+                results,
+            ),
+        wantsScope &&
+            changeSetRef &&
             collect(
                 objectStore
                     .index("byChangeSetRef")
@@ -54,11 +65,17 @@ export const findRecentMutations: FindRecentMutationsFunction = (async (
                 results,
             ),
     ])
-    return [...results.values()].filter(
-        mutation =>
-            (mutation.timestamp > since ||
-                (!!mutation.persistedAt && mutation.persistedAt > since)) &&
-            ((mutation.changeSetRef ?? null) === changeSetRef ||
-                mutation.identityRef === identityRef),
-    )
+    const afterSince = (mutation: Mutation) =>
+        mutation.timestamp > since ||
+        (!!mutation.persistedAt && mutation.persistedAt > since)
+    return [...results.values()].filter(mutation => {
+        const scope = mutation.changeSetRef ?? null
+        if (wantsScope && scope === changeSetRef && afterSince(mutation)) {
+            return true
+        }
+        if (mutation.identityRef !== identityRef) return false
+        if (identityMutations === undefined) return afterSince(mutation)
+        if (identityMutations === "none") return false
+        return mutation.timestamp > since
+    })
 }) as unknown as FindRecentMutationsFunction

@@ -8,35 +8,48 @@ const openDatabase = (engineOpts: IndexedDBEngine): Promise<IDBDatabase> => {
     if (cached) return cached
     const promise = new Promise<IDBDatabase>((resolve, reject) => {
         const idbRequest = indexedDB.open(engineOpts.dbName, engineOpts.version)
-        idbRequest.onupgradeneeded = () => {
-            const entitiesObjectStore = idbRequest.result.createObjectStore(
-                "entities",
-                { keyPath: "ref" },
-            )
-            const mutationsObjectStore = idbRequest.result.createObjectStore(
-                "mutations",
-                { keyPath: "ref" },
-            )
+        idbRequest.onupgradeneeded = event => {
+            const db = idbRequest.result
+            if (event.oldVersion < 1) {
+                const entitiesObjectStore = db.createObjectStore("entities", {
+                    keyPath: "ref",
+                })
+                const mutationsObjectStore = db.createObjectStore("mutations", {
+                    keyPath: "ref",
+                })
 
-            entitiesObjectStore.createIndex(
-                "unique_constraint_0",
-                ["entity", "unique_constraint_0"],
-                { unique: true },
-            )
-            entitiesObjectStore.createIndex(
-                "unique_constraint_1",
-                ["entity", "unique_constraint_1"],
-                { unique: true },
-            )
-            entitiesObjectStore.createIndex("byIndexEntry", "index_entries", {
-                multiEntry: true,
-            })
-            mutationsObjectStore.createIndex("timestamp", "timestamp", {
-                unique: false,
-            })
-            mutationsObjectStore.createIndex("byChangeSetRef", "changeSetRef", {
-                unique: false,
-            })
+                entitiesObjectStore.createIndex(
+                    "unique_constraint_0",
+                    ["entity", "unique_constraint_0"],
+                    { unique: true },
+                )
+                entitiesObjectStore.createIndex(
+                    "unique_constraint_1",
+                    ["entity", "unique_constraint_1"],
+                    { unique: true },
+                )
+                entitiesObjectStore.createIndex(
+                    "byIndexEntry",
+                    "index_entries",
+                    { multiEntry: true },
+                )
+                mutationsObjectStore.createIndex("timestamp", "timestamp", {
+                    unique: false,
+                })
+                mutationsObjectStore.createIndex(
+                    "byChangeSetRef",
+                    "changeSetRef",
+                    { unique: false },
+                )
+            }
+            if (event.oldVersion < 2) {
+                // Finds mutations synced after they were written (findRecentMutations).
+                ;(idbRequest.transaction as IDBTransaction)
+                    .objectStore("mutations")
+                    .createIndex("persistedAt", "persistedAt", {
+                        unique: false,
+                    })
+            }
         }
 
         idbRequest.onsuccess = () => {

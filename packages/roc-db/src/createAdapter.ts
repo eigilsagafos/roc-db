@@ -1,5 +1,6 @@
 import { z } from "zod"
 import type { Entity } from "./Entity"
+import { assertAdapterFunctions } from "./lib/assertAdapterFunctions"
 import { assertChangeSetKind } from "./lib/assertChangeSetKind"
 import { assertUniqueOperations } from "./lib/assertUniqueOperations"
 import { execute } from "./lib/execute"
@@ -70,6 +71,7 @@ export const createAdapter = <
             payload: z.input<Item["payloadSchema"]>,
         ) => z.output<Item["payloadSchema"]>
     }
+    assertAdapterFunctions(adapterOptions.name, adapterOptions.functions)
     adapterOptions.undoStack = []
     adapterOptions.redoStack = []
 

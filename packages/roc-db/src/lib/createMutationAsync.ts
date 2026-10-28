@@ -29,11 +29,18 @@ export const createMutationAsync = async (
     const now = new Date()
     if (request.operation.debounce) {
         const identityRef = adapter.session.identityRef
+        const optimistic = !!adapter.optimistic
         const recent = await adapter.functions.findRecentMutations(
             engine,
-            recentMutationsQuery(request, now, identityRef),
+            recentMutationsQuery(request, now, identityRef, optimistic),
         )
-        const target = findDebounceTarget(request, recent, now, identityRef)
+        const target = findDebounceTarget(
+            request,
+            recent,
+            now,
+            identityRef,
+            optimistic,
+        )
         if (target) {
             return [mergeDebouncedVersion(target, adapter, payload, now), []]
         }

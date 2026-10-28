@@ -1060,7 +1060,7 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
             expect(replayedHolder.data.mentions).toEqual([mentioned.ref])
         })
 
-        test("old client: merged versions whose row is no longer last persist once and replay", async () => {
+        test("old client: merged versions whose row is no longer last persist once, retry quietly and replay", async () => {
             const {
                 server,
                 queue,
@@ -1105,18 +1105,17 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
                 },
             ])
 
-            // A resend of the same version is not persisted twice.
-            await expect(
-                (async () =>
-                    server.persistOptimisticMutations([
-                        {
-                            ...versionMutation,
-                            payload: mergedPayload,
-                            debounceCount: versionMutation.debounceCount + 1,
-                            timestamp: resentTimestamp,
-                        },
-                    ]))(),
-            ).rejects.toThrow("Mutation already synced")
+            // A retry of that version, e.g. after a lost response, is skipped
+            // quietly, like a resend of a version stored under its own ref.
+            await tick()
+            await server.persistOptimisticMutations([
+                {
+                    ...versionMutation,
+                    payload: mergedPayload,
+                    debounceCount: versionMutation.debounceCount + 1,
+                    timestamp: resentTimestamp,
+                },
+            ])
             // The client's next version coalesces into the row the server
             // persisted the previous one in.
             await tick()
@@ -1215,9 +1214,11 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
             expect(version3.debounceCount).toBe(version2.debounceCount + 1)
         })
 
-        test("another identity's write in the changeSet, or the identity's own write elsewhere, ends coalescing", async () => {
+        test("on a client, another identity's write in the changeSet or its own write elsewhere ends coalescing", async () => {
             const engineArgs = await generateArgs()
+            // A client: its own writes elsewhere matter for its sync queue.
             const adapterA = await createAdapter({
+                optimistic: true,
                 session: { identityRef: "User/A" },
                 engineArgs,
             })
@@ -1259,6 +1260,218 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
             expect(version2.ref).not.toBe(version1.ref)
             expect(version3.ref).not.toBe(version2.ref)
             expect(version4.ref).toBe(version3.ref)
+        })
+
+        test("a mutation written before the row but persisted after it ends coalescing", async () => {
+            const { server, queue, draft, changeSet, createParagraph, holder } =
+                await setupClient()
+            const serverChangeSet = server.changeSet(draft.ref)
+            // Written on the client, synced only after the server's first
+            // version (an offline client).
+            await createParagraph()
+            await tick()
+            const [, version1] =
+                await serverChangeSet.updateBlockParagraphMentions({
+                    ref: holder.ref,
+                    mentions: [],
+                })
+            await queue.flush()
+            await tick()
+            const [, version2] =
+                await serverChangeSet.updateBlockParagraphMentions({
+                    ref: holder.ref,
+                    mentions: [],
+                })
+            expect(version2.ref).not.toBe(version1.ref)
+        })
+
+        // A frees slug "x", B takes it, A edits the slug again. Merging A's
+        // second edit into its first row would replay B's create while A's
+        // post still has "x".
+        test("root: another identity's root write ends coalescing, so the log replays", async () => {
+            const engineArgs = await generateArgs()
+            const adapterA = await createAdapter({
+                session: { identityRef: "User/A" },
+                engineArgs,
+            })
+            const adapterB = await createAdapter({
+                session: { identityRef: "User/B" },
+                engineArgs,
+            })
+            const [post] = await adapterA.createPost({
+                title: "A",
+                tags: [],
+                slug: "x",
+            })
+            await tick()
+            const [, version1] = await adapterA.updatePostSlug({
+                ref: post.ref,
+                slug: "y",
+            })
+            await tick()
+            await adapterB.createPost({ title: "B", tags: [], slug: "x" })
+            await tick()
+            const [, version2] = await adapterA.updatePostSlug({
+                ref: post.ref,
+                slug: "z",
+            })
+            expect(version2.ref).not.toBe(version1.ref)
+
+            const replayed = await replay(adapterA)
+            expect((await replayed.readPost(post.ref)).data.slug).toBe("z")
+        })
+
+        test("root: a synced version merged across another identity's root write is re-filed, so the log replays", async () => {
+            const server = await createAdapter({
+                session: { identityRef: "User/B" },
+            })
+            const client = await createAdapter({
+                optimistic: true,
+                session: { identityRef: "User/A" },
+            })
+            const queue = createSyncQueue(server)
+            const post = queue.add(
+                await client.createPost({ title: "A", tags: [], slug: "x" }),
+            )
+            await tick()
+            const [, version1] = await client.updatePostSlug({
+                ref: post.ref,
+                slug: "y",
+            })
+            queue.add([undefined, version1])
+            await queue.flush()
+            await tick()
+            await server.createPost({ title: "B", tags: [], slug: "x" })
+            await tick()
+            // The client has not seen B's write, so it merges.
+            const [, version2] = await client.updatePostSlug({
+                ref: post.ref,
+                slug: "z",
+            })
+            expect(version2.ref).toBe(version1.ref)
+            const [persisted] = await server.persistOptimisticMutations([
+                version2,
+            ])
+            expect(persisted.ref).not.toBe(version1.ref)
+            expect((await server.readMutation(version1.ref)).payload.slug).toBe(
+                "y",
+            )
+
+            // A retry is skipped, and the client's next version coalesces
+            // into the re-filed row.
+            await server.persistOptimisticMutations([version2])
+            await tick()
+            const [, version3] = await client.updatePostSlug({
+                ref: post.ref,
+                slug: "w",
+            })
+            const [persisted3] = await server.persistOptimisticMutations([
+                version3,
+            ])
+            expect(persisted3.ref).toBe(persisted.ref)
+
+            const replayed = await replay(server)
+            expect((await replayed.readPost(post.ref)).data.slug).toBe("w")
+        })
+
+        // A client that has not seen another identity's root write merges its
+        // next versions into the synced row, so the server re-files them.
+        const setupRefiledRootVersions = async () => {
+            const server = await createAdapter({
+                session: { identityRef: "User/B" },
+            })
+            const client = await createAdapter({
+                optimistic: true,
+                session: { identityRef: "User/A" },
+            })
+            const queue = createSyncQueue(server)
+            const post = queue.add(
+                await client.createPost({ title: "v0", tags: [] }),
+            )
+            await tick()
+            const [, version1] = await client.updatePostTitle({
+                ref: post.ref,
+                title: "v1",
+            })
+            queue.add([undefined, version1])
+            await queue.flush()
+            await tick()
+            await server.createPost({ title: "B", tags: [] })
+            await tick()
+            const [, version2] = await client.updatePostTitle({
+                ref: post.ref,
+                title: "v2",
+            })
+            await tick()
+            const [, version3] = await client.updatePostTitle({
+                ref: post.ref,
+                title: "v3",
+            })
+            expect(version3.ref).toBe(version1.ref)
+            return { server, post, version2, version3 }
+        }
+
+        test("a delayed retry of a re-filed version does not overwrite the newer version merged into its row", async () => {
+            const { server, post, version2, version3 } =
+                await setupRefiledRootVersions()
+            await server.persistOptimisticMutations([version2])
+            await tick()
+            await server.persistOptimisticMutations([version3])
+            await tick()
+            await server.persistOptimisticMutations([version2])
+
+            expect((await server.readPost(post.ref)).data.title).toBe("v3")
+            const replayed = await replay(server)
+            expect((await replayed.readPost(post.ref)).data.title).toBe("v3")
+        })
+
+        test("a delayed retry of a re-filed version is not re-filed once other writes follow the newer version", async () => {
+            const { server, post, version2, version3 } =
+                await setupRefiledRootVersions()
+            await server.persistOptimisticMutations([version2])
+            await tick()
+            await server.persistOptimisticMutations([version3])
+            await tick()
+            await server.createPost({ title: "B2", tags: [] })
+            await tick()
+            await server.persistOptimisticMutations([version2])
+
+            expect((await server.readPost(post.ref)).data.title).toBe("v3")
+            const replayed = await replay(server)
+            expect((await replayed.readPost(post.ref)).data.title).toBe("v3")
+        })
+
+        test("root: a mutation written before the window but persisted after the row ends coalescing", async () => {
+            const server = await createAdapter({
+                session: { identityRef: "User/S" },
+            })
+            const client = await createAdapter({
+                optimistic: true,
+                session: { identityRef: "User/C" },
+            })
+            const [post] = await server.createPost({ title: "v0", tags: [] })
+            // An offline client wrote this a minute ago and syncs it now.
+            const [, offline] = await client.createPost({
+                title: "Offline",
+                tags: [],
+            })
+            const offlineMutation = {
+                ...offline,
+                timestamp: new Date(Date.now() - 60_000).toISOString(),
+            }
+            await tick()
+            const [, version1] = await server.updatePostTitle({
+                ref: post.ref,
+                title: "v1",
+            })
+            await tick()
+            await server.persistOptimisticMutations([offlineMutation])
+            await tick()
+            const [, version2] = await server.updatePostTitle({
+                ref: post.ref,
+                title: "v2",
+            })
+            expect(version2.ref).not.toBe(version1.ref)
         })
     })
 }

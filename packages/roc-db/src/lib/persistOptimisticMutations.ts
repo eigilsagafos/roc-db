@@ -63,6 +63,12 @@ const persistOptimisticMutationsSync = (
                           ),
                       )
                     : mutation
+            if (!version) {
+                console.warn(
+                    `Mutation ${mutation.ref} already synced, skipping`,
+                )
+                continue
+            }
             // A batch shares one persistedAt and replay breaks ties by id, but
             // a rebased version's new id says nothing about its place in the
             // batch. Give it, and the mutations after it, later persistedAts.
@@ -147,6 +153,12 @@ const persistOptimisticMutationsAsync = async (
                           ),
                       )
                     : mutation
+            if (!version) {
+                console.warn(
+                    `Mutation ${mutation.ref} already synced, skipping`,
+                )
+                continue
+            }
             // A batch shares one persistedAt and replay breaks ties by id, but
             // a rebased version's new id says nothing about its place in the
             // batch. Give it, and the mutations after it, later persistedAts.

@@ -53,19 +53,26 @@ export type CommitFunction<EngineOpts extends any = any> = (
     changes: { created: any[]; updated: any[]; deleted: Ref[] },
 ) => any
 
-// Lists the mutations written after `since` (by `timestamp` or `persistedAt`)
-// that are in the changeSet `changeSetRef` (`null` for root) or were written by
-// `identityRef`, in any order. Core picks the mutation a debounced write merges
-// into from these, so returning more mutations than asked for is harmless.
+// Lists recent mutations a debounced write could merge into or must not
+// merge across, in any order. Core picks the target from them, so returning
+// more mutations than asked for is harmless.
 export type FindRecentMutationsFunction<EngineOpts extends any = any> = (
     engineOpts: EngineOpts,
     query: RecentMutationsQuery,
 ) => Mutation[]
 
 export type RecentMutationsQuery = {
+    // The scope: a changeSet, or `null` for root.
     changeSetRef: Ref | null
     identityRef: string
     since: string
+    // Whether the scope's mutations from every identity are needed, written
+    // after `since` by `timestamp` or `persistedAt`. Default true.
+    scopeMutations?: boolean
+    // Whether `identityRef`'s mutations in any scope written after `since` by
+    // `timestamp` are needed. Unset means they are, by either clock, which is
+    // what roc-db 0.2.0-pre.105 asks for.
+    identityMutations?: "anywhere" | "none"
 }
 
 export type GetChangeSetMutationsFunction<EngineOpts extends any = any> = (
