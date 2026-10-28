@@ -1,16 +1,31 @@
-import type { FindRecentMutationsFunction } from "roc-db"
+import type { FindRecentMutationsFunction, Mutation } from "roc-db"
 import type { InMemoryEngine } from "../types/InMemoryEngine"
 
 export const findRecentMutations: FindRecentMutationsFunction<
     InMemoryEngine
-> = (engine, { changeSetRef, identityRef, since }) =>
-    engine.mutations
+> = (
+    engine,
+    { changeSetRef, identityRef, since, scopeMutations, identityMutations },
+) => {
+    const afterSince = (mutation: Mutation) =>
+        mutation.timestamp > since ||
+        (!!mutation.persistedAt && mutation.persistedAt > since)
+    return engine.mutations
         .values()
-        .filter(
-            mutation =>
-                (mutation.timestamp > since ||
-                    (!!mutation.persistedAt && mutation.persistedAt > since)) &&
-                ((mutation.changeSetRef ?? null) === changeSetRef ||
-                    mutation.identityRef === identityRef),
-        )
+        .filter(mutation => {
+            const scope = mutation.changeSetRef ?? null
+            if (
+                scopeMutations !== false &&
+                scope === changeSetRef &&
+                afterSince(mutation)
+            ) {
+                return true
+            }
+            if (mutation.identityRef !== identityRef) return false
+            if (identityMutations === undefined) return afterSince(mutation)
+            if (identityMutations === "none") return false
+            if (identityMutations === "root" && scope !== null) return false
+            return mutation.timestamp > since
+        })
         .toArray()
+}

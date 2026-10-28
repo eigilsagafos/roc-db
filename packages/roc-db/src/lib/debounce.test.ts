@@ -28,7 +28,13 @@ describe("findDebounceTarget", () => {
     test("merges into the latest mutation", () => {
         const target = mutation(2)
         expect(
-            findDebounceTarget(request, [mutation(1), target], now, "User/A"),
+            findDebounceTarget(
+                request,
+                [mutation(1), target],
+                now,
+                "User/A",
+                false,
+            ),
         ).toBe(target)
     })
 
@@ -42,7 +48,13 @@ describe("findDebounceTarget", () => {
             persistedAt: "2026-01-01T00:00:06.000Z",
         })
         expect(
-            findDebounceTarget(request, [target, offline], now, "User/A"),
+            findDebounceTarget(
+                request,
+                [target, offline],
+                now,
+                "User/A",
+                false,
+            ),
         ).toBeUndefined()
     })
 
@@ -57,6 +69,7 @@ describe("findDebounceTarget", () => {
                 [target, sameMillisecond],
                 now,
                 "User/A",
+                false,
             ),
         ).toBeUndefined()
     })
@@ -69,14 +82,100 @@ describe("findDebounceTarget", () => {
             timestamp: "2026-01-01T00:00:06.000Z",
         })
         expect(
-            findDebounceTarget(request, [target, elsewhere], now, "User/A"),
+            findDebounceTarget(
+                request,
+                [target, elsewhere],
+                now,
+                "User/A",
+                false,
+            ),
         ).toBe(target)
     })
 
     test("a mutation outside the window is not merged into", () => {
         const old = mutation(1, { timestamp: "2025-12-31T23:59:59.000Z" })
         expect(
-            findDebounceTarget(request, [old], now, "User/A"),
+            findDebounceTarget(request, [old], now, "User/A", false),
         ).toBeUndefined()
+    })
+
+    test("on a client, the identity's later write anywhere blocks the merge", () => {
+        const target = mutation(1)
+        const elsewhere = mutation(2, {
+            operation: { name: "createBlock", version: 1 },
+            changeSetRef: null,
+            timestamp: "2026-01-01T00:00:06.000Z",
+        })
+        expect(
+            findDebounceTarget(
+                request,
+                [target, elsewhere],
+                now,
+                "User/A",
+                true,
+            ),
+        ).toBeUndefined()
+        expect(
+            findDebounceTarget(
+                request,
+                [target, elsewhere],
+                now,
+                "User/A",
+                false,
+            ),
+        ).toBe(target)
+    })
+
+    test("on a client, the identity's write persisted later but written earlier does not block", () => {
+        const target = mutation(1, { persistedAt: "2026-01-01T00:00:05.000Z" })
+        const synced = mutation(2, {
+            operation: { name: "createBlock", version: 1 },
+            changeSetRef: "Draft/2",
+            timestamp: "2026-01-01T00:00:01.000Z",
+            persistedAt: "2026-01-01T00:00:06.000Z",
+        })
+        expect(
+            findDebounceTarget(request, [target, synced], now, "User/A", true),
+        ).toBe(target)
+    })
+
+    test("at root, another identity's later write does not block the merge", () => {
+        const rootRequest = { ...request, changeSetRef: null }
+        const target = mutation(1, { changeSetRef: null })
+        const other = mutation(2, {
+            operation: { name: "createSession", version: 1 },
+            changeSetRef: null,
+            identityRef: "System",
+            timestamp: "2026-01-01T00:00:06.000Z",
+        })
+        for (const optimistic of [true, false]) {
+            expect(
+                findDebounceTarget(
+                    rootRequest,
+                    [target, other],
+                    now,
+                    "User/A",
+                    optimistic,
+                ),
+            ).toBe(target)
+        }
+    })
+
+    test("at root on a server, the latest of several matching rows is the target", () => {
+        const rootRequest = { ...request, changeSetRef: null }
+        const earlier = mutation(1, { changeSetRef: null })
+        const later = mutation(2, {
+            changeSetRef: null,
+            timestamp: "2026-01-01T00:00:06.000Z",
+        })
+        expect(
+            findDebounceTarget(
+                rootRequest,
+                [later, earlier],
+                now,
+                "User/A",
+                false,
+            ),
+        ).toBe(later)
     })
 })

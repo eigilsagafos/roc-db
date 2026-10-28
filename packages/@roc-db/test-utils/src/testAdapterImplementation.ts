@@ -1060,7 +1060,7 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
             expect(replayedHolder.data.mentions).toEqual([mentioned.ref])
         })
 
-        test("old client: merged versions whose row is no longer last persist once and replay", async () => {
+        test("old client: merged versions whose row is no longer last persist once, retry quietly and replay", async () => {
             const {
                 server,
                 queue,
@@ -1105,18 +1105,17 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
                 },
             ])
 
-            // A resend of the same version is not persisted twice.
-            await expect(
-                (async () =>
-                    server.persistOptimisticMutations([
-                        {
-                            ...versionMutation,
-                            payload: mergedPayload,
-                            debounceCount: versionMutation.debounceCount + 1,
-                            timestamp: resentTimestamp,
-                        },
-                    ]))(),
-            ).rejects.toThrow("Mutation already synced")
+            // A retry of that version, e.g. after a lost response, is skipped
+            // quietly, like a resend of a version stored under its own ref.
+            await tick()
+            await server.persistOptimisticMutations([
+                {
+                    ...versionMutation,
+                    payload: mergedPayload,
+                    debounceCount: versionMutation.debounceCount + 1,
+                    timestamp: resentTimestamp,
+                },
+            ])
             // The client's next version coalesces into the row the server
             // persisted the previous one in.
             await tick()
@@ -1215,9 +1214,11 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
             expect(version3.debounceCount).toBe(version2.debounceCount + 1)
         })
 
-        test("another identity's write in the changeSet, or the identity's own write elsewhere, ends coalescing", async () => {
+        test("on a client, another identity's write in the changeSet or its own write elsewhere ends coalescing", async () => {
             const engineArgs = await generateArgs()
+            // A client: its own writes elsewhere matter for its sync queue.
             const adapterA = await createAdapter({
+                optimistic: true,
                 session: { identityRef: "User/A" },
                 engineArgs,
             })
@@ -1259,6 +1260,99 @@ export const testAdapterImplementation = async <EngineOptions extends {}>(
             expect(version2.ref).not.toBe(version1.ref)
             expect(version3.ref).not.toBe(version2.ref)
             expect(version4.ref).toBe(version3.ref)
+        })
+
+        test("a mutation written before the row but persisted after it ends coalescing", async () => {
+            const { server, queue, draft, changeSet, createParagraph, holder } =
+                await setupClient()
+            const serverChangeSet = server.changeSet(draft.ref)
+            // Written on the client, synced only after the server's first
+            // version (an offline client).
+            await createParagraph()
+            await tick()
+            const [, version1] =
+                await serverChangeSet.updateBlockParagraphMentions({
+                    ref: holder.ref,
+                    mentions: [],
+                })
+            await queue.flush()
+            await tick()
+            const [, version2] =
+                await serverChangeSet.updateBlockParagraphMentions({
+                    ref: holder.ref,
+                    mentions: [],
+                })
+            expect(version2.ref).not.toBe(version1.ref)
+        })
+
+        test("root: another identity's root write does not end coalescing", async () => {
+            const engineArgs = await generateArgs()
+            const adapter = await createAdapter({
+                session: { identityRef: "User/A" },
+                engineArgs,
+            })
+            const system = await createAdapter({
+                session: { identityRef: "System" },
+                engineArgs,
+            })
+            const [post] = await adapter.createPost({ title: "Tag", tags: [] })
+            await tick()
+            const [, version1] = await adapter.updatePostTitle({
+                ref: post.ref,
+                title: "Dra",
+            })
+            await tick()
+            await system.createPost({ title: "Session", tags: [] })
+            await tick()
+            const [, version2] = await adapter.updatePostTitle({
+                ref: post.ref,
+                title: "Drafted",
+            })
+            expect(version2.ref).toBe(version1.ref)
+            expect(version2.debounceCount).toBe(version1.debounceCount + 1)
+        })
+
+        test("root: a synced version after another identity's root write keeps its ref", async () => {
+            const serverEngineArgs = await generateArgs()
+            const server = await createAdapter({
+                session: { identityRef: "Server" },
+                engineArgs: serverEngineArgs,
+            })
+            const system = await createAdapter({
+                session: { identityRef: "System" },
+                engineArgs: serverEngineArgs,
+            })
+            const client = await createAdapter({
+                optimistic: true,
+                session: { identityRef: "User/A" },
+            })
+            const queue = createSyncQueue(server)
+            const post = queue.add(
+                await client.createPost({ title: "Tag", tags: [] }),
+            )
+            await tick()
+            const [, version1] = await client.updatePostTitle({
+                ref: post.ref,
+                title: "Dra",
+            })
+            queue.add([undefined, version1])
+            await queue.flush()
+            await tick()
+            await system.createPost({ title: "Session", tags: [] })
+            await tick()
+            const [, version2] = await client.updatePostTitle({
+                ref: post.ref,
+                title: "Drafted",
+            })
+            expect(version2.ref).toBe(version1.ref)
+            const [persisted] = await server.persistOptimisticMutations([
+                version2,
+            ])
+
+            expect(persisted.ref).toBe(version1.ref)
+            const stored = await server.readMutation(version1.ref)
+            expect(stored.debounceCount).toBe(version2.debounceCount)
+            expect(stored.payload).toEqual(version2.payload)
         })
     })
 }
